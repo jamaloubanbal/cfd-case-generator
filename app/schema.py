@@ -16,7 +16,7 @@ from __future__ import annotations
 SOLVERS: tuple[str, ...] = (
     "simpleFoam", "pimpleFoam", "buoyantSimpleFoam", "interFoam", "rhoSimpleFoam",
 )
-TURB_MODELS: tuple[str, ...] = ("kEpsilon", "kOmegaSST", "SpalartAllmaras")
+TURB_MODELS: tuple[str, ...] = ("laminar", "kEpsilon", "kOmegaSST", "SpalartAllmaras")
 GEOMETRIES: tuple[str, ...] = (
     "channel", "cavity", "t_junction", "rectangular_obstacle", "backstep",
     "dambreak", "cylinder", "pipe", "airfoil",

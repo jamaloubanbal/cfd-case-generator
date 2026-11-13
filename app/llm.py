@@ -86,7 +86,7 @@ Solver choice:
 - interFoam: two-phase liquid/gas free-surface flow. Always uses the "dambreak" geometry;
   add an atmosphere patch for the open top.
 
-Turbulence model: kEpsilon for internal flows, heat transfer, jets, T-junctions;
+Turbulence model: laminar when the flow is laminar — pipe Re < 2300, channel Re < ~2000 (based on height), 2-D cylinder Re < ~190, natural convection Ra < ~1e8 — and otherwise a RANS model: kEpsilon for internal flows, heat transfer, jets, T-junctions;
 kOmegaSST for external aerodynamics, separation, adverse pressure gradients (backstep,
 obstacles, rhoSimpleFoam); SpalartAllmaras for attached external aero at moderate Re.
 Not SpalartAllmaras for buoyancy-driven flow. interFoam ignores the model (laminar).

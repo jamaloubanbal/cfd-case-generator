@@ -79,7 +79,7 @@ GEOMETRY_ANALYSES = {
 # Solvers that can be combined with the shared multi-block geometries
 # (buoyantSimpleFoam is cavity-only and interFoam is dambreak-only).
 FORCED_FLOW_SOLVERS = ("simpleFoam", "pimpleFoam", "rhoSimpleFoam")
-TURB_MODELS = ("kEpsilon", "kOmegaSST", "SpalartAllmaras")
+TURB_MODELS = ("laminar", "kEpsilon", "kOmegaSST", "SpalartAllmaras")
 
 _GEOMETRY_KEYS = ("geometry_type", "geometry_params", "boundary_conditions",
                   "characteristic_length")

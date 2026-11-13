@@ -18,7 +18,7 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
       - run: pip install -r requirements-dev.txt
-      - run: pytest -m "not openfoam" -q
+      - run: pytest -m "not openfoam and not benchmark" -q
 
   openfoam:
     name: OpenFOAM end-to-end
@@ -41,3 +41,29 @@ jobs:
           # Fail instead of silently skipping every test if the environment is missing
           test -n "$WM_PROJECT_DIR" && command -v blockMesh
           pytest -m openfoam -v
+
+  validation:
+    name: Validation benchmarks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install OpenFOAM (Ubuntu package)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openfoam
+      - run: pip install -r requirements-dev.txt
+      - name: Compare generated cases with reference data
+        shell: bash
+        run: |
+          source /usr/share/openfoam/etc/bashrc || true
+          test -n "$WM_PROJECT_DIR" && command -v blockMesh
+          python -m validation.run --out validation-report
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-report
+          path: validation-report/

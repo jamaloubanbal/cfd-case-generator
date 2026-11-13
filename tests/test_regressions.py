@@ -217,3 +217,15 @@ def test_refinement_factor_scales_multiblock_meshes(tmp_path, analysis):
 def test_grading_ratio_does_not_overflow_for_large_cell_counts():
     # e**n with the old upper bound of 1000 overflowed for n > ~100
     assert math.isfinite(_compute_grading_ratio(1.0, 400, 1e-7))
+
+
+def test_dambreak_tank_is_closed(tmp_path):
+    """Side walls used to be an inlet and an open outlet, so the water drained out."""
+    InterFoamGenerator().generate(INTER_FOAM_ANALYSIS, tmp_path)
+    bmd = re.sub(r"//[^\n]*", "", _read(tmp_path, "system/blockMeshDict"))
+    boundary = bmd[bmd.index("boundary"):]
+    patches = re.findall(r"^\s{4}(\w+)\s*\n\s*\{", boundary, re.M)
+    assert patches == ["walls", "atmosphere", "frontAndBack"]
+    walls = boundary.split("walls")[1].split("}")[0]
+    for side in ("(0 4 7 3)", "(1 2 6 5)", "(0 1 5 4)"):
+        assert side in walls

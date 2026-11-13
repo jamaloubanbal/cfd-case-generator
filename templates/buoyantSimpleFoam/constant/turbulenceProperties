@@ -14,6 +14,9 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+{% if turb_model == "laminar" -%}
+simulationType  laminar;
+{%- else -%}
 simulationType  RAS;
 
 RAS
@@ -22,5 +25,6 @@ RAS
     turbulence      on;
     printCoeffs     on;
 }
+{%- endif %}
 
 // ************************************************************************* //

@@ -14,9 +14,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 // Geometry: free-surface basin (interFoam / dam-break)
-//   inlet      : left face  (x = 0)
-//   outlet     : right face (x = domain_x)
-//   walls      : bottom face (y = 0)
+//   walls      : left, right and bottom faces (closed tank)
 //   atmosphere : top face    (y = domain_y) — open to air
 //   frontAndBack : empty (2-D)
 
@@ -45,22 +43,17 @@ edges
 
 boundary
 (
-    inlet
-    {
-        type patch;
-        faces ( (0 4 7 3) );
-    }
-
-    outlet
-    {
-        type patch;
-        faces ( (1 2 6 5) );
-    }
-
+    // Closed tank: left wall, right wall and floor are no-slip walls.
+    // (They used to be an inlet and an open outlet, so the water drained out.)
     walls
     {
         type wall;
-        faces ( (0 1 5 4) );
+        faces
+        (
+            (0 4 7 3)   // left
+            (1 2 6 5)   // right
+            (0 1 5 4)   // floor
+        );
     }
 
     atmosphere

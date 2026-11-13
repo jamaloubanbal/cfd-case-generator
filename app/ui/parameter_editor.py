@@ -7,7 +7,7 @@ import streamlit as st
 from app.editor import apply_overrides, defaults_from_analysis
 from app.generators.base import MAX_REFINEMENT, MIN_REFINEMENT
 
-_TURB = ["kEpsilon", "kOmegaSST", "SpalartAllmaras"]
+_TURB = ["laminar", "kEpsilon", "kOmegaSST", "SpalartAllmaras"]
 
 # widget key → override key understood by app.editor.apply_overrides
 _OVERRIDE_KEYS = {
@@ -56,7 +56,7 @@ def render_parameter_editor(analysis: dict) -> dict:
                 turb = defs["turb_model"] if defs["turb_model"] in _TURB else "kEpsilon"
                 st.selectbox("Turbulence model", options=_TURB, index=_TURB.index(turb),
                              key="pe_turb_model",
-                             help="kEpsilon: internal flows · kOmegaSST: separation / external aero · "
+                             help="laminar: low Re, no turbulence model · kEpsilon: internal flows · kOmegaSST: separation / external aero · "
                                   "SpalartAllmaras: attached external aero")
             else:
                 st.markdown("*interFoam uses a laminar model.*")

@@ -115,15 +115,14 @@ inlet1   walls    outlet""",
     # ------------------------------------------------------------------
     "dambreak": (
         """\
-         atmosphere
+         atmosphere (open)
  ╔═══════════════════╗
-→║ ▓▓▓▓▓│            ║
+ ║ ▓▓▓▓▓│            ║
  ║ ▓▓▓▓▓│   air      ║
  ║ ▓▓▓▓▓│            ║
  ╚═══════════════════╝
-       walls (floor)
- inlet  water│air   outlet""",
-        "Dam-break basin — two-phase VOF free surface",
+   walls (left, floor, right)""",
+        "Dam-break tank — water column collapses under gravity (two-phase VOF)",
     ),
 
     # ------------------------------------------------------------------

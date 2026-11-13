@@ -32,7 +32,7 @@ def _wall_y1(Re, inlet_speed: float, nu: float, turb_model: str) -> float:
 
     Returns ``float('inf')`` when grading is not applicable (laminar / zero speed).
     """
-    if Re is None or float(inlet_speed) < 1e-9 or float(nu) <= 0:
+    if turb_model == "laminar" or Re is None or float(inlet_speed) < 1e-9 or float(nu) <= 0:
         return float("inf")
     target_yplus = 30.0 if turb_model == "SpalartAllmaras" else 50.0
     Re_eff = max(float(Re), 1_000.0)
@@ -211,9 +211,7 @@ GEOMETRY_PATCHES: dict[str, list[dict]] = {
     ],
     # Free-surface basin (interFoam / dam-break)
     "dambreak": [
-        {"name": "inlet",        "of_type": "patch", "role": "inlet"},
-        {"name": "outlet",       "of_type": "patch", "role": "outlet"},
-        {"name": "walls",        "of_type": "wall",  "role": "wall"},
+        {"name": "walls",        "of_type": "wall",  "role": "wall"},   # closed tank
         {"name": "atmosphere",   "of_type": "patch", "role": "atmosphere"},
         {"name": "frontAndBack", "of_type": "empty", "role": "frontAndBack"},
     ],
@@ -806,8 +804,13 @@ class BaseCaseGenerator(ABC):
                           or ctx.get("domain_x")
                           or char_len * 10)
 
-            nx = int(ctx.get("nx", 40))
-            ny = int(ctx.get("ny", 20))
+            # Size the mesh from the pipe itself (not the generic channel nx/ny):
+            # 30 radial cells, axial cells with an aspect ratio of about 4.
+            # The generic sizing gave aspect ratios ~20, which made the GAMG
+            # pressure solver need hundreds of sweeps per iteration.
+            f = float(ctx.get("_refine", 1.0))
+            ny = max(10, round(30 * f))
+            nx = max(20, min(round(pipe_l / (4.0 * pipe_r / ny)), round(2000 * f)))
             dz = round(2.0 * pipe_r * _sin_half, 8)
 
             pipe_grad_ceil = _ceil_grading_str(pipe_r, ny, y1)

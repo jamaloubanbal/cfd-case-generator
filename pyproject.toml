@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cfd-case-generator"
 version = "0.2.0"
@@ -6,8 +10,18 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 
+[project.scripts]
+cfdgen = "app.cli:main"
+
+# Templates live next to app/ (templates/), so install in editable mode: pip install -e .
+[tool.setuptools.packages.find]
+include = ["app*", "validation*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
     "openfoam: end-to-end tests that run generated cases in OpenFOAM (skipped when OpenFOAM is not sourced)",
+    "benchmark: slow validation against analytical / published reference data (needs OpenFOAM)",
 ]
+# Benchmarks take minutes: run them explicitly with `pytest -m benchmark`
+addopts = "-m 'not benchmark'"

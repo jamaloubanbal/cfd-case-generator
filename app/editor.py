@@ -23,7 +23,7 @@ def apply_overrides(analysis: dict, overrides: dict) -> dict:
     nu : float
         Kinematic viscosity [m²/s].  Also triggers a Re recompute.
     turb_model : str
-        One of ``kEpsilon`` | ``kOmegaSST`` | ``SpalartAllmaras``.
+        One of ``laminar`` | ``kEpsilon`` | ``kOmegaSST`` | ``SpalartAllmaras``.
     nx : int
         Streamwise cell count stored in ``suggested_mesh``.
     ny : int

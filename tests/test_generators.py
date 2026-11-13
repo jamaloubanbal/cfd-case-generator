@@ -1429,7 +1429,8 @@ class TestBSFv2512Compatibility:
 
     def test_fvsolution_relaxation_has_h(self, tmp_path):
         _, fvso = _bsf_render(tmp_path)
-        assert "h               0.5" in fvso
+        # buoyantCavity-tutorial value; 0.5 with SIMPLEC diverged (negative T)
+        assert "h               0.3" in fvso
 
     # -- mu computation: must use ideal-gas rho, not fluid.rho ----------------
 

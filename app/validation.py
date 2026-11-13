@@ -105,6 +105,18 @@ def _check_reynolds(Re: float, solver: str, turb: str, geometry: str) -> dict:
     """Validate flow regime and turbulence-model compatibility."""
     re_str = f"Re = {Re:.4g}"
 
+    if turb == "laminar":
+        if Re < 2_000:
+            return _r("ok", f"Laminar regime ({re_str})",
+                      "The flow is laminar and is solved without a turbulence model.")
+        if Re < 4_000:
+            return _r("warning", f"Transitional regime ({re_str})",
+                      "Re is in the transitional range: a laminar solution may not be "
+                      "representative. Compare against a RANS model.")
+        return _r("warning", f"Turbulent flow with laminar model ({re_str})",
+                  "Re > 4 000 is normally turbulent. A laminar simulation will "
+                  "under-predict mixing and wall friction — choose a RANS model.")
+
     if Re < 1_000:
         return _r(
             "warning",
@@ -194,6 +206,10 @@ def _check_yplus(
     Uses the Blasius turbulent flat-plate Cf correlation and assumes
     uniform mesh spacing (no grading).
     """
+    if turb == "laminar":
+        return _r("ok", "Wall treatment (laminar)",
+                  "No wall functions: the laminar boundary layer is resolved directly by the mesh.")
+
     domain_y = mp["domain_y"]
     ny       = mp["ny"]
 
