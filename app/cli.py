@@ -88,6 +88,8 @@ def main(argv: list[str] | None = None) -> int:
                    choices=["claude", "ollama", "gemini", "groq", "openrouter", "openai-compatible"],
                    help="LLM backend; API keys are read from ANTHROPIC_API_KEY, GEMINI_API_KEY, "
                         "GROQ_API_KEY, OPENROUTER_API_KEY or OPENAI_COMPAT_API_KEY")
+    d.add_argument("--timeout", type=int, help="seconds to wait for a cloud provider (default 300; "
+                                              "one automatic retry)")
     d.add_argument("--base-url", help="endpoint for --backend openai-compatible (default: LM Studio, "
                                        "http://localhost:1234/v1)")
     d.add_argument("--model", help="model id (default: claude-opus-5-5 for Claude, qwen2.5:7b for Ollama; override with CFD_CLAUDE_MODEL / CFD_OLLAMA_MODEL)")
@@ -105,7 +107,8 @@ def main(argv: list[str] | None = None) -> int:
             from app.llm import analyze_cfd_problem
             print(f"Analysing with {args.backend} …", flush=True)
             raw = analyze_cfd_problem(args.description, backend=args.backend, model=args.model,
-                                      base_url=args.base_url)   # keys come from the environment
+                                      base_url=args.base_url,   # keys come from the environment
+                                      timeout=args.timeout)
             description = args.description
         else:
             raw, description = _load(args.input)

@@ -325,6 +325,10 @@ OPENAI_COMPATIBLE_PROVIDERS: dict[str, dict] = {
 }
 
 
+#: Seconds to wait for a cloud provider's answer (free tiers can be slow); one retry on timeout.
+COMPAT_TIMEOUT = int(os.environ.get("CFD_LLM_TIMEOUT", "300"))
+
+
 def _compat_settings(backend: str, model: str | None, api_key: str | None,
                      base_url: str | None) -> tuple[str, str, str | None, str]:
     p = OPENAI_COMPATIBLE_PROVIDERS[backend]
@@ -402,7 +406,7 @@ def _model_not_found(backend: str, model: str, key: str | None, url: str, label:
 
 
 def _analyze_compat(user_description: str, backend: str, model: str | None, api_key: str | None,
-                    base_url: str | None, timeout: int = 180) -> dict:
+                    base_url: str | None, timeout: int | None = None) -> dict:
     """Analyse via an OpenAI-compatible API.
 
     Providers differ in how much of structured output they support, so this tries, in
@@ -418,9 +422,11 @@ def _analyze_compat(user_description: str, backend: str, model: str | None, api_
         (schema_prompt, {"type": "json_object"}),
         (schema_prompt, None),
     ]
+    timeout = timeout or COMPAT_TIMEOUT
     last_error: Exception | None = None
+    timed_out = False
     for system, fmt in modes:
-        for _attempt in range(2):                          # one retry on invalid JSON
+        for _attempt in range(2):                          # one retry on invalid JSON / timeout
             try:
                 return _extract_json(_compat_chat(backend, url, model, key, system,
                                                   user_description, fmt, timeout))
@@ -433,6 +439,14 @@ def _analyze_compat(user_description: str, backend: str, model: str | None, api_
                 if exc.response is not None and exc.response.status_code == 404:
                     raise _model_not_found(backend, model, key, url, label) from exc
                 raise _compat_error(exc, label) from exc
+            except requests.exceptions.Timeout as exc:
+                if timed_out:                              # second timeout → give up
+                    raise RuntimeError(
+                        f"{label} did not answer within {timeout} s (twice). Free tiers are "
+                        "sometimes slow or busy: try again later, use --timeout 600, or "
+                        "another backend.") from exc
+                timed_out = True
+                last_error = exc
             except requests.exceptions.RequestException as exc:
                 raise _compat_error(exc, label) from exc
     if isinstance(last_error, requests.exceptions.HTTPError):
@@ -454,6 +468,7 @@ def analyze_cfd_problem(
     api_key: str | None = None,
     ollama_timeout: int = 300,
     base_url: str | None = None,
+    timeout: int | None = None,
 ) -> dict:
     """
     Analyse a CFD problem using the chosen LLM backend.
@@ -474,6 +489,8 @@ def analyze_cfd_problem(
         HTTP timeout in seconds for Ollama requests.
     base_url : str | None
         Override the endpoint of an OpenAI-compatible provider.
+    timeout : int | None
+        Seconds to wait for an OpenAI-compatible provider (default :data:`COMPAT_TIMEOUT`).
 
     Returns
     -------
@@ -493,7 +510,7 @@ def analyze_cfd_problem(
     if backend == "ollama":
         return analyze_cfd_problem_ollama(user_description, model or DEFAULT_OLLAMA_MODEL, timeout=ollama_timeout)
     if backend in OPENAI_COMPATIBLE_PROVIDERS:
-        return _analyze_compat(user_description, backend, model, api_key, base_url)
+        return _analyze_compat(user_description, backend, model, api_key, base_url, timeout)
     raise ValueError(f"Unknown backend {backend!r}. Choose one of: {', '.join(BACKENDS)}.")
 
 
