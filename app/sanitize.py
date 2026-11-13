@@ -84,8 +84,23 @@ def sanitize_analysis(analysis: Any, description: str | None = None) -> tuple[di
         notes.append(f"Unknown turbulence model {a.get('turb_model')!r} — using kEpsilon.")
         a["turb_model"] = "kEpsilon"
 
+    # Solver/geometry conflicts.  The cavity and dam-break geometries only make sense for
+    # natural convection and free-surface flow, so when one of them is chosen the geometry
+    # is the stronger signal and the solver is fixed to match (the LLM evaluation showed
+    # models picking the right geometry with the wrong solver more often than the reverse).
     geometry = a.get("geometry_type")
     if geometry != "stl_import":
+        geometry_solver = {g: s for s, g in _SOLVER_ONLY_GEOMETRY.items()}.get(geometry)
+        # (a cavity with an inlet velocity is forced flow: keep the solver, see below)
+        if geometry_solver and solver != geometry_solver and not (
+                geometry == "cavity" and _has_inflow(a)):
+            notes.append(f"The '{geometry}' geometry is for {geometry_solver}, not {solver} — "
+                         f"using {geometry_solver}.")
+            solver = a["solver"] = geometry_solver
+        elif solver == "buoyantSimpleFoam" and _has_inflow(a):
+            notes.append("buoyantSimpleFoam is for natural convection in a closed cavity, but the "
+                         "flow has an inlet velocity (forced convection) — using simpleFoam.")
+            solver = a["solver"] = "simpleFoam"
         required = _SOLVER_ONLY_GEOMETRY.get(solver)
         if required and geometry != required:
             notes.append(f"{solver} requires the '{required}' geometry (got {geometry!r}).")
@@ -175,6 +190,17 @@ def sanitize_analysis(analysis: Any, description: str | None = None) -> tuple[di
     # ── Reynolds number: consistent with U·L/ν and with the user's request ───
     a["Re"] = _consistent_reynolds(a, solver, char_len, nu, description, notes)
 
+    # ── Flow model must match the regime (only where Re leaves no doubt) ─────
+    if a["solver"] in _INCOMPRESSIBLE + ("rhoSimpleFoam",) and a["Re"] is not None:
+        if a["Re"] < _LAMINAR_BELOW and a["turb_model"] != "laminar":
+            notes.append(f"Re = {a['Re']:.3g} is laminar — using the laminar model instead of "
+                         f"{a['turb_model']}.")
+            a["turb_model"] = "laminar"
+        elif a["Re"] > _TURBULENT_ABOVE and a["turb_model"] == "laminar":
+            notes.append(f"Re = {a['Re']:.3g} is turbulent — using the k-ω SST model instead of "
+                         "laminar flow.")
+            a["turb_model"] = "kOmegaSST"
+
     # ── Bluff body above the shedding threshold needs a transient solver ─────
     crit = _SHEDDING_RE.get(a.get("geometry_type"))
     if (crit and a["solver"] == "simpleFoam" and a["turb_model"] == "laminar"
@@ -203,6 +229,9 @@ _INLET_PLUS_X = {"channel", "t_junction", "rectangular_obstacle", "backstep", "c
 # Laminar Reynolds number above which the wake sheds vortices periodically
 _SHEDDING_RE = {"cylinder": 47.0, "rectangular_obstacle": 50.0}
 _RE_TOLERANCE = 0.10
+# Unambiguous regimes; between the two the model's choice is kept (transitional flow)
+_LAMINAR_BELOW = 1_000.0
+_TURBULENT_ABOVE = 10_000.0
 _INCOMPRESSIBLE = ("simpleFoam", "pimpleFoam")
 
 _SUPERSCRIPT = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹⁻", "0123456789-")
@@ -305,6 +334,19 @@ def _consistent_reynolds(a: dict, solver: str, char_len: float, nu: float,
         notes.append(f"The model reported Re = {re_model:.3g}, but its inlet velocity, length and "
                      f"viscosity give U·L/ν = {re_flow:.3g} — using {re_flow:.3g}.")
     return re_flow
+
+
+def _has_inflow(a: dict) -> bool:
+    """True if any inlet patch has a non-zero numeric velocity (raw, before sanitising)."""
+    for bc in a.get("boundary_conditions") or []:
+        if not isinstance(bc, dict) or "inlet" not in str(bc.get("patch_name", "")).lower():
+            continue
+        U = (bc.get("values") or {}).get("U")
+        if isinstance(U, (list, tuple)):
+            comps = [_to_float(c) for c in U]
+            if all(c is not None for c in comps) and any(abs(c) > 1e-9 for c in comps):
+                return True
+    return False
 
 
 def _first_inlet_speed(bcs: list) -> float:

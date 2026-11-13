@@ -1,0 +1,307 @@
+{
+ "note": "Expected answers. 'solver'/'geometry': accepted values; 'laminar': laminar vs RANS; 'Re': simulated U·L/ν must be within 15 % of one value; 'nu': within a factor of 2.",
+ "cases": [
+  {
+   "id": "cyl_re100",
+   "description": "Laminar flow past a 2-D circular cylinder at Re = 100.",
+   "expected": {
+    "solver": [
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "cylinder"
+    ],
+    "laminar": true,
+    "transient": true,
+    "Re": 100
+   }
+  },
+  {
+   "id": "cyl_re40",
+   "description": "Steady flow past a circular cylinder at Re = 40, where two symmetric vortices form behind it.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "cylinder"
+    ],
+    "laminar": true,
+    "transient": false,
+    "Re": 40
+   }
+  },
+  {
+   "id": "cyl_air_turbulent",
+   "description": "Air at 20 m/s flows past a 2 cm diameter circular cylinder.",
+   "expected": {
+    "solver": [
+     "simpleFoam",
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "cylinder"
+    ],
+    "laminar": false,
+    "Re": 26666.666666666668,
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "pipe_turbulent",
+   "description": "Water flows at 0.5 m/s through a straight pipe of 5 cm diameter and 2 m length. Steady, fully developed flow.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "pipe"
+    ],
+    "laminar": false,
+    "transient": false,
+    "Re": 25000.000000000004,
+    "nu": 1e-06
+   }
+  },
+  {
+   "id": "pipe_oil_laminar",
+   "description": "Oil with a kinematic viscosity of 1e-4 m²/s flows at 0.1 m/s through a pipe of 2 cm diameter, 1 m long.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "pipe"
+    ],
+    "laminar": true,
+    "Re": 20.0,
+    "nu": 0.0001
+   }
+  },
+  {
+   "id": "plates_laminar",
+   "description": "Water flows at 1 cm/s between two parallel plates 2 mm apart.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "channel"
+    ],
+    "laminar": true,
+    "Re": 20.000000000000004,
+    "nu": 1e-06
+   }
+  },
+  {
+   "id": "duct_turbulent",
+   "description": "Steady air flow at 2 m/s through a 2-D duct 10 cm high and 1 m long.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "channel"
+    ],
+    "laminar": false,
+    "transient": false,
+    "Re": 13333.333333333334,
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "channel_startup",
+   "description": "Time-accurate start-up of water flow at 0.1 m/s in a channel 5 cm high.",
+   "expected": {
+    "solver": [
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "channel"
+    ],
+    "transient": true,
+    "Re": 5000.000000000001,
+    "nu": 1e-06
+   }
+  },
+  {
+   "id": "backstep",
+   "description": "Air at 15 m/s flows over a backward-facing step 2 cm high in a 4 cm high channel.",
+   "expected": {
+    "solver": [
+     "simpleFoam",
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "backstep"
+    ],
+    "laminar": false,
+    "Re": [
+     20000.0,
+     40000.0
+    ],
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "t_junction",
+   "description": "Two water streams at 1 m/s meet at a T-junction of 5 cm wide channels and mix.",
+   "expected": {
+    "solver": [
+     "simpleFoam",
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "t_junction"
+    ],
+    "laminar": false,
+    "Re": 50000.00000000001,
+    "nu": 1e-06
+   }
+  },
+  {
+   "id": "building_wind",
+   "description": "Wind at 10 m/s blowing around a square building 20 m wide (2-D cross-section).",
+   "expected": {
+    "solver": [
+     "simpleFoam",
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "rectangular_obstacle"
+    ],
+    "laminar": false,
+    "Re": 13333333.333333332,
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "square_shedding",
+   "description": "Water at 1.5 cm/s flows past a square cylinder of side 1 cm; I want to see the vortex street.",
+   "expected": {
+    "solver": [
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "rectangular_obstacle"
+    ],
+    "laminar": true,
+    "transient": true,
+    "Re": 150.0,
+    "nu": 1e-06
+   }
+  },
+  {
+   "id": "wing_low_speed",
+   "description": "Air at 50 m/s over a wing section with a 0.5 m chord at 5° angle of attack.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "airfoil"
+    ],
+    "laminar": false,
+    "Re": 1666666.6666666665,
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "airfoil_transonic",
+   "description": "Transonic flow over an airfoil at Mach 0.8, chord 1 m, 288 K and sea-level pressure.",
+   "expected": {
+    "solver": [
+     "rhoSimpleFoam"
+    ],
+    "geometry": [
+     "airfoil"
+    ],
+    "laminar": false,
+    "Re": 18133333.333333332
+   }
+  },
+  {
+   "id": "channel_compressible",
+   "description": "Air at 250 m/s through a channel 10 cm high, 300 K, 1 atm.",
+   "expected": {
+    "solver": [
+     "rhoSimpleFoam"
+    ],
+    "geometry": [
+     "channel"
+    ],
+    "laminar": false,
+    "Re": 1666666.6666666665
+   }
+  },
+  {
+   "id": "cavity_temperatures",
+   "description": "Natural convection of air in a 10 cm square cavity with the left wall at 320 K and the right wall at 280 K.",
+   "expected": {
+    "solver": [
+     "buoyantSimpleFoam"
+    ],
+    "geometry": [
+     "cavity"
+    ],
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "cavity_ra1e5",
+   "description": "Differentially heated square cavity filled with air at Ra = 1e5, steady laminar flow.",
+   "expected": {
+    "solver": [
+     "buoyantSimpleFoam"
+    ],
+    "geometry": [
+     "cavity"
+    ],
+    "laminar": true,
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "dam_break",
+   "description": "A column of water 0.5 m high and 0.25 m wide collapses under gravity in a closed tank 1 m long.",
+   "expected": {
+    "solver": [
+     "interFoam"
+    ],
+    "geometry": [
+     "dambreak"
+    ],
+    "transient": true
+   }
+  },
+  {
+   "id": "dam_sloshing",
+   "description": "Simulate the water sloshing after a dam collapses in a basin.",
+   "expected": {
+    "solver": [
+     "interFoam"
+    ],
+    "geometry": [
+     "dambreak"
+    ],
+    "transient": true
+   }
+  },
+  {
+   "id": "heated_channel_forced",
+   "description": "Air at 5 m/s flows through a heated channel 5 cm high; the walls are at 350 K and the inlet air at 300 K.",
+   "expected": {
+    "solver": [
+     "simpleFoam",
+     "rhoSimpleFoam"
+    ],
+    "geometry": [
+     "channel"
+    ],
+    "laminar": false,
+    "Re": 16666.666666666668,
+    "nu": 1.5e-05
+   }
+  }
+ ]
+}
