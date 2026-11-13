@@ -87,9 +87,17 @@ class PimpleFoamGenerator(BaseCaseGenerator):
         # Round to a clean value
         delta_t = self._round_to_sig(delta_t_cfl, 2)
 
-        # Characteristic time = L / U
+        # Run length.  Behind a bluff body the vortex street needs ~100–150 convective
+        # times (D/U) to develop from a symmetric start; elsewhere run two flow-throughs
+        # of the domain.  (10 D/U, used before, ended long before any shedding appeared.)
         t_char = char_len / max(inlet_speed, 1e-6)
-        end_time = self._round_to_sig(10.0 * t_char, 2)
+        geo_params = analysis.get("geometry_params") or {}
+        length = float(geo_params.get("channel_length") or geo_params.get("pipe_length") or domain_x)
+        t_flow = length / max(inlet_speed, 1e-6)
+        if ctx["geometry_type"] in ("cylinder", "rectangular_obstacle"):
+            end_time = self._round_to_sig(max(150.0 * t_char, 2.0 * t_flow), 2)
+        else:
+            end_time = self._round_to_sig(max(10.0 * t_char, 2.0 * t_flow), 2)
 
         # Write interval: ~50 snapshots
         write_interval = max(1, int(end_time / delta_t / 50))
