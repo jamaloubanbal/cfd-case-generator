@@ -1,0 +1,114 @@
+{
+  "description": "Laminar flow of water past a 2 cm circular cylinder at 7.5 mm/s (Re = 150). I want to see the von K\u00e1rm\u00e1n vortex street, so the simulation must be transient. Use a domain 30 diameters long and 12 diameters high with the cylinder 6 diameters from the inlet.",
+  "note": "Hand-written analysis in the format the LLM returns (app/schema.py). `cfdgen describe \"<description>\"` produces the equivalent object with Claude or Ollama.",
+  "analysis": {
+    "solver": "pimpleFoam",
+    "solver_justification": "Re = 150 is in the laminar periodic-shedding regime; a transient solver is needed to capture the vortex street.",
+    "fluid": {
+      "name": "water",
+      "nu": 1e-06,
+      "rho": 998
+    },
+    "boundary_conditions": [
+      {
+        "patch_name": "inlet",
+        "type": "fixedValue",
+        "values": {
+          "U": [
+            0.0075,
+            0,
+            0
+          ],
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "outlet",
+        "type": "zeroGradient",
+        "values": {
+          "U": null,
+          "p": 0,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "cylinder",
+        "type": "noSlip",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "top",
+        "type": "symmetry",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "bottom",
+        "type": "symmetry",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      }
+    ],
+    "numerical_schemes": {
+      "ddtSchemes": "Euler",
+      "gradSchemes": "Gauss linear",
+      "divSchemes": "Gauss linearUpwind grad(U)",
+      "laplacianSchemes": "Gauss linear corrected",
+      "interpolationSchemes": "linear",
+      "snGradSchemes": "corrected",
+      "justification": "Template defaults."
+    },
+    "Re": 150.0,
+    "is_transient": true,
+    "suggested_mesh": {
+      "type": "blockMesh",
+      "approximate_cell_count": 20000,
+      "domain_description": "30D x 12D, O-grid around the cylinder"
+    },
+    "characteristic_length": 0.02,
+    "characteristic_velocity": 0.0075,
+    "Ma": null,
+    "T_ref": null,
+    "p_ref": null,
+    "turb_model": "laminar",
+    "geometry_type": "cylinder",
+    "geometry_params": {
+      "channel_length": 0.6,
+      "channel_height": 0.24,
+      "branch_width": null,
+      "branch_height": null,
+      "obstacle_width": null,
+      "obstacle_height": null,
+      "step_height": null,
+      "step_x": null,
+      "cylinder_radius": 0.01,
+      "cx": 0.12,
+      "cy": 0.12,
+      "pipe_radius": null,
+      "pipe_length": null,
+      "chord": null,
+      "thickness": null,
+      "r_far": null,
+      "wake_length": null
+    },
+    "warnings": [
+      "Symmetry planes 6 D from the cylinder give ~8 % blockage, which raises the shedding frequency slightly."
+    ]
+  }
+}

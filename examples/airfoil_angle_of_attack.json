@@ -1,0 +1,94 @@
+{
+  "description": "Air at 30 m/s over a wing section with a 1 m chord and 12 % thickness at 5\u00b0 angle of attack (Re = 2 million). Steady RANS with k-omega SST.",
+  "note": "Hand-written analysis in the format the LLM returns (app/schema.py). `cfdgen describe \"<description>\"` produces the equivalent object with Claude or Ollama.",
+  "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "Steady incompressible external aerodynamics (Ma \u2248 0.09).",
+    "fluid": {
+      "name": "air",
+      "nu": 1.5e-05,
+      "rho": 1.2
+    },
+    "boundary_conditions": [
+      {
+        "patch_name": "inlet",
+        "type": "fixedValue",
+        "values": {
+          "U": [
+            29.8858,
+            2.6147,
+            0
+          ],
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "outlet",
+        "type": "zeroGradient",
+        "values": {
+          "U": null,
+          "p": 0,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "airfoil",
+        "type": "noSlip",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      }
+    ],
+    "numerical_schemes": {
+      "ddtSchemes": "steadyState",
+      "gradSchemes": "Gauss linear",
+      "divSchemes": "Gauss linearUpwind grad(U)",
+      "laplacianSchemes": "Gauss linear corrected",
+      "interpolationSchemes": "linear",
+      "snGradSchemes": "corrected",
+      "justification": "Template defaults."
+    },
+    "Re": 2000000.0,
+    "is_transient": false,
+    "suggested_mesh": {
+      "type": "blockMesh",
+      "approximate_cell_count": 12000,
+      "domain_description": "C/H grid, 15 chords far field"
+    },
+    "characteristic_length": 1.0,
+    "characteristic_velocity": 30.0,
+    "Ma": null,
+    "T_ref": null,
+    "p_ref": null,
+    "turb_model": "kOmegaSST",
+    "geometry_type": "airfoil",
+    "geometry_params": {
+      "channel_length": null,
+      "channel_height": null,
+      "branch_width": null,
+      "branch_height": null,
+      "obstacle_width": null,
+      "obstacle_height": null,
+      "step_height": null,
+      "step_x": null,
+      "cylinder_radius": null,
+      "cx": null,
+      "cy": null,
+      "pipe_radius": null,
+      "pipe_length": null,
+      "chord": 1.0,
+      "thickness": 0.12,
+      "r_far": 15.0,
+      "wake_length": 10.0
+    },
+    "warnings": [
+      "The section is modelled as a rectangular 12 % thick body, not a NACA profile."
+    ]
+  }
+}

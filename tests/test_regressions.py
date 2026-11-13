@@ -229,3 +229,12 @@ def test_dambreak_tank_is_closed(tmp_path):
     walls = boundary.split("walls")[1].split("}")[0]
     for side in ("(0 4 7 3)", "(1 2 6 5)", "(0 1 5 4)"):
         assert side in walls
+
+
+def test_rhosimplefoam_limits_pressure(tmp_path):
+    """Without pMin/pMaxFactor, Mach 0.5 flow past a block diverged within ~35 iterations."""
+    from app.generators import RhoSimpleFoamGenerator
+    from tests.test_generators import RHO_SIMPLE_FOAM_ANALYSIS
+    RhoSimpleFoamGenerator().generate(RHO_SIMPLE_FOAM_ANALYSIS, tmp_path)
+    fv = _read(tmp_path, "system/fvSolution")
+    assert "pMinFactor      0.5;" in fv and "pMaxFactor      2.0;" in fv

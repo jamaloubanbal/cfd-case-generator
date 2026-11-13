@@ -4,19 +4,68 @@
 
 Describe a fluid-dynamics problem in plain English and get a complete, **ready-to-run
 OpenFOAM case**: mesh, boundary conditions, fluid properties, turbulence model, numerical
-schemes, solver settings and run scripts.
+schemes, solver settings and run scripts. The cases are **run and checked against reference
+data** as part of the test suite.
 
-```
-"Steady airflow around a 2-D cylinder at Re = 200, freestream 1 m/s, air at standard conditions."
-        │
-        ▼
-simpleFoam case · 12-block O-grid around the cylinder · kOmegaSST · inlet/outlet/symmetry BCs
-→ unzip, ./Allrun
-```
+<p align="center">
+  <img src="docs/gallery/cylinder_vortex_shedding.gif" alt="Von Kármán vortex street behind a cylinder, generated and run by this project" width="760"><br>
+  <em>"Laminar flow of water past a 2 cm circular cylinder at 7.5 mm/s (Re = 150). I want to see
+  the von Kármán vortex street…" → pimpleFoam case, O-grid mesh, run with <code>./Allrun</code></em>
+</p>
 
-An LLM (Claude via the API, or a local model through Ollama) interprets the description;
-a deterministic, tested generator turns that interpretation into OpenFOAM files. Every
-supported solver × geometry combination is **run in OpenFOAM as part of the test suite**.
+## What it can do
+
+- **Understand a problem description.** An LLM (Claude via the API, or a local model through
+  Ollama) picks the solver, fluid properties, boundary conditions, turbulence model and
+  geometry. A JSON schema constrains its answer, and every value is sanity-checked:
+  implausible numbers are corrected and shown to the user.
+- **Generate complete OpenFOAM cases**:
+  - **5 solvers:** steady and transient incompressible, compressible, natural convection,
+    two-phase free surface
+  - **9 meshed geometries,** plus your own STL through snappyHexMesh
+  - **laminar flow or 3 RANS models**
+  - wall-graded multi-block meshes, serial or parallel runs, `Allrun`/`Allclean`, sampling
+    dictionaries and a README
+- **Check the physics before you run:** Reynolds and Mach regime, y⁺ and wall treatment,
+  Courant number, mesh resolution. Adjust speed, viscosity, model, mesh and cores in the UI.
+- **Run and post-process:** `cfdgen … --run` meshes and solves the case. The convergence
+  monitor plots residuals from any OpenFOAM log, and `app/postprocess` reads meshes and fields
+  in pure Python, independent of OpenFOAM's function objects.
+- **Prove the results are right:** validation benchmarks compare generated cases with
+  analytical solutions and published data (all within 0.4 %, see below).
+
+## Gallery
+
+Each image comes from a case produced by the generator from the input below, run with its
+own `Allrun`, and drawn cell by cell from the OpenFOAM results
+([`scripts/make_gallery.py`](scripts/make_gallery.py)). The inputs are in [`examples/`](examples).
+
+| | |
+|:-:|:-:|
+| <img src="docs/gallery/dam_break.gif" width="420"><br>**Dam break**, interFoam (VOF)<br><sub>"A column of water 0.36 m wide and 0.3 m high collapses under gravity into a dry tank 1.2 m long…"</sub> | <img src="docs/gallery/backward_facing_step.png" width="420"><br>**Backward-facing step**, simpleFoam + k-ω SST<br><sub>"Turbulent air flow at 10 m/s over a backward-facing step 10 cm high…" (black line: u = 0, edge of the recirculation zone)</sub> |
+| <img src="docs/gallery/compressible_obstacle.png" width="420"><br>**Mach 0.5 flow past a block**, rhoSimpleFoam + k-ω SST<br><sub>"Compressible air flow at 170 m/s (Mach 0.5), 300 K and 1 atm, past a 5 cm square block…" Flow accelerates to Ma ≈ 0.85 beside the block. Steady RANS snapshot: the bluff-body wake is physically unsteady, so residuals plateau.</sub> | <img src="docs/gallery/t_junction_mixing.png" width="420"><br>**T-junction**, simpleFoam + k-ε<br><sub>"Water at 0.5 m/s flows along a 5 cm high channel and meets a side branch…" The merged stream doubles in speed; a separation bubble forms at the downstream corner.</sub> |
+
+<p align="center"><img src="docs/gallery/cylinder_vortex_shedding.png" alt="Cylinder O-grid mesh and vortex street" width="860"><br>
+<sub><b>Cylinder at Re = 150</b>, pimpleFoam (laminar): generated O-grid mesh and the cross-stream velocity of the vortex street</sub></p>
+
+## Validation
+
+[`validation/`](validation) generates each benchmark through the same code path as the app,
+runs it in OpenFOAM and compares it with the reference. Full report with plots:
+[`docs/validation/results.md`](docs/validation/results.md).
+
+| Benchmark | Quantity | Reference | Error |
+|---|---|---|---:|
+| Plane Poiseuille flow, Re = 100 | centreline velocity, pressure gradient, profile | analytical | ≤ 0.14 % |
+| Hagen–Poiseuille pipe (axisymmetric), Re = 100 | centreline velocity, pressure gradient, profile | analytical | ≤ 0.18 % |
+| Natural convection cavity, Ra = 10⁵ | Nusselt number, u_max, v_max | de Vahl Davis (1983) | ≤ 0.33 % |
+
+<p align="center"><img src="docs/validation/cavity_ra1e5.png" alt="Natural convection cavity compared with de Vahl Davis" width="900"></p>
+
+```bash
+source /usr/share/openfoam/etc/bashrc
+python -m validation.run          # ≈ 4 min; writes docs/validation/
+```
 
 ---
 
@@ -61,7 +110,7 @@ Target: **OpenFOAM v1912** (ESI, openfoam.com), including the Debian/Ubuntu `ope
 | `buoyantSimpleFoam` | Steady natural convection | differentially heated cavity |
 | `interFoam` | Two-phase free surface (VOF) | dam break |
 
-Turbulence models: `kEpsilon`, `kOmegaSST`, `SpalartAllmaras` (interFoam is laminar).
+Flow models: `laminar`, or RANS with `kEpsilon`, `kOmegaSST`, `SpalartAllmaras` (interFoam is laminar).
 
 ### Verified in OpenFOAM
 
@@ -71,16 +120,16 @@ script. It checks that `blockMesh` / `snappyHexMesh` succeed, `checkMesh` report
 
 | | channel/cavity/dambreak | t_junction | rect. obstacle | backstep | cylinder | pipe | airfoil | STL |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| simpleFoam (3 turbulence models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| pimpleFoam (3 turbulence models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| rhoSimpleFoam (3 turbulence models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| buoyantSimpleFoam (3 turbulence models) | ✅ | | | | | | | |
+| simpleFoam (laminar + 3 RANS models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| pimpleFoam (laminar + 3 RANS models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| rhoSimpleFoam (laminar + 3 RANS models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| buoyantSimpleFoam (laminar + 3 RANS models) | ✅ | | | | | | | |
 | interFoam | ✅ | | | | | | | |
 | parallel run (decomposePar → mpirun → reconstructPar) | ✅ | | | | | | | |
 
 These are short smoke runs (30 iterations or 15 time steps). They show that a case meshes,
-starts and stays numerically stable. They are not a validation of converged results against
-reference data.
+starts and stays numerically stable. Accuracy is checked separately by the
+[validation benchmarks](#validation), which run to convergence.
 
 ---
 
@@ -89,8 +138,21 @@ reference data.
 ```bash
 git clone <this repo> && cd cfd-case-generator
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-streamlit run app/main.py            # opens http://localhost:8501
+pip install -r requirements.txt && pip install -e .
+streamlit run app/main.py            # web UI at http://localhost:8501
+```
+
+### Command line
+
+```bash
+# Plain English → case (LLM), then mesh and solve it
+cfdgen describe "Laminar flow past a 2-D cylinder at Re = 100" -o cylinder/ --run
+
+# From an analysis JSON, no LLM or API key needed (see examples/)
+cfdgen generate examples/dam_break.json -o dambreak/ --run
+
+# Physics checks only
+cfdgen check examples/backward_facing_step.json
 ```
 
 ### LLM backend
@@ -118,24 +180,9 @@ Paste `log.<solver>` into the app's **Convergence Monitor** to plot the residual
 
 ### Example descriptions
 
-```
-Steady-state airflow around a 2D cylinder at Re=200 with a freestream velocity of 1 m/s.
-The fluid is air at standard conditions. Domain 20 diameters long and 10 wide.
-```
-```
-Unsteady incompressible flow past a bluff body at Re=1000. Water at 0.5 m/s.
-I need to capture vortex shedding.
-```
-```
-Natural convection in a square cavity with the hot left wall at 350 K and the cold
-right wall at 300 K. The fluid is air. Steady state.
-```
-```
-Transonic flow over a NACA 0012 airfoil at Mach 0.8, chord 1 m, 300 K, 1 atm.
-```
-```
-Dam-break: water column 0.3 m high and 0.1 m wide collapsing into a dry 1 m basin.
-```
+Each file in [`examples/`](examples) holds a description and the matching analysis, so the
+gallery can be rebuilt without an API key. The analyses are written by hand in the LLM's
+output format; `cfdgen describe` produces the same kind of object from the description.
 
 ---
 
@@ -143,10 +190,11 @@ Dam-break: water column 0.3 m high and 0.1 m wide collapsing into a dry 1 m basi
 
 ```bash
 pip install -r requirements-dev.txt
-pytest -m "not openfoam"                  # unit, regression and headless UI tests (~20 s)
+pytest -m "not openfoam and not benchmark"   # unit, regression, UI tests (~20 s)
 
 source /usr/share/openfoam/etc/bashrc
-pytest -m openfoam -v                     # run every generated case in OpenFOAM (~2–3 min)
+pytest -m openfoam -v                        # every generated case in OpenFOAM (~3 min)
+pytest -m benchmark -v                       # validation against reference data (~4 min)
 ```
 
 | Suite | What it covers |
@@ -156,16 +204,21 @@ pytest -m openfoam -v                     # run every generated case in OpenFOAM
 | `test_sanitize.py` | Repairing implausible or inconsistent LLM output |
 | `test_llm.py` | Structured-output requests, fallbacks, refusals, Ollama (all mocked) |
 | `test_ui.py` | Streamlit app driven headlessly: analyse → edit → generate → zip |
-| `test_openfoam_integration.py` | 33 generated cases meshed and run in OpenFOAM |
+| `test_cli.py` | `cfdgen` commands and every file in `examples/` |
+| `test_postprocess.py` | OpenFOAM mesh/field reader on a hand-written mesh |
+| `test_openfoam_integration.py` | 37 generated cases meshed and run in OpenFOAM |
+| `test_benchmarks.py` | Validation benchmarks within tolerance |
 
 CI ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)) runs the unit suite on
-Python 3.10 and 3.12, and the OpenFOAM suite on Ubuntu with the distribution's `openfoam` package.
+Python 3.10 and 3.12; the OpenFOAM suite and the validation benchmarks run on Ubuntu with the
+distribution's `openfoam` package, and the validation report is uploaded as a build artifact.
 
 ## Project structure
 
 ```
 app/
 ├── main.py                 # Streamlit entry point (composes app/ui/*)
+├── cli.py                  # cfdgen command-line interface
 ├── ui/                     # sidebar, problem input, analysis view, parameter editor,
 │                           # physics checks, case output, convergence monitor
 ├── llm.py                  # Claude + Ollama backends (structured outputs)
@@ -174,6 +227,7 @@ app/
 ├── editor.py               # parameter-editor overrides → analysis
 ├── validation.py           # physics checks (Re, Ma, y+, CFL, resolution)
 ├── generators/             # one generator per solver + shared base (meshing maths)
+├── postprocess/            # pure-Python OpenFOAM mesh/field reader + 2-D renderer
 ├── log_parser.py           # residual extraction from solver logs
 ├── stl_parser.py           # STL bounding box for snappyHexMesh background meshes
 └── geometry_sketches.py    # ASCII sketches shown in the sidebar
@@ -182,6 +236,10 @@ templates/
 ├── geometries/<name>/      # blockMeshDict per geometry
 ├── _macros/                # boundary-condition macros shared by all field files
 └── _shared/                # Allrun/Allclean, decomposeParDict, snappyHexMesh, sampling
+validation/                 # benchmark definitions + runner (python -m validation.run)
+examples/                   # problem descriptions with their analyses
+scripts/make_gallery.py     # runs the examples and renders docs/gallery/
+docs/                       # gallery images and the validation report
 tests/
 ```
 
@@ -191,12 +249,17 @@ tests/
   `physicalProperties`, different solver names) is not supported.
 - **Results are a starting point.** Meshes are coarse 2-D (one cell thick) or axisymmetric.
   For production use, check mesh independence and y⁺, and validate against reference data.
-- **Turbulence modelling.** RANS only (`kEpsilon`, `kOmegaSST`, `SpalartAllmaras`) with
-  wall functions; no LES/DES and no low-Re wall resolution.
+- **Turbulence modelling.** Laminar or RANS (`kEpsilon`, `kOmegaSST`, `SpalartAllmaras`) with
+  wall functions; no LES/DES and no low-Re wall resolution. The y⁺ physics check assumes
+  uniform near-wall spacing, so it is pessimistic for wall-graded meshes.
+- **Validation coverage.** The benchmarks cover laminar flows and natural convection;
+  turbulent and transient cases (e.g. backward-facing step reattachment, cylinder Strouhal
+  number) are the next ones to add.
 - **Boundary conditions.** Uniform inflow, zero-gradient / fixed-pressure outlets and
   no-slip walls. Turbulent inflow profiles and mapped BCs are not generated.
 - **Airfoil geometry.** The airfoil is a rectangular-section body of the requested chord and
-  thickness, not a true NACA profile. Upload an STL for an exact shape.
+  thickness on a coarse far-field mesh, not a true NACA profile, so it is left out of the
+  gallery. Upload an STL for an exact shape.
 - **Radiation** is off in `buoyantSimpleFoam` (`radiationProperties` → `none`).
 
 ## License

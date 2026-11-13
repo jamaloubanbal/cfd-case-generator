@@ -80,6 +80,10 @@ solvers
 SIMPLE
 {
     nNonOrthogonalCorrectors 0;
+    // Limit pressure to [0.5, 2] x its initial range during iterations: without
+    // this, Mach ~0.5 flow past bluff bodies diverged within ~35 iterations.
+    pMinFactor      0.5;
+    pMaxFactor      2.0;
     residualControl
     {
         p               1e-5;

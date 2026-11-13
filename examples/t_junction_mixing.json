@@ -1,0 +1,106 @@
+{
+  "description": "Water at 0.5 m/s flows along a 5 cm high channel, 1 m long, and meets a side branch of the same width entering from above at 0.5 m/s. Steady turbulent flow; show how the two streams merge.",
+  "note": "Hand-written analysis in the format the LLM returns (app/schema.py). `cfdgen describe \"<description>\"` produces the equivalent object with Claude or Ollama.",
+  "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "Steady incompressible turbulent internal flow.",
+    "fluid": {
+      "name": "water",
+      "nu": 1e-06,
+      "rho": 998
+    },
+    "boundary_conditions": [
+      {
+        "patch_name": "inlet1",
+        "type": "fixedValue",
+        "values": {
+          "U": [
+            0.5,
+            0,
+            0
+          ],
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "inlet2",
+        "type": "fixedValue",
+        "values": {
+          "U": [
+            0,
+            -0.5,
+            0
+          ],
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "outlet",
+        "type": "zeroGradient",
+        "values": {
+          "U": null,
+          "p": 0,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "walls",
+        "type": "noSlip",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      }
+    ],
+    "numerical_schemes": {
+      "ddtSchemes": "steadyState",
+      "gradSchemes": "Gauss linear",
+      "divSchemes": "Gauss linearUpwind grad(U)",
+      "laplacianSchemes": "Gauss linear corrected",
+      "interpolationSchemes": "linear",
+      "snGradSchemes": "corrected",
+      "justification": "Template defaults."
+    },
+    "Re": 25000.000000000004,
+    "is_transient": false,
+    "suggested_mesh": {
+      "type": "blockMesh",
+      "approximate_cell_count": 3000,
+      "domain_description": "1 m main channel with a 5 cm branch"
+    },
+    "characteristic_length": 0.05,
+    "characteristic_velocity": 0.5,
+    "Ma": null,
+    "T_ref": null,
+    "p_ref": null,
+    "turb_model": "kEpsilon",
+    "geometry_type": "t_junction",
+    "geometry_params": {
+      "channel_length": 1.0,
+      "channel_height": 0.05,
+      "branch_width": 0.05,
+      "branch_height": 0.2,
+      "obstacle_width": null,
+      "obstacle_height": null,
+      "step_height": null,
+      "step_x": null,
+      "cylinder_radius": null,
+      "cx": null,
+      "cy": null,
+      "pipe_radius": null,
+      "pipe_length": null,
+      "chord": null,
+      "thickness": null,
+      "r_far": null,
+      "wake_length": null
+    },
+    "warnings": []
+  }
+}

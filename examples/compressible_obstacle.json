@@ -1,0 +1,112 @@
+{
+  "description": "Compressible air flow at 170 m/s (Mach 0.5), 300 K and 1 atm, past a 5 cm square block in a channel 1 m long and 0.25 m high. Steady state.",
+  "note": "Hand-written analysis in the format the LLM returns (app/schema.py). `cfdgen describe \"<description>\"` produces the equivalent object with Claude or Ollama.",
+  "analysis": {
+    "solver": "rhoSimpleFoam",
+    "solver_justification": "Ma = 0.5 > 0.3: density changes are significant; steady compressible RANS.",
+    "fluid": {
+      "name": "air",
+      "nu": 1.5e-05,
+      "rho": 1.18
+    },
+    "boundary_conditions": [
+      {
+        "patch_name": "inlet",
+        "type": "fixedValue",
+        "values": {
+          "U": [
+            170.0,
+            0,
+            0
+          ],
+          "p": null,
+          "T": 300.0,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "outlet",
+        "type": "fixedValue",
+        "values": {
+          "U": null,
+          "p": 101325.0,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "obstacle",
+        "type": "noSlip",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "top",
+        "type": "noSlip",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "bottom",
+        "type": "noSlip",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      }
+    ],
+    "numerical_schemes": {
+      "ddtSchemes": "steadyState",
+      "gradSchemes": "Gauss linear",
+      "divSchemes": "Gauss linearUpwind grad(U)",
+      "laplacianSchemes": "Gauss linear corrected",
+      "interpolationSchemes": "linear",
+      "snGradSchemes": "corrected",
+      "justification": "Template defaults."
+    },
+    "Re": 566666.6666666666,
+    "is_transient": false,
+    "suggested_mesh": {
+      "type": "blockMesh",
+      "approximate_cell_count": 6000,
+      "domain_description": "1 m x 0.25 m channel, square block"
+    },
+    "characteristic_length": 0.05,
+    "characteristic_velocity": 170.0,
+    "Ma": 0.5,
+    "T_ref": 300.0,
+    "p_ref": 101325.0,
+    "turb_model": "kOmegaSST",
+    "geometry_type": "rectangular_obstacle",
+    "geometry_params": {
+      "channel_length": 1.0,
+      "channel_height": 0.25,
+      "branch_width": null,
+      "branch_height": null,
+      "obstacle_width": 0.05,
+      "obstacle_height": 0.05,
+      "step_height": null,
+      "step_x": null,
+      "cylinder_radius": null,
+      "cx": null,
+      "cy": null,
+      "pipe_radius": null,
+      "pipe_length": null,
+      "chord": null,
+      "thickness": null,
+      "r_far": null,
+      "wake_length": null
+    },
+    "warnings": []
+  }
+}

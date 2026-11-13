@@ -1,0 +1,102 @@
+{
+  "description": "Dam break: a column of water 0.36 m wide and 0.3 m high collapses under gravity into a dry tank 1.2 m long and 0.6 m high, open to the atmosphere at the top.",
+  "note": "Hand-written analysis in the format the LLM returns (app/schema.py). `cfdgen describe \"<description>\"` produces the equivalent object with Claude or Ollama.",
+  "analysis": {
+    "solver": "interFoam",
+    "solver_justification": "Two-phase water/air flow with a free surface (VOF).",
+    "fluid": {
+      "name": "water",
+      "nu": 1e-06,
+      "rho": 1000
+    },
+    "boundary_conditions": [
+      {
+        "patch_name": "inlet",
+        "type": "wall",
+        "values": {
+          "U": [
+            0,
+            0,
+            0
+          ],
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "outlet",
+        "type": "wall",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "walls",
+        "type": "noSlip",
+        "values": {
+          "U": null,
+          "p": null,
+          "T": null,
+          "alpha.water": null
+        }
+      },
+      {
+        "patch_name": "atmosphere",
+        "type": "totalPressure",
+        "values": {
+          "U": null,
+          "p": 0,
+          "T": null,
+          "alpha.water": null
+        }
+      }
+    ],
+    "numerical_schemes": {
+      "ddtSchemes": "Euler",
+      "gradSchemes": "Gauss linear",
+      "divSchemes": "Gauss linearUpwind grad(U)",
+      "laplacianSchemes": "Gauss linear corrected",
+      "interpolationSchemes": "linear",
+      "snGradSchemes": "corrected",
+      "justification": "Template defaults."
+    },
+    "Re": null,
+    "is_transient": true,
+    "suggested_mesh": {
+      "type": "blockMesh",
+      "approximate_cell_count": 4800,
+      "domain_description": "1.2 m x 0.6 m tank"
+    },
+    "characteristic_length": 0.3,
+    "characteristic_velocity": 1.7155174146594956,
+    "Ma": null,
+    "T_ref": null,
+    "p_ref": null,
+    "turb_model": "laminar",
+    "geometry_type": "dambreak",
+    "geometry_params": {
+      "channel_length": null,
+      "channel_height": null,
+      "branch_width": null,
+      "branch_height": null,
+      "obstacle_width": null,
+      "obstacle_height": null,
+      "step_height": null,
+      "step_x": null,
+      "cylinder_radius": null,
+      "cx": null,
+      "cy": null,
+      "pipe_radius": null,
+      "pipe_length": null,
+      "chord": null,
+      "thickness": null,
+      "r_far": null,
+      "wake_length": null
+    },
+    "warnings": []
+  }
+}
