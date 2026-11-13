@@ -298,7 +298,7 @@ OPENAI_COMPATIBLE_PROVIDERS: dict[str, dict] = {
         "label": "Google Gemini (free tier)",
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
         "key_env": "GEMINI_API_KEY",
-        "model": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+        "model": os.environ.get("GEMINI_MODEL", "gemini-3.8-flash"),   # 2.5-flash retired for new users (2026-11)
         "key_url": "https://aistudio.google.com/apikey",
     },
     "groq": {
@@ -356,6 +356,20 @@ def _compat_chat(backend: str, base_url: str, model: str, api_key: str | None,
     return choice["message"].get("content") or ""
 
 
+def list_compat_models(backend: str, api_key: str | None = None, base_url: str | None = None) -> list[str]:
+    """Model ids the provider currently offers (GET /models); empty list if unavailable."""
+    p = OPENAI_COMPATIBLE_PROVIDERS[backend]
+    key = api_key or os.environ.get(p["key_env"])
+    try:
+        resp = requests.get(f"{(base_url or p['base_url']).rstrip('/')}/models",
+                            headers={"Authorization": f"Bearer {key}"} if key else {}, timeout=15)
+        resp.raise_for_status()
+        ids = [m.get("id", "") for m in resp.json().get("data", [])]
+    except (requests.exceptions.RequestException, ValueError):
+        return []
+    return sorted(i.removeprefix("models/") for i in ids if i)
+
+
 def _compat_error(exc: Exception, label: str) -> RuntimeError:
     if isinstance(exc, requests.exceptions.HTTPError) and exc.response is not None:
         code = exc.response.status_code
@@ -373,6 +387,18 @@ def _compat_error(exc: Exception, label: str) -> RuntimeError:
     if isinstance(exc, requests.exceptions.Timeout):
         return RuntimeError(f"{label} did not answer in time.")
     return RuntimeError(f"{label} error: {exc}")
+
+
+def _model_not_found(backend: str, model: str, key: str | None, url: str, label: str) -> RuntimeError:
+    """Providers rename free models often: show what is available instead of a bare 404."""
+    available = list_compat_models(backend, key, url)
+    var = OPENAI_COMPATIBLE_PROVIDERS[backend]["key_env"].replace("API_KEY", "MODEL")
+    msg = f"{label}: model {model!r} is not available."
+    if available:
+        preferred = [m for m in available if any(w in m for w in ("flash", "versatile", "instant", ":free"))]
+        shown = (preferred or available)[:12]
+        msg += " Available models include: " + ", ".join(shown)
+    return RuntimeError(msg + f". Choose one with --model, the sidebar, or the {var} variable.")
 
 
 def _analyze_compat(user_description: str, backend: str, model: str | None, api_key: str | None,
@@ -404,6 +430,8 @@ def _analyze_compat(user_description: str, backend: str, model: str | None, api_
                 if exc.response is not None and exc.response.status_code == 400:
                     last_error = exc
                     break                                  # mode not supported → next mode
+                if exc.response is not None and exc.response.status_code == 404:
+                    raise _model_not_found(backend, model, key, url, label) from exc
                 raise _compat_error(exc, label) from exc
             except requests.exceptions.RequestException as exc:
                 raise _compat_error(exc, label) from exc

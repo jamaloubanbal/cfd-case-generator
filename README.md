@@ -177,7 +177,7 @@ the sidebar or with `--backend`:
 
 | Provider | Free key | Variable | Default model |
 |---|---|---|---|
-| Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+| Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `GEMINI_API_KEY` | `gemini-3.8-flash` |
 | Groq | [console.groq.com/keys](https://console.groq.com/keys) | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
 | OpenRouter | [openrouter.ai/keys](https://openrouter.ai/keys) | `OPENROUTER_API_KEY` | choose a `:free` model with `--model` |
 | Any OpenAI-compatible server (LM Studio, vLLM, …) | — | `OPENAI_COMPAT_API_KEY` | `--model`, `--base-url` |
@@ -187,8 +187,9 @@ export GEMINI_API_KEY="…"
 cfdgen describe "Laminar flow past a cylinder at Re = 100" -o test/ --backend gemini --run
 ```
 
-Providers rename free models often: override the default with `--model` or the sidebar, or
-set `GEMINI_MODEL` / `GROQ_MODEL` / `OPENROUTER_MODEL`. The backend asks for strict JSON-schema
+Providers rename free models often. If a model no longer exists, the error lists the
+models the provider currently offers; pick one with `--model` or the sidebar, or set
+`GEMINI_MODEL` / `GROQ_MODEL` / `OPENROUTER_MODEL`. The backend asks for strict JSON-schema
 output and falls back to JSON mode for providers that don't support it. Free tiers may use
 prompts to improve the provider's models.
 
