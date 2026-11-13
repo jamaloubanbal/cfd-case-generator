@@ -20,7 +20,7 @@ from app.generators import (
     SimpleFoamGenerator,
 )
 from app.generators.base import _compute_grading_ratio, _MAX_CELL_GROWTH
-from tests.test_generators import (
+from tests.fixtures import (
     AIRFOIL_ANALYSIS,
     BACKSTEP_ANALYSIS,
     BSF_ANALYSIS,
@@ -234,7 +234,7 @@ def test_dambreak_tank_is_closed(tmp_path):
 def test_rhosimplefoam_limits_pressure(tmp_path):
     """Without pMin/pMaxFactor, Mach 0.5 flow past a block diverged within ~35 iterations."""
     from app.generators import RhoSimpleFoamGenerator
-    from tests.test_generators import RHO_SIMPLE_FOAM_ANALYSIS
+    from tests.fixtures import RHO_SIMPLE_FOAM_ANALYSIS
     RhoSimpleFoamGenerator().generate(RHO_SIMPLE_FOAM_ANALYSIS, tmp_path)
     fv = _read(tmp_path, "system/fvSolution")
     assert "pMinFactor      0.5;" in fv and "pMaxFactor      2.0;" in fv

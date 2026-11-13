@@ -188,30 +188,26 @@ output format; `cfdgen describe` produces the same kind of object from the descr
 
 ## Testing
 
+The default suite is kept small: the OpenFOAM runs plus one fast regression test per bug found.
+
 ```bash
 pip install -r requirements-dev.txt
-pytest -m "not openfoam and not benchmark"   # unit, regression, UI tests (~20 s)
-
 source /usr/share/openfoam/etc/bashrc
-pytest -m openfoam -v                        # every generated case in OpenFOAM (~3 min)
-pytest -m benchmark -v                       # validation against reference data (~4 min)
+pytest                                  # core: 37 OpenFOAM cases + regression tests (~2 min)
+pytest -m benchmark -v                  # validation against reference data (~4 min)
+pytest tests_extended                   # extended suite: generators, LLM, UI, CLI, … (~25 s)
 ```
 
 | Suite | What it covers |
 |---|---|
-| `test_generators.py` | File trees, template rendering, grading maths, every geometry |
-| `test_regressions.py` | One test per OpenFOAM bug found by the end-to-end runs; works without OpenFOAM |
-| `test_sanitize.py` | Repairing implausible or inconsistent LLM output |
-| `test_llm.py` | Structured-output requests, fallbacks, refusals, Ollama (all mocked) |
-| `test_ui.py` | Streamlit app driven headlessly: analyse → edit → generate → zip |
-| `test_cli.py` | `cfdgen` commands and every file in `examples/` |
-| `test_postprocess.py` | OpenFOAM mesh/field reader on a hand-written mesh |
-| `test_openfoam_integration.py` | 37 generated cases meshed and run in OpenFOAM |
-| `test_benchmarks.py` | Validation benchmarks within tolerance |
+| `tests/test_openfoam_integration.py` | 37 generated cases meshed and run in OpenFOAM (skipped without OpenFOAM) |
+| `tests/test_regressions.py` | One test per bug found by the OpenFOAM runs; no OpenFOAM needed |
+| `tests/test_benchmarks.py` | Validation benchmarks within tolerance (opt-in) |
+| `tests_extended/` | Template rendering, grading maths, sanitiser, LLM requests (mocked), headless Streamlit UI, CLI, post-processing reader |
 
-CI ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)) runs the unit suite on
-Python 3.10 and 3.12; the OpenFOAM suite and the validation benchmarks run on Ubuntu with the
-distribution's `openfoam` package, and the validation report is uploaded as a build artifact.
+CI ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)) runs the core and extended
+suites on Python 3.10 and 3.12; the OpenFOAM suite and the validation benchmarks run on Ubuntu
+with the distribution's `openfoam` package, and the validation report is uploaded as an artifact.
 
 ## Project structure
 
@@ -240,7 +236,8 @@ validation/                 # benchmark definitions + runner (python -m validati
 examples/                   # problem descriptions with their analyses
 scripts/make_gallery.py     # runs the examples and renders docs/gallery/
 docs/                       # gallery images and the validation report
-tests/
+tests/                      # core tests (fixtures.py: shared analyses)
+tests_extended/             # extended tests, run manually
 ```
 
 ## Known limitations

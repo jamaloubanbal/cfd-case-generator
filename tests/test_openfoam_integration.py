@@ -32,7 +32,7 @@ from pathlib import Path
 import pytest
 
 from app.generators import GENERATORS
-from tests.test_generators import (
+from tests.fixtures import (
     AIRFOIL_ANALYSIS,
     BACKSTEP_ANALYSIS,
     BSF_ANALYSIS,

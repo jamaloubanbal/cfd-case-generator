@@ -18,7 +18,8 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
       - run: pip install -r requirements-dev.txt
-      - run: pytest -m "not openfoam and not benchmark" -q
+      - run: pytest -m "not openfoam and not benchmark" -q   # core regression tests
+      - run: pytest tests_extended -q                         # extended suite
 
   openfoam:
     name: OpenFOAM end-to-end

@@ -16,7 +16,7 @@ import pytest
 pytest.importorskip("streamlit")
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
-from tests.test_generators import CYLINDER_ANALYSIS, SIMPLE_FOAM_ANALYSIS  # noqa: E402
+from tests.fixtures import CYLINDER_ANALYSIS, SIMPLE_FOAM_ANALYSIS  # noqa: E402
 
 MAIN = str(Path(__file__).resolve().parent.parent / "app" / "main.py")
 TIMEOUT = 60

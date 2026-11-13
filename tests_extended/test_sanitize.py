@@ -6,7 +6,7 @@ import pytest
 
 from app.generators import GENERATORS
 from app.sanitize import AnalysisError, sanitize_analysis
-from tests.test_generators import (
+from tests.fixtures import (
     BSF_ANALYSIS,
     CYLINDER_ANALYSIS,
     INTER_FOAM_ANALYSIS,
