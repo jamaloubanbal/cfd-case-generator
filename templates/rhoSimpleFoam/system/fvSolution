@@ -111,8 +111,10 @@ relaxationFactors
     }
     equations
     {
-        U               0.5;
-        h               0.3;
+        // Lower than usual: with wall cells sized for y+ ~ 50 the compressible
+        // energy equation diverged within a few iterations at U 0.5 / h 0.3.
+        U               0.3;
+        h               0.2;
 {% if turb_model in ('kEpsilon', 'kOmegaSST') %}
         k               0.5;
 {% endif %}

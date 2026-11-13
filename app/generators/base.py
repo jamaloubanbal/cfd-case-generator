@@ -97,6 +97,19 @@ def _compute_grading_ratio(domain_h: float, n_cells: int, y1: float) -> float:
     return ratio
 
 
+def _cells_to_reach(domain_h: float, y1: float, base: int, cap: int = 60) -> int:
+    """Cells needed across *domain_h* for the wall cell to reach *y1* at the capped growth rate.
+
+    Never fewer than *base* (the geometry's normal count) nor more than *cap*.  For laminar
+    flow (y1 = inf) this returns *base*.
+    """
+    if not math.isfinite(y1) or y1 <= 0 or domain_h <= 0:
+        return base
+    g = _MAX_CELL_GROWTH
+    needed = math.ceil(math.log(1.0 + domain_h * (g - 1.0) / y1) / math.log(g))
+    return int(min(max(base, needed), cap))
+
+
 def _first_cell_height(domain_h: float, n_cells: int, y1: float, both: bool = False) -> float:
     """Height of the wall-adjacent cell that the grading helpers actually produce.
 
@@ -789,10 +802,11 @@ class BaseCaseGenerator(ABC):
             n_bot = max(6,  round((cy - ri) / H * ny_tot))
             n_top = max(6,  round((H - cy - ri) / H * ny_tot))
             n_cyl_h = max(6, round(2 * ri / H * ny_tot))
-            n_r   = max(4,  min(12, n_mid // 2))
-
-            # ── O-ring radial grading ─────────────────────────────────────
+            # ── O-ring radial cells and grading ───────────────────────────
+            # Enough radial cells for the wall cell to reach the wall-function
+            # target y1 (growth ≤ 1.2); a fixed 12 gave y+ ~ 15 000 at Re = 1e7.
             r_depth = ri - R * _INV_SQRT2   # radial depth of O-ring
+            n_r   = _cells_to_reach(r_depth, y1, base=max(4, min(12, n_mid // 2)))
             cyl_grad_ceil  = _ceil_grading_str(r_depth, n_r, y1)
             ctx["_y1_actual"] = _first_cell_height(r_depth, n_r, y1)
             cyl_grad_floor = _floor_grading_str(r_depth, n_r, y1)

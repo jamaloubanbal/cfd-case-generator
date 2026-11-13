@@ -302,9 +302,10 @@ tests_extended/             # extended tests, run manually
 - **Results are a starting point.** Meshes are coarse 2-D (one cell thick) or axisymmetric.
   For production use, check mesh independence and y⁺, and validate against reference data.
 - **Turbulence modelling.** Laminar or RANS (`kEpsilon`, `kOmegaSST`, `SpalartAllmaras`) with
-  wall functions; no LES/DES and no low-Re wall resolution. Wall-normal cell counts are
-  fixed per geometry, so at very high Re (e.g. Re = 10⁷ around a cylinder) the first cell
-  cannot reach y⁺ ≈ 30–300 with the growth rate capped at 1.2; the y⁺ check reports this.
+  wall functions; no LES/DES and no low-Re wall resolution. The cylinder mesh adds radial
+  cells until the wall cell reaches the wall-function target (y⁺ ≈ 50); the other geometries
+  use fixed wall-normal cell counts, so at very high Re their first cell can be coarser than
+  y⁺ ≈ 300 (the y⁺ check reports this; increase the mesh refinement).
 - **Validation coverage.** The benchmarks cover laminar steady and unsteady flow and natural
   convection. Turbulent (RANS) cases, e.g. backward-facing step reattachment, are the next
   ones to add.
