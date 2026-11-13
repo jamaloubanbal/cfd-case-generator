@@ -1,0 +1,128 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Geometry: backward-facing step (3 blocks, 2-D)
+//
+//   Parameters (from generator context):
+//     domain_x, domain_y, domain_z — full domain extents
+//     xs    — x-coordinate of the step face
+//     Hs    — step height (inlet channel floor is at y = Hs)
+//     nx_inlet, nx_outlet — cells in x before/after step
+//     ny_top, ny_bot      — cells in y above/below step height
+//
+//   Layout (front face):
+//
+//     v5────────────v6────────────v7    <- y = domain_y
+//     │   Block 0   │   Block 1a │
+//     v0────────────v1────────────v4    <- y = Hs
+//                   │   Block 1b │
+//                   v2────────────v3    <- y = 0
+//                   x=xs          x=domain_x
+//     x=0
+//
+//   Patches:
+//     inlet       : left face of Block 0   (x=0,        y:[Hs,domain_y])
+//     outlet      : right faces of B1a+B1b (x=domain_x, y:[0,domain_y])
+//     walls       : step floor (y=Hs, x:[0,xs]),
+//                   step face  (x=xs, y:[0,Hs]),
+//                   bottom     (y=0,  x:[xs,domain_x]),
+//                   top        (y=domain_y)
+//     frontAndBack: empty (2-D)
+
+scale   1;
+
+vertices
+(
+    // front face (z=0)
+    (0              {{ Hs }}        0)              // 0
+    ({{ xs }}       {{ Hs }}        0)              // 1
+    ({{ xs }}       0               0)              // 2
+    ({{ domain_x }} 0               0)              // 3
+    ({{ domain_x }} {{ Hs }}        0)              // 4
+    (0              {{ domain_y }}  0)              // 5
+    ({{ xs }}       {{ domain_y }}  0)              // 6
+    ({{ domain_x }} {{ domain_y }}  0)              // 7
+    // back face (z=domain_z)
+    (0              {{ Hs }}        {{ domain_z }}) // 8
+    ({{ xs }}       {{ Hs }}        {{ domain_z }}) // 9
+    ({{ xs }}       0               {{ domain_z }}) // 10
+    ({{ domain_x }} 0               {{ domain_z }}) // 11
+    ({{ domain_x }} {{ Hs }}        {{ domain_z }}) // 12
+    (0              {{ domain_y }}  {{ domain_z }}) // 13
+    ({{ xs }}       {{ domain_y }}  {{ domain_z }}) // 14
+    ({{ domain_x }} {{ domain_y }}  {{ domain_z }}) // 15
+);
+
+blocks
+(
+    // Block 0: inlet section  x:[0,xs]  y:[Hs,domain_y] — walls top+step-floor
+    hex (0 1 6 5  8  9 14 13) ({{ nx_inlet }}  {{ ny_top }} 1) simpleGrading (1 {{ grading_bs_b0 }} 1)
+    // Block 1a: outlet top    x:[xs,domain_x] y:[Hs,domain_y] — wall at top (ceil)
+    hex (1 4 7 6  9 12 15 14) ({{ nx_outlet }} {{ ny_top }} 1) simpleGrading (1 {{ grading_bs_b1a }} 1)
+    // Block 1b: outlet bottom x:[xs,domain_x] y:[0,Hs] — wall at y=0 (floor)
+    hex (2 3 4 1 10 11 12  9) ({{ nx_outlet }} {{ ny_bot }} 1) simpleGrading (1 {{ grading_bs_b1b }} 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces ( (0 8 13 5) );
+    }
+
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (4  7 15 12)    // right of B1a
+            (3  4 12 11)    // right of B1b
+        );
+    }
+
+    walls
+    {
+        type wall;
+        faces
+        (
+            (5  13 14  6)   // top of B0
+            (6  14 15  7)   // top of B1a
+            (0   1  9  8)   // step floor (bottom of B0)
+            (2  10  9  1)   // step face  (left  of B1b)
+            (2   3 11 10)   // floor of B1b
+        );
+    }
+
+    frontAndBack
+    {
+        type empty;
+        faces
+        (
+            (0  5  6  1)    // front B0
+            (1  6  7  4)    // front B1a
+            (2  1  4  3)    // front B1b
+            (8  9 14 13)    // back  B0
+            (9 12 15 14)    // back  B1a
+            (10  9 12 11)   // back  B1b
+        );
+    }
+);
+
+// ************************************************************************* //

@@ -1,0 +1,397 @@
+{#
+  Shared Jinja2 macros for OpenFOAM boundary field rendering.
+
+  Each macro receives a `patches` list (from GEOMETRY_PATCHES in base.py),
+  where every patch dict has: name, of_type, role.
+
+  Roles understood:
+    inlet       — velocity inlet
+    outlet      — pressure outlet
+    wall        — generic no-slip wall
+    obstacle    — obstacle surface (treated as wall)
+    hot_wall    — heated wall (buoyantSimpleFoam)
+    cold_wall   — cooled wall (buoyantSimpleFoam)
+    atmosphere  — free-surface atmosphere (interFoam)
+    symmetry    — symmetry plane
+    frontAndBack — 2-D empty patch
+#}
+
+{# ── U (velocity) ────────────────────────────────────────────────────────── #}
+{% macro U_boundary(patches, inlet_U, outlet_type='zeroGradient') %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'inlet' %}
+        type            fixedValue;
+        value           uniform {{ inlet_U }};
+{%- elif p.role == 'outlet' %}
+{%- if outlet_type == 'inletOutlet' %}
+        type            inletOutlet;
+        inletValue      uniform (0 0 0);
+        value           uniform {{ inlet_U }};
+{%- else %}
+        type            zeroGradient;
+{%- endif %}
+{%- elif p.role in ('wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+        type            noSlip;
+{%- elif p.role == 'atmosphere' %}
+        type            pressureInletOutletVelocity;
+        value           uniform (0 0 0);
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── p incompressible (relative, [0 2 -2]) ───────────────────────────────── #}
+{% macro p_incompressible_boundary(patches) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role in ('inlet', 'wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+        type            zeroGradient;
+{%- elif p.role == 'outlet' %}
+        type            fixedValue;
+        value           uniform 0;
+{%- elif p.role == 'atmosphere' %}
+        type            totalPressure;
+        p0              uniform 0;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── p_rgh (modified pressure for buoyant / interFoam) ───────────────────── #}
+{% macro p_rgh_boundary(patches) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role in ('inlet', 'wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+        type            fixedFluxPressure;
+        value           uniform 0;
+{%- elif p.role == 'outlet' %}
+        type            fixedValue;
+        value           uniform 0;
+{%- elif p.role == 'atmosphere' %}
+        type            totalPressure;
+        p0              uniform 0;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── p compressible (absolute pressure, Pa) ──────────────────────────────── #}
+{% macro p_compressible_boundary(patches, p_outlet) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'inlet' %}
+        type            zeroGradient;
+{%- elif p.role == 'outlet' %}
+        type            fixedValue;
+        value           uniform {{ p_outlet }};
+{%- elif p.role in ('wall', 'obstacle') %}
+        type            zeroGradient;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── k (turbulent kinetic energy) ─────────────────────────────────────────── #}
+{% macro k_boundary(patches, k_inlet) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'inlet' %}
+        type            fixedValue;
+        value           uniform {{ k_inlet }};
+{%- elif p.role == 'outlet' %}
+        type            zeroGradient;
+{%- elif p.role in ('wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+        type            kqRWallFunction;
+        value           uniform {{ k_inlet }};
+{%- elif p.role == 'atmosphere' %}
+        type            inletOutlet;
+        inletValue      uniform {{ k_inlet }};
+        value           uniform {{ k_inlet }};
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── epsilon (turbulent dissipation) ─────────────────────────────────────── #}
+{% macro epsilon_boundary(patches, eps_inlet) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'inlet' %}
+        type            fixedValue;
+        value           uniform {{ eps_inlet }};
+{%- elif p.role == 'outlet' %}
+        type            zeroGradient;
+{%- elif p.role in ('wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+        type            epsilonWallFunction;
+        value           uniform {{ eps_inlet }};
+{%- elif p.role == 'atmosphere' %}
+        type            inletOutlet;
+        inletValue      uniform {{ eps_inlet }};
+        value           uniform {{ eps_inlet }};
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── nut (turbulent kinematic viscosity) ─────────────────────────────────── #}
+{# turb_model: 'kEpsilon' | 'kOmegaSST' | 'SpalartAllmaras'                  #}
+{% macro nut_boundary(patches, turb_model='kEpsilon') %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role in ('inlet', 'outlet', 'atmosphere') %}
+        type            calculated;
+        value           uniform 0;
+{%- elif p.role in ('wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+{%- if turb_model == 'SpalartAllmaras' %}
+        type            nutUSpaldingWallFunction;
+{%- else %}
+        type            nutkWallFunction;
+{%- endif %}
+        value           uniform 0;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── omega (specific dissipation rate, kOmegaSST) ─────────────────────────── #}
+{% macro omega_boundary(patches, omega_inlet) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'inlet' %}
+        type            fixedValue;
+        value           uniform {{ omega_inlet }};
+{%- elif p.role == 'outlet' %}
+        type            zeroGradient;
+{%- elif p.role in ('wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+        type            omegaWallFunction;
+        value           uniform {{ omega_inlet }};
+{%- elif p.role == 'atmosphere' %}
+        type            inletOutlet;
+        inletValue      uniform {{ omega_inlet }};
+        value           uniform {{ omega_inlet }};
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── nuTilda (modified viscosity, SpalartAllmaras) ────────────────────────── #}
+{% macro nuTilda_boundary(patches, nuTilda_inlet) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'inlet' %}
+        type            fixedValue;
+        value           uniform {{ nuTilda_inlet }};
+{%- elif p.role == 'outlet' %}
+        type            zeroGradient;
+{%- elif p.role in ('wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+        type            fixedValue;
+        value           uniform 0;
+{%- elif p.role == 'atmosphere' %}
+        type            inletOutlet;
+        inletValue      uniform 0;
+        value           uniform 0;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── alphat (turbulent thermal diffusivity, compressible) ────────────────── #}
+{% macro alphat_boundary(patches) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role in ('inlet', 'outlet') %}
+        type            calculated;
+        value           uniform 0;
+{%- elif p.role in ('wall', 'obstacle', 'hot_wall', 'cold_wall') %}
+        type            compressible::alphatWallFunction;
+        Prt             0.85;
+        value           uniform 0;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── T buoyant (temperature for buoyantSimpleFoam) ───────────────────────── #}
+{% macro T_buoyant_boundary(patches, T_hot, T_cold, T_initial) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'hot_wall' %}
+        type            fixedValue;
+        value           uniform {{ T_hot }};
+{%- elif p.role == 'cold_wall' %}
+        type            fixedValue;
+        value           uniform {{ T_cold }};
+{%- elif p.role in ('wall', 'obstacle') %}
+        type            zeroGradient;
+{%- elif p.role == 'inlet' %}
+        type            fixedValue;
+        value           uniform {{ T_initial }};
+{%- elif p.role == 'outlet' %}
+        type            zeroGradient;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── T compressible (temperature for rhoSimpleFoam) ─────────────────────── #}
+{% macro T_compressible_boundary(patches, T_inlet) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'inlet' %}
+        type            fixedValue;
+        value           uniform {{ T_inlet }};
+{%- elif p.role in ('outlet', 'wall', 'obstacle') %}
+        type            zeroGradient;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}
+
+{# ── alpha.water (VOF phase fraction) ─────────────────────────────────────── #}
+{% macro alpha_water_boundary(patches, alpha_water_inlet) %}
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- elif p.of_type == 'wedge' %}
+        type            wedge;
+{%- elif p.role == 'inlet' %}
+        type            fixedValue;
+        value           uniform {{ alpha_water_inlet }};
+{%- elif p.role in ('outlet', 'wall', 'obstacle') %}
+        type            zeroGradient;
+{%- elif p.role == 'atmosphere' %}
+        type            inletOutlet;
+        inletValue      uniform 0;
+        value           uniform 0;
+{%- elif p.role == 'symmetry' %}
+        type            symmetryPlane;
+{%- endif %}
+    }
+{% endfor %}
+}
+{% endmacro %}

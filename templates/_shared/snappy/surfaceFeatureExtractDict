@@ -1,0 +1,31 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1912                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      surfaceFeatureExtractDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Extracts feature edges from the STL surface.
+// Produces constant/triSurface/{{ stl_name }}.eMesh used by snappyHexMesh.
+
+{{ stl_file }}
+{
+    extractionMethod    extractFromSurface;
+
+    extractFromSurfaceCoeffs
+    {
+        includedAngle 150;  // extract edges with dihedral angle < (180 - 150) = 30°
+    }
+
+    writeObj yes;           // write constant/triSurface/{{ stl_name }}.obj for visualisation
+}
+
+// ************************************************************************* //

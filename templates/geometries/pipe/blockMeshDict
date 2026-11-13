@@ -1,0 +1,116 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Geometry: axisymmetric pipe — 1-block 5° wedge mesh
+//
+//   The pipe axis runs along x. y is the radial direction.
+//   The wedge sector is ±2.5° about the x-axis (total 5°).
+//
+//   Parameters (from generator context):
+//     pipe_l          — pipe length (= domain_x)
+//     pipe_r          — pipe radius
+//     pipe_cos_half   — cos(2.5°) ≈ 0.99905
+//     pipe_sin_half   — sin(2.5°) ≈ 0.04362
+//     nx / ny         — cells axial / radial
+//     pipe_grad_ceil  — radial grading (fine at wall, j = max)
+//
+//   8 vertices (axis duplicated for blockMesh wedge topology):
+//
+//         v3─────────────────────────v2    front face  z = -R·sin(α)
+//        /                          /
+//       v0 ─────────────────────── v1     axis  y = z = 0
+//        \                          \
+//         v7─────────────────────────v6    back  face  z = +R·sin(α)
+//
+//   The axis degeneracy: v0 == v4 == (0,0,0) and v1 == v5 == (L,0,0)
+//   are separate vertex entries with identical coordinates — required by
+//   blockMesh for the wedge boundary condition.
+//
+//   Patches:
+//     inlet   : x = 0        (face 0-4-7-3)
+//     outlet  : x = pipe_l   (face 1-2-6-5)
+//     wall    : r = pipe_r   (face 3-2-6-7) — outer cylinder surface
+//     axis    : y = z = 0    (face 0-1-5-4) — empty (degenerate axis line)
+//     front   : z < 0        (face 4-5-6-7) — wedge
+//     back    : z > 0        (face 0-3-2-1) — wedge
+
+scale   1;
+
+vertices
+(
+    // Front-plane axis (z = -R*sin_half, but axis at y=z=0)
+    (0           0                                            0)              // 0  axis inlet
+    ({{ pipe_l }}  0                                          0)              // 1  axis outlet
+    ({{ pipe_l }}  {{ pipe_r * pipe_cos_half }}  {{ -pipe_r * pipe_sin_half }})  // 2  wall outlet front
+    (0             {{ pipe_r * pipe_cos_half }}  {{ -pipe_r * pipe_sin_half }})  // 3  wall inlet  front
+
+    // Back-plane (z = +R*sin_half)  — axis duplicated
+    (0           0                                            0)              // 4  axis inlet  (same as v0)
+    ({{ pipe_l }}  0                                          0)              // 5  axis outlet (same as v1)
+    ({{ pipe_l }}  {{ pipe_r * pipe_cos_half }}   {{ pipe_r * pipe_sin_half }})  // 6  wall outlet back
+    (0             {{ pipe_r * pipe_cos_half }}   {{ pipe_r * pipe_sin_half }})  // 7  wall inlet  back
+);
+
+blocks
+(
+    // nx cells axially, ny cells radially, 1 cell circumferentially.
+    // simpleGrading: (1, pipe_grad_ceil, 1) → fine cells at wall (j = ny-1).
+    hex (0 1 2 3  4 5 6 7) ({{ nx }} {{ ny }} 1) simpleGrading (1 {{ pipe_grad_ceil }} 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces ( (0 4 7 3) );
+    }
+
+    outlet
+    {
+        type patch;
+        faces ( (1 2 6 5) );
+    }
+
+    wall
+    {
+        type wall;
+        faces ( (3 7 6 2) );
+    }
+
+    axis
+    {
+        type empty;
+        faces ( (0 1 5 4) );
+    }
+
+    front
+    {
+        type wedge;
+        faces ( (4 5 6 7) );
+    }
+
+    back
+    {
+        type wedge;
+        faces ( (0 3 2 1) );
+    }
+);
+
+// ************************************************************************* //

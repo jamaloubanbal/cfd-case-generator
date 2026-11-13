@@ -1,0 +1,19 @@
+#!/bin/sh
+cd "${0%/*}" || exit
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
+
+runApplication blockMesh
+{% if geometry_type == "stl_import" -%}
+runApplication surfaceFeatureExtract
+runApplication snappyHexMesh -overwrite
+{% endif -%}
+{% if solver_name == "interFoam" -%}
+runApplication setFields
+{% endif -%}
+{% if n_cores > 1 -%}
+runApplication decomposePar
+runParallel {{ solver_name }}
+runApplication reconstructPar
+{%- else -%}
+runApplication {{ solver_name }}
+{%- endif %}

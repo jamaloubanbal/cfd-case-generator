@@ -1,0 +1,256 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Geometry: 2-D cylinder in cross-flow — 12-block O-grid (butterfly mesh)
+//
+//   Parameters (from generator context):
+//     domain_x / domain_y / domain_z — full domain extents
+//     cyl_cx / cyl_cy               — cylinder centre (x, y)
+//     cyl_r                         — cylinder radius
+//     cyl_r45 = cyl_r / sqrt(2)     — cylinder vertex offset at ±45°
+//     cyl_ri                        — inner square half-size (4 * cyl_r)
+//     n_up / n_mid / n_dn           — cells in x (upstream / mid / downstream)
+//     n_bot / n_cyl_h / n_top       — cells in y (below / level / above O-ring)
+//     n_r                           — radial cells in O-ring
+//     cyl_grad_ceil / cyl_grad_floor — O-ring wall grading
+//
+//   Vertex layout (front face, z = 0):
+//
+//   v16──────v17──────────v18──────v19    y = domain_y
+//    │         │            │        │
+//   v12──────v13──────────v14──────v15    y = cyl_cy + cyl_ri
+//    │         │   v11--v10 │        │
+//    │   B3    │  /B11  B9\ │   B4   │
+//   v4 ──────v5─v8──cyl──v9─v6──────v7   y = cyl_cy - cyl_ri  (approx)
+//    │         │   \B8  /   │        │
+//    │         │    v8--v9  │        │
+//   v0 ──────v1──────────v2─────────v3   y = 0
+//
+//   (cylinder surface v8=SW, v9=SE, v10=NE, v11=NW connected by arc edges)
+//
+//   Outer blocks B0-B7 fill the 3×3 grid minus the O-ring centre.
+//   O-ring blocks B8(bot), B9(right), B10(top), B11(left) surround the cylinder.
+//
+//   Patches:
+//     inlet       : x = 0           (left faces of B0, B3, B5)
+//     outlet      : x = domain_x    (right faces of B2, B4, B7)
+//     top         : y = domain_y    (top faces of B5, B6, B7)  — symmetryPlane
+//     bottom      : y = 0           (bottom faces of B0, B1, B2) — symmetryPlane
+//     cylinder    : cylinder surface (inner faces of B8, B9, B10, B11)
+//     frontAndBack: z = 0 and z = domain_z (empty, 2-D)
+
+scale   1;
+
+vertices
+(
+    // ── Front face (z = 0) ────────────────────────────────────────────────
+    // Row y = 0  (bottom)
+    (0                                          0                           0)  // 0
+    ({{ "%-8g"|format(cyl_cx - cyl_ri) }}       0                           0)  // 1
+    ({{ "%-8g"|format(cyl_cx + cyl_ri) }}       0                           0)  // 2
+    ({{ "%-8g"|format(domain_x) }}              0                           0)  // 3
+
+    // Row y = cyl_cy - cyl_ri  (inner square bottom)
+    (0                                          {{ cyl_cy - cyl_ri }}       0)  // 4
+    ({{ "%-8g"|format(cyl_cx - cyl_ri) }}       {{ cyl_cy - cyl_ri }}       0)  // 5  inner-sq BL
+    ({{ "%-8g"|format(cyl_cx + cyl_ri) }}       {{ cyl_cy - cyl_ri }}       0)  // 6  inner-sq BR
+    ({{ "%-8g"|format(domain_x) }}              {{ cyl_cy - cyl_ri }}       0)  // 7
+
+    // Cylinder surface vertices at ±45°
+    ({{ "%-8g"|format(cyl_cx - cyl_r45) }}      {{ cyl_cy - cyl_r45 }}      0)  // 8  SW (225°)
+    ({{ "%-8g"|format(cyl_cx + cyl_r45) }}      {{ cyl_cy - cyl_r45 }}      0)  // 9  SE (315°)
+    ({{ "%-8g"|format(cyl_cx + cyl_r45) }}      {{ cyl_cy + cyl_r45 }}      0)  // 10 NE (45°)
+    ({{ "%-8g"|format(cyl_cx - cyl_r45) }}      {{ cyl_cy + cyl_r45 }}      0)  // 11 NW (135°)
+
+    // Row y = cyl_cy + cyl_ri  (inner square top)
+    (0                                          {{ cyl_cy + cyl_ri }}       0)  // 12
+    ({{ "%-8g"|format(cyl_cx - cyl_ri) }}       {{ cyl_cy + cyl_ri }}       0)  // 13 inner-sq TL
+    ({{ "%-8g"|format(cyl_cx + cyl_ri) }}       {{ cyl_cy + cyl_ri }}       0)  // 14 inner-sq TR
+    ({{ "%-8g"|format(domain_x) }}              {{ cyl_cy + cyl_ri }}       0)  // 15
+
+    // Row y = domain_y  (top)
+    (0                                          {{ domain_y }}              0)  // 16
+    ({{ "%-8g"|format(cyl_cx - cyl_ri) }}       {{ domain_y }}              0)  // 17
+    ({{ "%-8g"|format(cyl_cx + cyl_ri) }}       {{ domain_y }}              0)  // 18
+    ({{ "%-8g"|format(domain_x) }}              {{ domain_y }}              0)  // 19
+
+    // ── Back face (z = domain_z) — mirrors v0..v19 ────────────────────────
+    (0                                          0                           {{ domain_z }})  // 20
+    ({{ "%-8g"|format(cyl_cx - cyl_ri) }}       0                           {{ domain_z }})  // 21
+    ({{ "%-8g"|format(cyl_cx + cyl_ri) }}       0                           {{ domain_z }})  // 22
+    ({{ "%-8g"|format(domain_x) }}              0                           {{ domain_z }})  // 23
+
+    (0                                          {{ cyl_cy - cyl_ri }}       {{ domain_z }})  // 24
+    ({{ "%-8g"|format(cyl_cx - cyl_ri) }}       {{ cyl_cy - cyl_ri }}       {{ domain_z }})  // 25
+    ({{ "%-8g"|format(cyl_cx + cyl_ri) }}       {{ cyl_cy - cyl_ri }}       {{ domain_z }})  // 26
+    ({{ "%-8g"|format(domain_x) }}              {{ cyl_cy - cyl_ri }}       {{ domain_z }})  // 27
+
+    ({{ "%-8g"|format(cyl_cx - cyl_r45) }}      {{ cyl_cy - cyl_r45 }}      {{ domain_z }})  // 28 SW back
+    ({{ "%-8g"|format(cyl_cx + cyl_r45) }}      {{ cyl_cy - cyl_r45 }}      {{ domain_z }})  // 29 SE back
+    ({{ "%-8g"|format(cyl_cx + cyl_r45) }}      {{ cyl_cy + cyl_r45 }}      {{ domain_z }})  // 30 NE back
+    ({{ "%-8g"|format(cyl_cx - cyl_r45) }}      {{ cyl_cy + cyl_r45 }}      {{ domain_z }})  // 31 NW back
+
+    (0                                          {{ cyl_cy + cyl_ri }}       {{ domain_z }})  // 32
+    ({{ "%-8g"|format(cyl_cx - cyl_ri) }}       {{ cyl_cy + cyl_ri }}       {{ domain_z }})  // 33
+    ({{ "%-8g"|format(cyl_cx + cyl_ri) }}       {{ cyl_cy + cyl_ri }}       {{ domain_z }})  // 34
+    ({{ "%-8g"|format(domain_x) }}              {{ cyl_cy + cyl_ri }}       {{ domain_z }})  // 35
+
+    (0                                          {{ domain_y }}              {{ domain_z }})  // 36
+    ({{ "%-8g"|format(cyl_cx - cyl_ri) }}       {{ domain_y }}              {{ domain_z }})  // 37
+    ({{ "%-8g"|format(cyl_cx + cyl_ri) }}       {{ domain_y }}              {{ domain_z }})  // 38
+    ({{ "%-8g"|format(domain_x) }}              {{ domain_y }}              {{ domain_z }})  // 39
+);
+
+blocks
+(
+    // ── Outer 8 blocks (3×3 grid minus O-ring centre) ────────────────────
+    // B0 bottom-left   x:[0,cx-ri]     y:[0,cy-ri]
+    hex ( 0  1  5  4  20 21 25 24) ({{ n_up  }} {{ n_bot   }} 1) simpleGrading (1 1 1)
+    // B1 bottom-centre x:[cx-ri,cx+ri] y:[0,cy-ri]
+    hex ( 1  2  6  5  21 22 26 25) ({{ n_mid }} {{ n_bot   }} 1) simpleGrading (1 1 1)
+    // B2 bottom-right  x:[cx+ri,L]     y:[0,cy-ri]
+    hex ( 2  3  7  6  22 23 27 26) ({{ n_dn  }} {{ n_bot   }} 1) simpleGrading (1 1 1)
+    // B3 mid-left      x:[0,cx-ri]     y:[cy-ri,cy+ri]
+    hex ( 4  5 13 12  24 25 33 32) ({{ n_up  }} {{ n_cyl_h }} 1) simpleGrading (1 1 1)
+    // B4 mid-right     x:[cx+ri,L]     y:[cy-ri,cy+ri]
+    hex ( 6  7 15 14  26 27 35 34) ({{ n_dn  }} {{ n_cyl_h }} 1) simpleGrading (1 1 1)
+    // B5 top-left      x:[0,cx-ri]     y:[cy+ri,H]
+    hex (12 13 17 16  32 33 37 36) ({{ n_up  }} {{ n_top   }} 1) simpleGrading (1 1 1)
+    // B6 top-centre    x:[cx-ri,cx+ri] y:[cy+ri,H]
+    hex (13 14 18 17  33 34 38 37) ({{ n_mid }} {{ n_top   }} 1) simpleGrading (1 1 1)
+    // B7 top-right     x:[cx+ri,L]     y:[cy+ri,H]
+    hex (14 15 19 18  34 35 39 38) ({{ n_dn  }} {{ n_top   }} 1) simpleGrading (1 1 1)
+
+    // ── O-ring 4 blocks (connect inner square to cylinder surface) ────────
+    // B8  bottom O-ring  j: inner-sq-bot → cylinder-SW/SE  (fine at cylinder = ceil)
+    hex ( 5  6  9  8  25 26 29 28) ({{ n_mid }} {{ n_r     }} 1) simpleGrading (1 {{ cyl_grad_ceil  }} 1)
+    // B9  right  O-ring  i: cylinder-SE/NE → inner-sq-right (fine at cylinder = floor)
+    hex ( 9  6 14 10  29 26 34 30) ({{ n_r   }} {{ n_cyl_h }} 1) simpleGrading ({{ cyl_grad_floor }} 1 1)
+    // B10 top    O-ring  j: cylinder-NE/NW → inner-sq-top   (fine at cylinder = floor)
+    hex (10 11 13 14  30 31 33 34) ({{ n_mid }} {{ n_r     }} 1) simpleGrading (1 {{ cyl_grad_floor }} 1)
+    // B11 left   O-ring  i: cylinder-SW/NW → inner-sq-left  (fine at cylinder = floor)
+    hex ( 8  5 13 11  28 25 33 31) ({{ n_r   }} {{ n_cyl_h }} 1) simpleGrading ({{ cyl_grad_floor }} 1 1)
+);
+
+edges
+(
+    // Arc edges on cylinder surface — front face (z = 0)
+    // arc v_start v_end (midpoint on cylinder surface)
+    arc  8  9  ({{ cyl_cx }}                {{ cyl_cy - cyl_r }}  0)  // bottom arc SW→SE
+    arc  9 10  ({{ cyl_cx + cyl_r }}        {{ cyl_cy }}          0)  // right  arc SE→NE
+    arc 10 11  ({{ cyl_cx }}                {{ cyl_cy + cyl_r }}  0)  // top    arc NE→NW
+    arc 11  8  ({{ cyl_cx - cyl_r }}        {{ cyl_cy }}          0)  // left   arc NW→SW
+
+    // Arc edges on cylinder surface — back face (z = domain_z)
+    arc 28 29  ({{ cyl_cx }}                {{ cyl_cy - cyl_r }}  {{ domain_z }})
+    arc 29 30  ({{ cyl_cx + cyl_r }}        {{ cyl_cy }}          {{ domain_z }})
+    arc 30 31  ({{ cyl_cx }}                {{ cyl_cy + cyl_r }}  {{ domain_z }})
+    arc 31 28  ({{ cyl_cx - cyl_r }}        {{ cyl_cy }}          {{ domain_z }})
+);
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces
+        (
+            ( 0  4 24 20)   // left of B0
+            ( 4 12 32 24)   // left of B3
+            (12 16 36 32)   // left of B5
+        );
+    }
+
+    outlet
+    {
+        type patch;
+        faces
+        (
+            ( 3  7 27 23)   // right of B2
+            ( 7 15 35 27)   // right of B4
+            (15 19 39 35)   // right of B7
+        );
+    }
+
+    top
+    {
+        type symmetryPlane;
+        faces
+        (
+            (16 17 37 36)   // top of B5
+            (17 18 38 37)   // top of B6
+            (18 19 39 38)   // top of B7
+        );
+    }
+
+    bottom
+    {
+        type symmetryPlane;
+        faces
+        (
+            ( 0  1 21 20)   // bottom of B0
+            ( 1  2 22 21)   // bottom of B1
+            ( 2  3 23 22)   // bottom of B2
+        );
+    }
+
+    cylinder
+    {
+        type wall;
+        faces
+        (
+            ( 8  9 29 28)   // B8  bottom arc  SW→SE
+            ( 9 10 30 29)   // B9  right  arc  SE→NE
+            (11 10 30 31)   // B10 top    arc  NW→NE  (reversed for outward normal)
+            ( 8 11 31 28)   // B11 left   arc  SW→NW
+        );
+    }
+
+    frontAndBack
+    {
+        type empty;
+        faces
+        (
+            // front (z = 0)
+            ( 0  1  5  4)   // B0
+            ( 1  2  6  5)   // B1
+            ( 2  3  7  6)   // B2
+            ( 4  5 13 12)   // B3
+            ( 6  7 15 14)   // B4
+            (12 13 17 16)   // B5
+            (13 14 18 17)   // B6
+            (14 15 19 18)   // B7
+            ( 5  6  9  8)   // B8
+            ( 9  6 14 10)   // B9
+            (10 11 13 14)   // B10
+            ( 8  5 13 11)   // B11
+            // back (z = domain_z)
+            (20 21 25 24)
+            (21 22 26 25)
+            (22 23 27 26)
+            (24 25 33 32)
+            (26 27 35 34)
+            (32 33 37 36)
+            (33 34 38 37)
+            (34 35 39 38)
+            (25 26 29 28)
+            (29 26 34 30)
+            (30 31 33 34)
+            (28 25 33 31)
+        );
+    }
+);
+
+// ************************************************************************* //

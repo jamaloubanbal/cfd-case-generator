@@ -1,0 +1,183 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Geometry: channel with rectangular obstacle (8 blocks, 2-D)
+//
+//   Parameters (from generator context):
+//     domain_x, domain_y, domain_z  — channel dimensions
+//     xo1, xo2                       — obstacle x extents
+//     yo1, yo2                       — obstacle y extents
+//     nx_left, nx_obs, nx_right      — cells in x columns
+//     ny_bot, ny_obs, ny_top         — cells in y rows
+//
+//   Vertex layout (front face z=0):
+//
+//     v12──v13──v14──v15        <- y = domain_y
+//     │ B6 │ B7 │ B8 │
+//     v8───v9──v10──v11         <- y = yo2
+//     │ B3 │[OB]│ B5 │
+//     v4───v5───v6───v7         <- y = yo1
+//     │ B0 │ B1 │ B2 │
+//     v0───v1───v2───v3         <- y = 0
+//     x=0  xo1  xo2  domain_x
+//
+//   Patches:
+//     inlet    : left  (x=0,        y:[0,domain_y])
+//     outlet   : right (x=domain_x, y:[0,domain_y])
+//     top      : top   (y=domain_y, all x)
+//     bottom   : floor (y=0,        all x)
+//     obstacle : inner faces of B1(top), B3(right), B5(left), B7(bottom)
+//     frontAndBack: empty (2-D)
+
+scale   1;
+
+vertices
+(
+    // front face (z=0)
+    (0              0               0)              // 0   (0,  0)
+    ({{ xo1 }}      0               0)              // 1   (xo1,0)
+    ({{ xo2 }}      0               0)              // 2   (xo2,0)
+    ({{ domain_x }} 0               0)              // 3   (L,  0)
+    (0              {{ yo1 }}        0)              // 4   (0,  yo1)
+    ({{ xo1 }}      {{ yo1 }}        0)              // 5   (xo1,yo1)
+    ({{ xo2 }}      {{ yo1 }}        0)              // 6   (xo2,yo1)
+    ({{ domain_x }} {{ yo1 }}        0)              // 7   (L,  yo1)
+    (0              {{ yo2 }}        0)              // 8   (0,  yo2)
+    ({{ xo1 }}      {{ yo2 }}        0)              // 9   (xo1,yo2)
+    ({{ xo2 }}      {{ yo2 }}        0)              // 10  (xo2,yo2)
+    ({{ domain_x }} {{ yo2 }}        0)              // 11  (L,  yo2)
+    (0              {{ domain_y }}  0)              // 12  (0,  H)
+    ({{ xo1 }}      {{ domain_y }}  0)              // 13  (xo1,H)
+    ({{ xo2 }}      {{ domain_y }}  0)              // 14  (xo2,H)
+    ({{ domain_x }} {{ domain_y }}  0)              // 15  (L,  H)
+    // back face (z=domain_z)
+    (0              0               {{ domain_z }}) // 16
+    ({{ xo1 }}      0               {{ domain_z }}) // 17
+    ({{ xo2 }}      0               {{ domain_z }}) // 18
+    ({{ domain_x }} 0               {{ domain_z }}) // 19
+    (0              {{ yo1 }}        {{ domain_z }}) // 20
+    ({{ xo1 }}      {{ yo1 }}        {{ domain_z }}) // 21
+    ({{ xo2 }}      {{ yo1 }}        {{ domain_z }}) // 22
+    ({{ domain_x }} {{ yo1 }}        {{ domain_z }}) // 23
+    (0              {{ yo2 }}        {{ domain_z }}) // 24
+    ({{ xo1 }}      {{ yo2 }}        {{ domain_z }}) // 25
+    ({{ xo2 }}      {{ yo2 }}        {{ domain_z }}) // 26
+    ({{ domain_x }} {{ yo2 }}        {{ domain_z }}) // 27
+    (0              {{ domain_y }}  {{ domain_z }}) // 28
+    ({{ xo1 }}      {{ domain_y }}  {{ domain_z }}) // 29
+    ({{ xo2 }}      {{ domain_y }}  {{ domain_z }}) // 30
+    ({{ domain_x }} {{ domain_y }}  {{ domain_z }}) // 31
+);
+
+blocks
+(
+    // B0 bottom-left  — wall at y=0 (floor)
+    hex ( 0  1  5  4 16 17 21 20) ({{ nx_left }}  {{ ny_bot }} 1) simpleGrading (1 {{ grading_ob_bot }} 1)
+    // B1 bottom-center (below obstacle) — wall at y=0 (floor)
+    hex ( 1  2  6  5 17 18 22 21) ({{ nx_obs }}   {{ ny_bot }} 1) simpleGrading (1 {{ grading_ob_bot }} 1)
+    // B2 bottom-right — wall at y=0 (floor)
+    hex ( 2  3  7  6 18 19 23 22) ({{ nx_right }} {{ ny_bot }} 1) simpleGrading (1 {{ grading_ob_bot }} 1)
+    // B3 mid-left (left of obstacle) — no y-walls
+    hex ( 4  5  9  8 20 21 25 24) ({{ nx_left }}  {{ ny_obs }} 1) simpleGrading (1 {{ grading_ob_mid }} 1)
+    // B5 mid-right (right of obstacle) — no y-walls
+    hex ( 6  7 11 10 22 23 27 26) ({{ nx_right }} {{ ny_obs }} 1) simpleGrading (1 {{ grading_ob_mid }} 1)
+    // B6 top-left  — wall at y=domain_y (top)
+    hex ( 8  9 13 12 24 25 29 28) ({{ nx_left }}  {{ ny_top }} 1) simpleGrading (1 {{ grading_ob_top }} 1)
+    // B7 top-center (above obstacle) — wall at y=domain_y (top)
+    hex ( 9 10 14 13 25 26 30 29) ({{ nx_obs }}   {{ ny_top }} 1) simpleGrading (1 {{ grading_ob_top }} 1)
+    // B8 top-right — wall at y=domain_y (top)
+    hex (10 11 15 14 26 27 31 30) ({{ nx_right }} {{ ny_top }} 1) simpleGrading (1 {{ grading_ob_top }} 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (0  16 20  4)   // left of B0
+            (4  20 24  8)   // left of B3
+            (8  24 28 12)   // left of B6
+        );
+    }
+
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (3   7 23 19)   // right of B2
+            (7  11 27 23)   // right of B5
+            (11 15 31 27)   // right of B8
+        );
+    }
+
+    top
+    {
+        type wall;
+        faces
+        (
+            (12 28 29 13)   // top of B6
+            (13 29 30 14)   // top of B7
+            (14 30 31 15)   // top of B8
+        );
+    }
+
+    bottom
+    {
+        type wall;
+        faces
+        (
+            (0  1  17 16)   // bottom of B0
+            (1  2  18 17)   // bottom of B1
+            (2  3  19 18)   // bottom of B2
+        );
+    }
+
+    obstacle
+    {
+        type wall;
+        faces
+        (
+            (5  21 22  6)   // top    of B1  (bottom face of obstacle)
+            (5   9 25 21)   // right  of B3  (left   face of obstacle)
+            (6  22 26 10)   // left   of B5  (right  face of obstacle)
+            (9  10 26 25)   // bottom of B7  (top    face of obstacle)
+        );
+    }
+
+    frontAndBack
+    {
+        type empty;
+        faces
+        (
+            // front (z=0)
+            ( 0  4  5  1)   ( 1  5  6  2)   ( 2  6  7  3)
+            ( 4  8  9  5)                    ( 6 10 11  7)
+            ( 8 12 13  9)   ( 9 13 14 10)   (10 14 15 11)
+            // back (z=domain_z)
+            (16 17 21 20)   (17 18 22 21)   (18 19 23 22)
+            (20 21 25 24)                   (22 23 27 26)
+            (24 25 29 28)   (25 26 30 29)   (26 27 31 30)
+        );
+    }
+);
+
+// ************************************************************************* //

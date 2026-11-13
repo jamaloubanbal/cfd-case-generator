@@ -1,0 +1,59 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v10
+    \\  /    A nd           | Web:      www.openfoam.org
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     interFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         {{ end_time }};
+
+deltaT          {{ delta_t }};
+
+adjustTimeStep  yes;
+
+maxCo           0.5;
+
+maxAlphaCo      0.5;
+
+writeControl    timeStep;
+
+writeInterval   {{ write_interval }};
+
+purgeWrite      5;
+
+writeFormat     ascii;
+
+writePrecision  8;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   8;
+
+runTimeModifiable true;
+
+// NOTE (OpenFOAM v1912): function objects crash on startup due to a SHA1
+// IOstream bug in this version.  Residuals are printed to stdout instead.
+// To extract them after running:
+//   interFoam 2>&1 | tee interFoam.log
+//   foamLog interFoam.log
+
+// ************************************************************************* //

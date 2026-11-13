@@ -1,0 +1,142 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Geometry: T-junction (4 blocks, 2-D)
+//
+//   Parameters (from generator context):
+//     domain_x      — total main channel length
+//     domain_y      — main channel height  (H)
+//     domain_z      — depth (thin, 2-D)
+//     xl            — x of left  branch edge  = (domain_x - branch_width) / 2
+//     xr            — x of right branch edge  = (domain_x + branch_width) / 2
+//     H_branch      — y of branch top          = domain_y + branch_height
+//     nx_left, nx_branch, nx_right — cells in x for each block column
+//     ny_main, ny_branch           — cells in y for main channel / branch
+//
+//   Patches:
+//     inlet1      : left face of Block 0   (x=0,        y:[0,H])
+//     inlet2      : top  face of Block 2   (y=H_branch, x:[xl,xr])
+//     outlet      : right face of Block 3  (x=domain_x, y:[0,H])
+//     walls       : bottom + outer-top faces
+//     frontAndBack: empty (2-D)
+//
+//   Vertex layout (front face z=0):
+//
+//     v8────────v9            <- y = H_branch
+//     │  Blk 2  │
+//     v3──v5────v6──v7        <- y = H  (domain_y)
+//     │   │         │
+//     │B0 │  Blk 1  │B3│
+//     │   │         │
+//     v0──v1────v2──...       <- y = 0
+//     x=0 xl    xr   domain_x
+//
+//   Note: Block 1 (center, under branch) shares top face with Block 2 (branch).
+
+scale   1;
+
+vertices
+(
+    // front face (z=0)
+    (0              0               0)              // 0
+    ({{ xl }}       0               0)              // 1
+    ({{ xr }}       0               0)              // 2
+    ({{ domain_x }} 0               0)              // 3
+    (0              {{ domain_y }}  0)              // 4
+    ({{ xl }}       {{ domain_y }}  0)              // 5
+    ({{ xr }}       {{ domain_y }}  0)              // 6
+    ({{ domain_x }} {{ domain_y }}  0)              // 7
+    ({{ xl }}       {{ H_branch }}  0)              // 8
+    ({{ xr }}       {{ H_branch }}  0)              // 9
+    // back face (z=domain_z)
+    (0              0               {{ domain_z }}) // 10
+    ({{ xl }}       0               {{ domain_z }}) // 11
+    ({{ xr }}       0               {{ domain_z }}) // 12
+    ({{ domain_x }} 0               {{ domain_z }}) // 13
+    (0              {{ domain_y }}  {{ domain_z }}) // 14
+    ({{ xl }}       {{ domain_y }}  {{ domain_z }}) // 15
+    ({{ xr }}       {{ domain_y }}  {{ domain_z }}) // 16
+    ({{ domain_x }} {{ domain_y }}  {{ domain_z }}) // 17
+    ({{ xl }}       {{ H_branch }}  {{ domain_z }}) // 18
+    ({{ xr }}       {{ H_branch }}  {{ domain_z }}) // 19
+);
+
+blocks
+(
+    // Block 0: left main channel  x:[0, xl]     y:[0, H]  — walls top+bottom
+    hex (0  1  5  4  10 11 15 14) ({{ nx_left }}   {{ ny_main }}   1) simpleGrading (1 {{ grading_tj_main }} 1)
+    // Block 1: center under branch x:[xl, xr]   y:[0, H]  — wall at y=0 only
+    hex (1  2  6  5  11 12 16 15) ({{ nx_branch }}  {{ ny_main }}   1) simpleGrading (1 {{ grading_tj_b1 }} 1)
+    // Block 2: branch              x:[xl, xr]   y:[H, H_branch] — no y-walls (inlet2 at top)
+    hex (5  6  9  8  15 16 19 18) ({{ nx_branch }}  {{ ny_branch }}  1) simpleGrading (1 {{ grading_tj_branch }} 1)
+    // Block 3: right main channel x:[xr, domain_x] y:[0, H] — walls top+bottom
+    hex (2  3  7  6  12 13 17 16) ({{ nx_right }}  {{ ny_main }}   1) simpleGrading (1 {{ grading_tj_main }} 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    inlet1
+    {
+        type patch;
+        faces ( (0 10 14 4) );
+    }
+
+    inlet2
+    {
+        type patch;
+        faces ( (8 18 19 9) );
+    }
+
+    outlet
+    {
+        type patch;
+        faces ( (3 7 17 13) );
+    }
+
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0  1  11 10)   // bottom block 0
+            (1  2  12 11)   // bottom block 1
+            (2  3  13 12)   // bottom block 3
+            (4  14 15 5)    // top block 0  (left of branch)
+            (6  16 17 7)    // top block 3  (right of branch)
+        );
+    }
+
+    frontAndBack
+    {
+        type empty;
+        faces
+        (
+            (0  4  5  1)    // front block 0
+            (1  5  6  2)    // front block 1
+            (5  8  9  6)    // front block 2
+            (2  6  7  3)    // front block 3
+            (10 11 15 14)   // back block 0
+            (11 12 16 15)   // back block 1
+            (15 18 19 16)   // back block 2
+            (12 13 17 16)   // back block 3
+        );
+    }
+);
+
+// ************************************************************************* //

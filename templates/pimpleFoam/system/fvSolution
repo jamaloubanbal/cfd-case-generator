@@ -1,0 +1,125 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    p
+    {
+        solver          GAMG;
+        tolerance       1e-08;
+        relTol          0.01;
+        smoother        GaussSeidel;
+    }
+
+    pFinal
+    {
+        $p;
+        relTol          0;
+    }
+
+    U
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-08;
+        relTol          0.1;
+    }
+
+    UFinal
+    {
+        $U;
+        relTol          0;
+    }
+
+{% if turb_model in ('kEpsilon', 'kOmegaSST') %}
+    k
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-08;
+        relTol          0.1;
+    }
+
+{% endif %}
+{% if turb_model == 'kEpsilon' %}
+    epsilon
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-08;
+        relTol          0.1;
+    }
+{% elif turb_model == 'kOmegaSST' %}
+    omega
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-08;
+        relTol          0.1;
+    }
+{% elif turb_model == 'SpalartAllmaras' %}
+    nuTilda
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-08;
+        relTol          0.1;
+    }
+{% endif %}
+}
+
+PIMPLE
+{
+    nOuterCorrectors    2;
+    nCorrectors         2;
+    nNonOrthogonalCorrectors 1;
+    pRefCell        0;
+    pRefValue       0;
+    residualControl
+    {
+        U
+        {
+            tolerance   1e-5;
+            relTol      0;
+        }
+        p
+        {
+            tolerance   1e-5;
+            relTol      0;
+        }
+    }
+}
+
+relaxationFactors
+{
+    equations
+    {
+        U               1;
+        UFinal          1;
+{% if turb_model in ('kEpsilon', 'kOmegaSST') %}
+        k               1;
+{% endif %}
+{% if turb_model == 'kEpsilon' %}
+        epsilon         1;
+{% elif turb_model == 'kOmegaSST' %}
+        omega           1;
+{% elif turb_model == 'SpalartAllmaras' %}
+        nuTilda         1;
+{% endif %}
+    }
+}
+
+// ************************************************************************* //

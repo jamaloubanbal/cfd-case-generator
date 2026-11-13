@@ -1,0 +1,35 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [1 -1 -2 0 0 0 0];
+
+internalField   uniform {{ p_ref }};
+
+boundaryField
+{
+{% for p in patches %}
+    {{ p.name }}
+    {
+{%- if p.of_type == 'empty' %}
+        type            empty;
+{%- else %}
+        type            zeroGradient;
+{%- endif %}
+    }
+{% endfor %}
+}
+
+// ************************************************************************* //

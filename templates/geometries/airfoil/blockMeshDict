@@ -1,0 +1,232 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Geometry: 2-D airfoil in external flow — 8-block C/H-grid
+//
+//   The airfoil body (chord × thickness) is a rectangular hole in the mesh.
+//   No cells are generated inside the airfoil.
+//
+//   Parameters (from generator context):
+//     af_x0, af_x1, af_x2, af_x3  — x coordinates: -R_far, 0(LE), chord(TE), chord+wake_l
+//     af_y_bot, af_y_lo, af_y_hi, af_y_top — y coordinates: -R, -t/2, +t/2, +R
+//     af_chord, af_thickness, af_t_half    — airfoil dimensions
+//     af_R_far, af_wake_l                  — far-field radius, wake length
+//     n_le, n_chord, n_wake                — cells in x per region
+//     n_th, n_up, n_dn                     — cells in y per region
+//     af_grad_upper, af_grad_lower         — wall grading: upper/lower surfaces
+//
+//   Vertex layout (front face, z = 0):
+//
+//   v3────────────────────────────────────────────────────v15  y = +R_far
+//   v2────────v6──────────────────────v10─────────────────v14  y = +t/2  (airfoil top)
+//             ╔══════════════════════╗                         (airfoil body)
+//   v1────────v5──────────────────────v9─────────────────v13  y = -t/2  (airfoil bot)
+//   v0────────v4──────────────────────v8─────────────────v12  y = -R_far
+//   x=-R_far  x=0(LE)                 x=chord(TE)  x=chord+wake_l
+//
+//   8 Blocks:
+//     B0  upstream-centre  x∈[-R,0]   y∈[-t/2,+t/2]  (in front of LE)
+//     B1  upper-upstream   x∈[-R,0]   y∈[+t/2,+R]
+//     B2  upper-body       x∈[0,c]    y∈[+t/2,+R]    suction side
+//     B3  upper-wake       x∈[c,c+w]  y∈[+t/2,+R]
+//     B4  wake-centre      x∈[c,c+w]  y∈[-t/2,+t/2]  (behind TE)
+//     B5  lower-body       x∈[0,c]    y∈[-R,-t/2]    pressure side
+//     B6  lower-upstream   x∈[-R,0]   y∈[-R,-t/2]
+//     B7  lower-wake       x∈[c,c+w]  y∈[-R,-t/2]
+//
+//   Airfoil wall patch faces:
+//     LE face       = B0 i=max  → (5, 6, 22, 21)
+//     upper surface = B2 j=0    → (6, 10, 26, 22)
+//     lower surface = B5 j=max  → (5, 9, 25, 21)
+//     TE face       = B4 i=0    → (9, 10, 26, 25)
+//
+//   Patches:
+//     inlet       : x = af_x0   (left faces of B0, B1, B6)
+//     outlet      : x = af_x3   (right faces of B3, B4, B7)
+//     top         : y = af_y_top (top of B1, B2, B3) — symmetryPlane
+//     bottom      : y = af_y_bot (bottom of B6, B5, B7) — symmetryPlane
+//     airfoil     : wall  — LE face + upper surface + lower surface + TE face
+//     frontAndBack: z = 0 and z = domain_z (empty, 2-D)
+
+scale   1;
+
+vertices
+(
+    // ── Front face (z = 0) ────────────────────────────────────────────────
+    // x = af_x0 = -R_far  (upstream inlet plane)
+    ({{ af_x0 }}  {{ af_y_bot }}  0)  // v0  inlet bottom
+    ({{ af_x0 }}  {{ af_y_lo  }}  0)  // v1  inlet lower (airfoil height)
+    ({{ af_x0 }}  {{ af_y_hi  }}  0)  // v2  inlet upper (airfoil height)
+    ({{ af_x0 }}  {{ af_y_top }}  0)  // v3  inlet top
+
+    // x = af_x1 = 0  (leading edge)
+    ({{ af_x1 }}  {{ af_y_bot }}  0)  // v4  LE bottom
+    ({{ af_x1 }}  {{ af_y_lo  }}  0)  // v5  LE lower  ← airfoil surface
+    ({{ af_x1 }}  {{ af_y_hi  }}  0)  // v6  LE upper  ← airfoil surface
+    ({{ af_x1 }}  {{ af_y_top }}  0)  // v7  LE top
+
+    // x = af_x2 = chord  (trailing edge)
+    ({{ af_x2 }}  {{ af_y_bot }}  0)  // v8  TE bottom
+    ({{ af_x2 }}  {{ af_y_lo  }}  0)  // v9  TE lower  ← airfoil surface
+    ({{ af_x2 }}  {{ af_y_hi  }}  0)  // v10 TE upper  ← airfoil surface
+    ({{ af_x2 }}  {{ af_y_top }}  0)  // v11 TE top
+
+    // x = af_x3 = chord + wake_l  (outlet plane)
+    ({{ af_x3 }}  {{ af_y_bot }}  0)  // v12 outlet bottom
+    ({{ af_x3 }}  {{ af_y_lo  }}  0)  // v13 outlet lower
+    ({{ af_x3 }}  {{ af_y_hi  }}  0)  // v14 outlet upper
+    ({{ af_x3 }}  {{ af_y_top }}  0)  // v15 outlet top
+
+    // ── Back face (z = domain_z) — mirrors v0..v15 ────────────────────────
+    ({{ af_x0 }}  {{ af_y_bot }}  {{ domain_z }})  // v16
+    ({{ af_x0 }}  {{ af_y_lo  }}  {{ domain_z }})  // v17
+    ({{ af_x0 }}  {{ af_y_hi  }}  {{ domain_z }})  // v18
+    ({{ af_x0 }}  {{ af_y_top }}  {{ domain_z }})  // v19
+
+    ({{ af_x1 }}  {{ af_y_bot }}  {{ domain_z }})  // v20
+    ({{ af_x1 }}  {{ af_y_lo  }}  {{ domain_z }})  // v21
+    ({{ af_x1 }}  {{ af_y_hi  }}  {{ domain_z }})  // v22
+    ({{ af_x1 }}  {{ af_y_top }}  {{ domain_z }})  // v23
+
+    ({{ af_x2 }}  {{ af_y_bot }}  {{ domain_z }})  // v24
+    ({{ af_x2 }}  {{ af_y_lo  }}  {{ domain_z }})  // v25
+    ({{ af_x2 }}  {{ af_y_hi  }}  {{ domain_z }})  // v26
+    ({{ af_x2 }}  {{ af_y_top }}  {{ domain_z }})  // v27
+
+    ({{ af_x3 }}  {{ af_y_bot }}  {{ domain_z }})  // v28
+    ({{ af_x3 }}  {{ af_y_lo  }}  {{ domain_z }})  // v29
+    ({{ af_x3 }}  {{ af_y_hi  }}  {{ domain_z }})  // v30
+    ({{ af_x3 }}  {{ af_y_top }}  {{ domain_z }})  // v31
+);
+
+blocks
+(
+    // B0  upstream-centre  x∈[-R,0]    y∈[-t/2,+t/2]  (in front of LE, between airfoil height)
+    hex ( 1  5  6  2  17 21 22 18) ({{ n_le    }} {{ n_th }} 1) simpleGrading (1 1 1)
+
+    // B1  upper-upstream   x∈[-R,0]    y∈[+t/2,+R]
+    hex ( 2  6  7  3  18 22 23 19) ({{ n_le    }} {{ n_up }} 1) simpleGrading (1 {{ af_grad_upper }} 1)
+
+    // B2  upper-body       x∈[0,c]     y∈[+t/2,+R]  (suction side — wall at j=0)
+    hex ( 6 10 11  7  22 26 27 23) ({{ n_chord }} {{ n_up }} 1) simpleGrading (1 {{ af_grad_upper }} 1)
+
+    // B3  upper-wake       x∈[c,c+w]   y∈[+t/2,+R]
+    hex (10 14 15 11  26 30 31 27) ({{ n_wake  }} {{ n_up }} 1) simpleGrading (1 {{ af_grad_upper }} 1)
+
+    // B4  wake-centre      x∈[c,c+w]   y∈[-t/2,+t/2]  (behind TE)
+    hex ( 9 13 14 10  25 29 30 26) ({{ n_wake  }} {{ n_th }} 1) simpleGrading (1 1 1)
+
+    // B5  lower-body       x∈[0,c]     y∈[-R,-t/2]  (pressure side — wall at j=max)
+    hex ( 4  8  9  5  20 24 25 21) ({{ n_chord }} {{ n_dn }} 1) simpleGrading (1 {{ af_grad_lower }} 1)
+
+    // B6  lower-upstream   x∈[-R,0]    y∈[-R,-t/2]
+    hex ( 0  4  5  1  16 20 21 17) ({{ n_le    }} {{ n_dn }} 1) simpleGrading (1 {{ af_grad_lower }} 1)
+
+    // B7  lower-wake       x∈[c,c+w]   y∈[-R,-t/2]
+    hex ( 8 12 13  9  24 28 29 25) ({{ n_wake  }} {{ n_dn }} 1) simpleGrading (1 1 1)
+);
+
+edges
+(
+    // No curved edges — airfoil body approximated as rectangular cross-section.
+    // For a true NACA profile, use snappyHexMesh or replace block edges with splines.
+);
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces
+        (
+            ( 1  2 18 17)   // B0 i=0  (upstream centre)
+            ( 2  3 19 18)   // B1 i=0  (upper upstream)
+            ( 0  1 17 16)   // B6 i=0  (lower upstream)
+        );
+    }
+
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (14 15 31 30)   // B3 i=max (upper wake)
+            (13 14 30 29)   // B4 i=max (wake centre)
+            (12 13 29 28)   // B7 i=max (lower wake)
+        );
+    }
+
+    top
+    {
+        type symmetryPlane;
+        faces
+        (
+            ( 3  7 23 19)   // B1 j=max (upper upstream top)
+            ( 7 11 27 23)   // B2 j=max (upper body top)
+            (11 15 31 27)   // B3 j=max (upper wake top)
+        );
+    }
+
+    bottom
+    {
+        type symmetryPlane;
+        faces
+        (
+            ( 0  4 20 16)   // B6 j=0  (lower upstream bottom)
+            ( 4  8 24 20)   // B5 j=0  (lower body bottom)
+            ( 8 12 28 24)   // B7 j=0  (lower wake bottom)
+        );
+    }
+
+    airfoil
+    {
+        type wall;
+        faces
+        (
+            ( 5  6 22 21)   // LE face       B0 i=max
+            ( 6 10 26 22)   // upper surface B2 j=0
+            ( 5  9 25 21)   // lower surface B5 j=max
+            ( 9 10 26 25)   // TE face       B4 i=0
+        );
+    }
+
+    frontAndBack
+    {
+        type empty;
+        faces
+        (
+            // front face (z = 0)
+            ( 1  5  6  2)   // B0
+            ( 2  6  7  3)   // B1
+            ( 6 10 11  7)   // B2
+            (10 14 15 11)   // B3
+            ( 9 13 14 10)   // B4
+            ( 4  8  9  5)   // B5
+            ( 0  4  5  1)   // B6
+            ( 8 12 13  9)   // B7
+            // back face (z = domain_z)
+            (17 21 22 18)
+            (18 22 23 19)
+            (22 26 27 23)
+            (26 30 31 27)
+            (25 29 30 26)
+            (20 24 25 21)
+            (16 20 21 17)
+            (24 28 29 25)
+        );
+    }
+);
+
+// ************************************************************************* //

@@ -1,0 +1,154 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1912                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Which snappy steps to run
+castellatedMesh true;
+snap            true;
+addLayers       {{ "true" if snappy_add_layers else "false" }};
+
+// ---------------------------------------------------------------------------
+// Geometry
+// ---------------------------------------------------------------------------
+geometry
+{
+    {{ stl_file }}
+    {
+        type triSurfaceMesh;
+        name {{ stl_name }};
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Castellated mesh controls
+// ---------------------------------------------------------------------------
+castellatedMeshControls
+{
+    maxLocalCells        100000;
+    maxGlobalCells       {{ snappy_max_cells }};
+    minRefinementCells   10;
+    maxLoadUnbalance     0.10;
+    nCellsBetweenLevels  3;
+
+    // Feature edge refinement
+    features
+    (
+        {
+            file  "{{ stl_name }}.eMesh";
+            level {{ snappy_feature_level }};
+        }
+    );
+
+    // Surface refinement
+    refinementSurfaces
+    {
+        {{ stl_name }}
+        {
+            level ( {{ snappy_refine_min }} {{ snappy_refine_max }} );
+            patchInfo
+            {
+                type wall;
+            }
+        }
+    }
+
+    resolveFeatureAngle 30;
+
+    refinementRegions
+    {
+        // Add volumetric refinement regions here if needed, e.g.:
+        // {{ stl_name }}
+        // {
+        //     mode inside;
+        //     levels ((1E15 {{ snappy_refine_max }}) );
+        // }
+    }
+
+    // Point in the mesh region to keep (must be in the fluid, outside the STL)
+    locationInMesh ( {{ loc_x }} {{ loc_y }} {{ loc_z }} );
+
+    allowFreeStandingZoneFaces true;
+}
+
+// ---------------------------------------------------------------------------
+// Snap controls
+// ---------------------------------------------------------------------------
+snapControls
+{
+    nSmoothPatch        3;
+    tolerance           4.0;
+    nSolveIter          30;
+    nRelaxIter          5;
+    nFeatureSnapIter    10;
+    implicitFeatureSnap false;
+    explicitFeatureSnap true;
+    multiRegionFeatureSnap false;
+}
+
+// ---------------------------------------------------------------------------
+// Layer addition controls
+// ---------------------------------------------------------------------------
+addLayersControls
+{
+    relativeSizes true;
+
+    layers
+    {
+        {{ stl_name }}
+        {
+            nSurfaceLayers {{ snappy_n_layers }};
+        }
+    }
+
+    expansionRatio            1.2;
+    finalLayerThickness       0.3;
+    minThickness              0.1;
+    nGrow                     0;
+
+    featureAngle              60;
+    slipFeatureAngle          30;
+    nRelaxIter                3;
+    nSmoothSurfaceNormals     1;
+    nSmoothNormals            3;
+    nSmoothThickness          10;
+    maxFaceThicknessRatio     0.5;
+    maxThicknessToMedialRatio 0.3;
+    minMedianAxisAngle        90;
+    nBufferCellsNoExtrude     0;
+    nLayerIter                50;
+    nRelaxedIter              20;
+}
+
+// ---------------------------------------------------------------------------
+// Mesh quality controls  (references meshQualityDict via #include)
+// ---------------------------------------------------------------------------
+meshQualityControls
+{
+    #include "meshQualityDict"
+
+    nSmoothScale   4;
+    errorReduction 0.75;
+}
+
+writeFlags
+(
+    scalarLevels
+    layerSets
+    layerFields
+);
+
+mergeTolerance 1e-6;
+
+// ************************************************************************* //
