@@ -43,10 +43,28 @@ def _set_run_length(case_dir: Path, end_time: float,
     cd.write_text(text)
 
 
+def _physical_cores() -> int:
+    """Physical CPU cores. Open MPI allows one process per physical core by default, so
+    using os.cpu_count() (hardware threads) fails on e.g. GitHub runners (2 cores, 4 threads)."""
+    try:
+        pairs, phys = set(), None
+        for line in Path("/proc/cpuinfo").read_text().splitlines():
+            key, _, value = line.partition(":")
+            if key.strip() == "physical id":
+                phys = value.strip()
+            elif key.strip() == "core id":
+                pairs.add((phys, value.strip()))
+        if pairs:
+            return len(pairs)
+    except OSError:
+        pass
+    return os.cpu_count() or 1
+
+
 def run_benchmark(b: Benchmark, work: Path) -> dict:
     case_dir = work / b.key
     shutil.rmtree(case_dir, ignore_errors=True)
-    cores = max(1, min(b.max_cores, os.cpu_count() or 1)) if shutil.which("mpirun") else 1
+    cores = max(1, min(b.max_cores, _physical_cores())) if shutil.which("mpirun") else 1
     analysis = {**b.analysis, "n_cores": cores}
     GENERATORS[b.solver]().generate(analysis, case_dir)
     _set_run_length(case_dir, b.end_time, b.sampling)
