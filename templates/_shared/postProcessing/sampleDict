@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1912                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      sampleDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Usage:  postProcess -func sample -time latest
+//         Results written to postProcessing/sample/<time>/
+//
+// Two sample sets are provided:
+//   centreline   — streamwise line at mid-height (y = domain_y/2)
+//   crossSection — wall-normal line at domain mid-length (x = domain_x/2)
+
+interpolationScheme cellPoint;
+
+setFormat   raw;
+
+sets
+(
+    centreline
+    {
+        type    uniform;
+        axis    x;
+        start   ( {{ sample_x_start }} {{ sample_y_mid }} {{ sample_z_mid }} );
+        end     ( {{ sample_x_end }}   {{ sample_y_mid }} {{ sample_z_mid }} );
+        nPoints {{ sample_n_x }};
+    }
+
+    crossSection
+    {
+        type    uniform;
+        axis    y;
+        start   ( {{ sample_x_mid }} {{ sample_y_start }} {{ sample_z_mid }} );
+        end     ( {{ sample_x_mid }} {{ sample_y_end }}   {{ sample_z_mid }} );
+        nPoints {{ sample_n_y }};
+    }
+);
+
+fields          ( {{ sample_fields | join(' ') }} );
+
+// ************************************************************************* //

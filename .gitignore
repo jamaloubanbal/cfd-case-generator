@@ -15,10 +15,11 @@ venv/
 .idea/
 .DS_Store
 
-# OpenFOAM run artefacts (if cases are run inside the repo)
-log.*
-processor*/
-postProcessing/
+# OpenFOAM run artefacts when a case is run in the repo root. Anchored with '/' so
+# they never match templates/ (templates/_shared/postProcessing/ must be tracked).
+/log.*
+/processor*/
+/postProcessing/
 
 # Cases generated inside the repo (e.g. cfdgen ... -o test/)
 /test/
