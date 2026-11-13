@@ -1,131 +1,204 @@
 # CFD Case Generator
 
-A Streamlit web application that translates natural-language CFD problem descriptions into complete, ready-to-run OpenFOAM case folders.  Supports two LLM backends: **Claude API** (cloud) and **Ollama** (local, free, no API key required).
+[![tests](../../actions/workflows/tests.yml/badge.svg)](../../actions/workflows/tests.yml)
 
-![Screenshot placeholder](docs/screenshot.png)
+Describe a fluid-dynamics problem in plain English and get a complete, **ready-to-run
+OpenFOAM case**: mesh, boundary conditions, fluid properties, turbulence model, numerical
+schemes, solver settings and run scripts.
+
+```
+"Steady airflow around a 2-D cylinder at Re = 200, freestream 1 m/s, air at standard conditions."
+        │
+        ▼
+simpleFoam case · 12-block O-grid around the cylinder · kOmegaSST · inlet/outlet/symmetry BCs
+→ unzip, ./Allrun
+```
+
+An LLM (Claude via the API, or a local model through Ollama) interprets the description;
+a deterministic, tested generator turns that interpretation into OpenFOAM files. Every
+supported solver × geometry combination is **run in OpenFOAM as part of the test suite**.
 
 ---
 
-## Supported Solvers
+## How it works
 
-| Solver | Use Case | Flow Type |
+```mermaid
+flowchart LR
+    A[Problem description] --> B[LLM analysis<br/>JSON-schema constrained]
+    B --> C[Sanitiser<br/>units, ranges, compatibility]
+    C --> D[Parameter editor<br/>+ physics checks]
+    D --> E[Case generator<br/>Jinja2 templates]
+    E --> F[case.zip<br/>./Allrun]
+```
+
+1. **Structured analysis.** The model must answer with an object matching
+   [`app/schema.py`](app/schema.py), enforced by structured outputs (`output_config.format`
+   for Claude, `format` for Ollama). The response is never free-form text that needs parsing.
+2. **Sanitising.** [`app/sanitize.py`](app/sanitize.py) checks what a schema cannot:
+   - viscosities in the wrong units, implausible temperatures or speeds
+   - solver/geometry combinations that cannot work
+   - geometry that does not fit in its domain
+
+   It repairs each problem and shows the user every correction.
+3. **Review.** The UI shows the analysis and runs physics checks: Reynolds and Mach regime,
+   y⁺ and wall treatment, CFL, and mesh resolution. Inlet speed, viscosity, turbulence model,
+   mesh resolution and core count can all be overridden.
+4. **Generation.** Solver-specific generators in [`app/generators/`](app/generators) compute
+   derived quantities, then render the templates in [`templates/`](templates). Derived
+   quantities include turbulence inlet values, wall-graded block meshes (growth rate capped at
+   1.2), time steps from wave or Courant limits, and the hierarchical decomposition for
+   parallel runs.
+
+## Supported cases
+
+Target: **OpenFOAM v1912** (ESI, openfoam.com), including the Debian/Ubuntu `openfoam` package.
+
+| Solver | Physics | Geometries |
 |---|---|---|
-| `simpleFoam` | Steady-state incompressible flow | Laminar or turbulent, single-phase |
-| `pimpleFoam` | Transient incompressible flow | Unsteady, single-phase (PIMPLE algorithm) |
-| `buoyantSimpleFoam` | Steady buoyancy-driven flow | Natural convection, heat transfer |
-| `interFoam` | Two-phase immiscible flow | Free-surface, VOF method |
+| `simpleFoam` | Steady incompressible | channel, T-junction, rectangular obstacle, backward-facing step, cylinder (O-grid), pipe (axisymmetric wedge), airfoil (C/H-grid), STL import (snappyHexMesh) |
+| `pimpleFoam` | Transient incompressible | same as simpleFoam |
+| `rhoSimpleFoam` | Steady compressible (Ma > 0.3) | same as simpleFoam |
+| `buoyantSimpleFoam` | Steady natural convection | differentially heated cavity |
+| `interFoam` | Two-phase free surface (VOF) | dam break |
+
+Turbulence models: `kEpsilon`, `kOmegaSST`, `SpalartAllmaras` (interFoam is laminar).
+
+### Verified in OpenFOAM
+
+`tests/test_openfoam_integration.py` generates each case below and runs its own `Allrun`
+script. It checks that `blockMesh` / `snappyHexMesh` succeed, `checkMesh` reports
+*Mesh OK*, no faces are left unassigned, and the solver runs and exits without NaNs.
+
+| | channel/cavity/dambreak | t_junction | rect. obstacle | backstep | cylinder | pipe | airfoil | STL |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| simpleFoam (3 turbulence models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| pimpleFoam (3 turbulence models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| rhoSimpleFoam (3 turbulence models) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| buoyantSimpleFoam (3 turbulence models) | ✅ | | | | | | | |
+| interFoam | ✅ | | | | | | | |
+| parallel run (decomposePar → mpirun → reconstructPar) | ✅ | | | | | | | |
+
+These are short smoke runs (30 iterations or 15 time steps). They show that a case meshes,
+starts and stays numerically stable. They are not a validation of converged results against
+reference data.
 
 ---
 
-## Setup
-
-### 1. Install dependencies
+## Quick start
 
 ```bash
+git clone <this repo> && cd cfd-case-generator
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+streamlit run app/main.py            # opens http://localhost:8501
 ```
 
-### 2a. Claude API backend (optional — cloud)
+### LLM backend
 
-Get an API key at [console.anthropic.com](https://console.anthropic.com) and either:
+**Claude (recommended).** Get an API key at [console.anthropic.com](https://console.anthropic.com),
+then either `export ANTHROPIC_API_KEY=sk-ant-...` or paste it in the sidebar. The default
+model is `claude-opus-5-5`. Pick another in the sidebar, or set `CFD_CLAUDE_MODEL`.
+If the default model declines a request, it is retried server-side on a fallback model.
+
+**Ollama (local, free).** Install [Ollama](https://ollama.com) ≥ 0.5, then run
+`ollama pull mistral` and `ollama serve`, and select *Ollama* in the sidebar. Models of 7B
+parameters or more give noticeably better analyses. `llama3`, `qwen2.5` and `phi4` work well.
+
+### Running a generated case
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."   # pre-set in environment
+source /usr/share/openfoam/etc/bashrc     # or your OpenFOAM installation's etc/bashrc
+unzip simpleFoam_case.zip && cd simpleFoam
+./Allrun                                  # writes log.blockMesh, log.simpleFoam, …
+paraview case.foam                        # after: touch case.foam
+./Allclean
 ```
 
-…or paste it directly into the sidebar when the app is running.
+Paste `log.<solver>` into the app's **Convergence Monitor** to plot the residuals.
 
-### 2b. Ollama backend (optional — local, free)
+### Example descriptions
 
-#### Ollama setup
+```
+Steady-state airflow around a 2D cylinder at Re=200 with a freestream velocity of 1 m/s.
+The fluid is air at standard conditions. Domain 20 diameters long and 10 wide.
+```
+```
+Unsteady incompressible flow past a bluff body at Re=1000. Water at 0.5 m/s.
+I need to capture vortex shedding.
+```
+```
+Natural convection in a square cavity with the hot left wall at 350 K and the cold
+right wall at 300 K. The fluid is air. Steady state.
+```
+```
+Transonic flow over a NACA 0012 airfoil at Mach 0.8, chord 1 m, 300 K, 1 atm.
+```
+```
+Dam-break: water column 0.3 m high and 0.1 m wide collapsing into a dry 1 m basin.
+```
 
-1. Install Ollama from https://ollama.com
-2. Pull a model:
-   ```bash
-   ollama pull mistral
-   ```
-3. Start the server:
-   ```bash
-   ollama serve
-   ```
-4. Start the app normally and select **Ollama** in the sidebar.
+---
 
-Other models that work well: `llama3`, `qwen2.5`, `phi4`.
-
-### 3. Run the app
+## Testing
 
 ```bash
-streamlit run app/main.py
+pip install -r requirements-dev.txt
+pytest -m "not openfoam"                  # unit, regression and headless UI tests (~20 s)
+
+source /usr/share/openfoam/etc/bashrc
+pytest -m openfoam -v                     # run every generated case in OpenFOAM (~2–3 min)
 ```
 
-The app will open at `http://localhost:8501`.
+| Suite | What it covers |
+|---|---|
+| `test_generators.py` | File trees, template rendering, grading maths, every geometry |
+| `test_regressions.py` | One test per OpenFOAM bug found by the end-to-end runs; works without OpenFOAM |
+| `test_sanitize.py` | Repairing implausible or inconsistent LLM output |
+| `test_llm.py` | Structured-output requests, fallbacks, refusals, Ollama (all mocked) |
+| `test_ui.py` | Streamlit app driven headlessly: analyse → edit → generate → zip |
+| `test_openfoam_integration.py` | 33 generated cases meshed and run in OpenFOAM |
 
----
+CI ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)) runs the unit suite on
+Python 3.10 and 3.12, and the OpenFOAM suite on Ubuntu with the distribution's `openfoam` package.
 
-## Example Input Descriptions
-
-**simpleFoam — external aerodynamics:**
-```
-Steady-state airflow around a 2D cylinder at Re=200 with a freestream velocity
-of 1 m/s. The fluid is air at standard conditions. I want to use a channel-type
-domain, 20 diameters long and 10 diameters wide.
-```
-
-**pimpleFoam — transient vortex shedding:**
-```
-Unsteady incompressible flow past a bluff body at Re=1000. Freestream is water
-at 0.5 m/s. I need to capture vortex shedding so I need a transient solver.
-Domain is 30 chord lengths long, 15 wide.
-```
-
-**buoyantSimpleFoam — natural convection:**
-```
-Natural convection in a square cavity with hot left wall at 350 K and cold
-right wall at 300 K. The fluid is air. Ra=1e6. Steady state solution needed.
-```
-
-**interFoam — dam break / free surface:**
-```
-Dam-break simulation with water column 0.3 m high and 0.1 m wide releasing
-into a dry basin 1.0 m long. Gravity-driven two-phase (water/air) flow.
-```
-
----
-
-## Project Structure
+## Project structure
 
 ```
-cfd-case-generator/
-├── app/
-│   ├── main.py              # Streamlit entry point
-│   ├── llm.py               # Claude + Ollama backends, unified router
-│   ├── utils.py             # Zip helpers, file writing
-│   └── generators/
-│       ├── base.py          # Abstract base class
-│       ├── simple_foam.py
-│       ├── pimple_foam.py
-│       ├── buoyant_simple_foam.py
-│       └── inter_foam.py
-├── templates/               # Reference OpenFOAM files (Jinja2 templates)
-│   ├── simpleFoam/
-│   ├── pimpleFoam/
-│   ├── buoyantSimpleFoam/
-│   └── interFoam/
-├── tests/
-│   └── test_generators.py
-├── requirements.txt
-└── README.md
+app/
+├── main.py                 # Streamlit entry point (composes app/ui/*)
+├── ui/                     # sidebar, problem input, analysis view, parameter editor,
+│                           # physics checks, case output, convergence monitor
+├── llm.py                  # Claude + Ollama backends (structured outputs)
+├── schema.py               # JSON schema the LLM must follow
+├── sanitize.py             # unit / range / compatibility repair of the analysis
+├── editor.py               # parameter-editor overrides → analysis
+├── validation.py           # physics checks (Re, Ma, y+, CFL, resolution)
+├── generators/             # one generator per solver + shared base (meshing maths)
+├── log_parser.py           # residual extraction from solver logs
+├── stl_parser.py           # STL bounding box for snappyHexMesh background meshes
+└── geometry_sketches.py    # ASCII sketches shown in the sidebar
+templates/
+├── <solver>/               # 0/, constant/, system/ Jinja2 templates per solver
+├── geometries/<name>/      # blockMeshDict per geometry
+├── _macros/                # boundary-condition macros shared by all field files
+└── _shared/                # Allrun/Allclean, decomposeParDict, snappyHexMesh, sampling
+tests/
 ```
 
----
+## Known limitations
 
-## Known Limitations
+- **OpenFOAM flavour.** Templates target ESI OpenFOAM (v1912+). OpenFOAM.org (v10+ uses
+  `physicalProperties`, different solver names) is not supported.
+- **Results are a starting point.** Meshes are coarse 2-D (one cell thick) or axisymmetric.
+  For production use, check mesh independence and y⁺, and validate against reference data.
+- **Turbulence modelling.** RANS only (`kEpsilon`, `kOmegaSST`, `SpalartAllmaras`) with
+  wall functions; no LES/DES and no low-Re wall resolution.
+- **Boundary conditions.** Uniform inflow, zero-gradient / fixed-pressure outlets and
+  no-slip walls. Turbulent inflow profiles and mapped BCs are not generated.
+- **Airfoil geometry.** The airfoil is a rectangular-section body of the requested chord and
+  thickness, not a true NACA profile. Upload an STL for an exact shape.
+- **Radiation** is off in `buoyantSimpleFoam` (`radiationProperties` → `none`).
 
-- **Mesh generation:** The generated `blockMeshDict` is a simple parametric box/channel. Complex geometries (e.g., cylinders, airfoils) require additional meshing steps with `snappyHexMesh` or external tools.
-- **Turbulence models:** Only the `kEpsilon` and `kOmegaSST` RAS models are supported in the templates. LES configurations are not generated.
-- **2D cases:** The tool generates 3D cases with one cell in the span-wise direction. True 2D wedge geometries are not automated.
-- **Solver version:** Templates target OpenFOAM v1912+ (ESI/openfoam.com) using `transportProperties` and `thermophysicalProperties`. OpenFOAM.org v10+ (which uses `physicalProperties` instead) is not directly supported.
-- **Boundary conditions:** Complex inlet profiles (e.g., turbulent inflow, mapped BCs) are not generated — only uniform fixedValue / zeroGradient / noSlip.
-- **Radiation:** `buoyantSimpleFoam` radiation is set to `none` by default; activate manually if needed.
-- **Claude API key:** Required only for the Claude backend.  The Ollama backend works without any API key.
-- **Ollama quality:** Local models (especially smaller ones) may produce less precise JSON than Claude.  If parsing fails the app retries up to 3 times automatically.  Larger models (≥7B parameters) give better results.
+## License
+
+[MIT](LICENSE)

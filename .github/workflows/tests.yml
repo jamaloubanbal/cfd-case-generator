@@ -1,0 +1,43 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    name: Unit & UI tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -m "not openfoam" -q
+
+  openfoam:
+    name: OpenFOAM end-to-end
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install OpenFOAM (Ubuntu package)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openfoam openmpi-bin
+      - run: pip install -r requirements-dev.txt
+      - name: Run generated cases in OpenFOAM
+        shell: bash
+        run: |
+          source /usr/share/openfoam/etc/bashrc || true
+          # Fail instead of silently skipping every test if the environment is missing
+          test -n "$WM_PROJECT_DIR" && command -v blockMesh
+          pytest -m openfoam -v
