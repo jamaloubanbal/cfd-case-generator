@@ -85,6 +85,31 @@ source /usr/share/openfoam/etc/bashrc
 python -m validation.run          # ≈ 12 min on 6 cores; writes docs/validation/
 ```
 
+## LLM evaluation
+
+How often does a model turn a description into the *right* CFD setup? [`evals/`](evals) scores
+answers on 20 descriptions with known answers: solver, geometry, laminar vs RANS, steady vs
+transient, the Reynolds number actually simulated (U·L/ν within 15 %) and the fluid. Each
+answer is scored raw and after the sanitiser, i.e. what the app actually generates. Full
+results: [`docs/evaluation/results.md`](docs/evaluation/results.md).
+
+| Model (local, via Ollama) | Fully correct: raw answer | Fully correct: after sanitiser |
+|---|---:|---:|
+| `qwen2.5:7b` | 30 % | **80 %** |
+| `mistral` (7B) | 45 % | **70 %** |
+| `llama3.1:8b` | 30 % | **60 %** |
+
+The evaluation exposed systematic mistakes that the sanitiser now repairs. Models chose laminar
+flow at Re = 13 million, turbulence models at Re = 40, an incompressible solver at Mach 0.73,
+and a velocity of 0.82 m/s for "Mach 0.8". It also showed the sanitiser itself breaking correct
+geometries when the solver was wrong; that is fixed too. These cases also served to develop
+those rules, so the "after" numbers are optimistic (see the report's notes).
+
+```bash
+python -m evals.run --backend ollama --model qwen2.5:7b          # or --backend gemini …
+python -m evals.run --report                                      # re-score cached answers
+```
+
 ---
 
 ## How it works

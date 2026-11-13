@@ -187,6 +187,10 @@ def sanitize_analysis(analysis: Any, description: str | None = None) -> tuple[di
     # ── Inlet velocities must point into the domain ──────────────────────────
     _fix_inlet_directions(a, notes)
 
+    # ── Mach number: a stated Mach sets the velocity; Ma > 0.3 needs a compressible solver
+    if not is_liquid:
+        solver = _consistent_mach(a, solver, description, notes)
+
     # ── Reynolds number: consistent with U·L/ν and with the user's request ───
     a["Re"] = _consistent_reynolds(a, solver, char_len, nu, description, notes)
 
@@ -244,6 +248,48 @@ _RE_PATTERN = re.compile(
     r"(?:\s*(?P<word>million|thousand|billion|[kKM])\b)?"            # 2 million, 50k
 )
 _WORDS = {"thousand": 1e3, "k": 1e3, "K": 1e3, "million": 1e6, "M": 1e6, "billion": 1e9}
+
+
+_MACH_PATTERN = re.compile(r"\b(?:Mach|Ma)(?:\s+number)?\s*(?:=|≈|~|:|of|is|at)?\s*(\d+(?:\.\d+)?)")
+_COMPRESSIBLE_ABOVE = 0.3
+
+
+def stated_mach(description: str | None) -> float | None:
+    """Mach number written in the description ("Mach 0.8", "Ma = 0.5")."""
+    m = _MACH_PATTERN.search(description or "")
+    value = _to_float(m.group(1)) if m else None
+    return value if value and 0 < value < 10 else None
+
+
+def _consistent_mach(a: dict, solver: str, description: str | None, notes: list[str]) -> str:
+    """Gas flows only.  Returns the (possibly changed) solver.
+
+    * A Mach number stated in the description sets the inlet speed (models wrote e.g.
+      0.82 m/s or 600 m/s for "Mach 0.8").
+    * A steady incompressible solver above Ma ≈ 0.3 is replaced by rhoSimpleFoam.
+    """
+    T = _to_float(a.get("T_ref")) or 300.0
+    a_sound = math.sqrt(1.4 * 287.0 * T)
+    speed = _first_inlet_speed(a["boundary_conditions"])
+    ma_user = stated_mach(description)
+    if ma_user and speed > 0 and abs(speed / a_sound / ma_user - 1) > _RE_TOLERANCE:
+        scale = ma_user * a_sound / speed
+        for bc in a["boundary_conditions"]:
+            if "inlet" in bc["patch_name"].lower() and bc["values"].get("U"):
+                bc["values"]["U"] = [c * scale for c in bc["values"]["U"]]
+        notes.append(f"The description asks for Mach {ma_user:g} but the inlet speed {speed:.4g} m/s is "
+                     f"Mach {speed / a_sound:.3g} at {T:g} K — inlet speed set to {ma_user * a_sound:.4g} m/s.")
+        speed = ma_user * a_sound
+        a["characteristic_velocity"] = speed
+    mach = speed / a_sound if speed > 0 else 0.0
+    if mach > _COMPRESSIBLE_ABOVE and solver == "simpleFoam":
+        notes.append(f"Ma = {mach:.2f} > {_COMPRESSIBLE_ABOVE}: density changes matter, so the compressible "
+                     "rhoSimpleFoam is used instead of simpleFoam.")
+        solver = a["solver"] = "rhoSimpleFoam"
+    elif mach > _COMPRESSIBLE_ABOVE and solver == "pimpleFoam":
+        notes.append(f"Ma = {mach:.2f} > {_COMPRESSIBLE_ABOVE} with an incompressible transient solver: "
+                     "results will be inaccurate (no transient compressible solver is available).")
+    return solver
 
 
 def stated_reynolds(description: str | None) -> float | None:

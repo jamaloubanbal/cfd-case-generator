@@ -186,6 +186,16 @@ def report(out_dir: Path) -> str:
                 wrong = [f for f, ok in r["sanitised"].items() if not ok]
                 cells.append("✅" if not wrong else "❌ " + ", ".join(wrong))
         lines.append(f"| {case['id']} | " + " | ".join(cells) + " |")
+    lines += ["", "## Notes", "",
+              "- These 20 cases were also used to find weaknesses in the sanitiser (solver/geometry "
+              "conflicts, laminar vs RANS by Reynolds number, Mach > 0.3 needs a compressible solver, "
+              "a stated Mach number sets the velocity). The rules are general physics, not tuned to "
+              "particular sentences, but the *after sanitiser* numbers are measured on the same cases; "
+              "a fresh set of descriptions would give an unbiased estimate.",
+              "- Not fixed on purpose: all local models misread the dam-break description (they used "
+              "gravity, 9.81, as an inlet velocity). Catching that would need keyword rules fitted to "
+              "these test sentences, which would inflate the score without improving the app.",
+              "- Local models ran on a laptop GPU (GTX 1650 Ti); cloud models are much faster."]
     text = "\n".join(lines) + "\n"
 
     out_dir.mkdir(parents=True, exist_ok=True)
