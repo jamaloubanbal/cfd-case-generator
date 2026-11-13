@@ -99,6 +99,7 @@ def render_problem_input() -> None:
 
 def _run_analysis(description: str) -> None:
     has_stl = bool(st.session_state.get("stl_bytes"))
+    error = None
     with st.spinner("Analysing your CFD problem..."):
         try:
             raw = analyze_cfd_problem(
@@ -111,14 +112,16 @@ def _run_analysis(description: str) -> None:
             )
             analysis, notes = sanitize_analysis(raw, description)
         except AnalysisError as exc:
-            st.error(f"**The analysis could not be used:** {exc}")
-            st.stop()
+            error = f"**The analysis could not be used:** {exc}"
         except RuntimeError as exc:
-            st.error(f"**API error:** {exc}")
-            st.stop()
+            error = f"**API error:** {exc}"
         except ValueError as exc:
-            st.error(f"**Parsing error:** {exc}")
-            st.stop()
+            error = f"**Parsing error:** {exc}"
+    # Report after the spinner has closed (st.stop() inside it left the spinner on screen)
+    if error:
+        st.error(error.replace("(--model)", "(Model field in the sidebar)")
+                      .replace("--model, the sidebar, ", "the Model field in the sidebar, "))
+        st.stop()
 
     if has_stl:
         analysis["geometry_type"] = "stl_import"

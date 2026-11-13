@@ -1,0 +1,140 @@
+{
+  "poiseuille_channel": {
+    "title": "Plane Poiseuille flow (laminar channel)",
+    "description": "Laminar flow of a fluid with \u03bd = 1e-5 m\u00b2/s between two parallel plates 0.1 m apart, 2 m long, mean velocity 0.01 m/s (Re = 100).",
+    "reference": "Analytical: u(y) = 6\u00b7U\u00b7(y/H)(1 \u2212 y/H), dp/dx = \u221212 \u03bd U / H\u00b2",
+    "solver": "simpleFoam",
+    "cells": 8000,
+    "elapsed_s": 1.9,
+    "converged_iterations": 197,
+    "notes": "",
+    "metrics": [
+      {
+        "name": "Centreline velocity u_max / U_mean",
+        "value": 1.4978411,
+        "reference": 1.5,
+        "error": -0.0014392666666666425,
+        "tolerance": 0.01,
+        "passed": true,
+        "source": "analytical (plane Poiseuille)"
+      },
+      {
+        "name": "Pressure gradient dp/dx",
+        "value": -0.00011990066659634316,
+        "reference": -0.00011999999999999999,
+        "error": -0.0008277783638069043,
+        "tolerance": 0.02,
+        "passed": true,
+        "source": "analytical (plane Poiseuille)"
+      },
+      {
+        "name": "Profile: 1 + max deviation from exact / u_max",
+        "value": 1.0008274666666666,
+        "reference": 1.0,
+        "error": 0.0008274666666665542,
+        "tolerance": 0.01,
+        "passed": true,
+        "source": "analytical (plane Poiseuille)"
+      }
+    ]
+  },
+  "poiseuille_pipe": {
+    "title": "Hagen\u2013Poiseuille flow (laminar pipe, axisymmetric)",
+    "description": "Laminar flow in a circular pipe of radius 5 cm and length 2 m, mean velocity 0.01 m/s, \u03bd = 1e-5 m\u00b2/s (Re_D = 100).",
+    "reference": "Analytical: u(r) = 2\u00b7U\u00b7(1 \u2212 r\u00b2/R\u00b2), dp/dx = \u22128 \u03bd U / R\u00b2",
+    "solver": "simpleFoam",
+    "cells": 9000,
+    "elapsed_s": 54.5,
+    "converged_iterations": null,
+    "notes": "",
+    "metrics": [
+      {
+        "name": "Centreline velocity u_max / U_mean",
+        "value": 1.9968769,
+        "reference": 2.0,
+        "error": -0.0015615500000000226,
+        "tolerance": 0.01,
+        "passed": true,
+        "source": "analytical (Hagen\u2013Poiseuille)"
+      },
+      {
+        "name": "Pressure gradient dp/dx",
+        "value": -0.00032048442922592493,
+        "reference": -0.00031999999999999997,
+        "error": 0.0015138413310155066,
+        "tolerance": 0.02,
+        "passed": true,
+        "source": "analytical (Hagen\u2013Poiseuille)"
+      },
+      {
+        "name": "Profile: 1 + max deviation from exact / u_max",
+        "value": 1.0017683124470844,
+        "reference": 1.0,
+        "error": 0.0017683124470844191,
+        "tolerance": 0.015,
+        "passed": true,
+        "source": "analytical (Hagen\u2013Poiseuille)"
+      }
+    ]
+  },
+  "cavity_ra1e5": {
+    "title": "Natural convection in a square cavity, Ra = 10\u2075",
+    "description": "Natural convection of air in a square cavity of side 4.59 cm, hot left wall at 305 K, cold right wall at 295 K, adiabatic top and bottom (Ra = 1e5). Steady state, laminar.",
+    "reference": "de Vahl Davis, Int. J. Numer. Meth. Fluids 3 (1983) 249\u2013264",
+    "solver": "buoyantSimpleFoam",
+    "cells": 10000,
+    "elapsed_s": 59.8,
+    "converged_iterations": 8936,
+    "notes": "Compressible perfect-gas solver with \u0394T = 10 K (\u2248 Boussinesq); uniform 100 \u00d7 100 mesh; the reference is a Boussinesq solution at Pr = 0.71 (case: Pr = 0.713).",
+    "metrics": [
+      {
+        "name": "Average Nusselt number (hot wall)",
+        "value": 4.505591082628882,
+        "reference": 4.519,
+        "error": -0.0029672311066868385,
+        "tolerance": 0.03,
+        "passed": true,
+        "source": "de Vahl Davis (1983)"
+      },
+      {
+        "name": "Max u on vertical centreline \u00b7 L/\u03b1",
+        "value": 34.844736075056936,
+        "reference": 34.73,
+        "error": 0.003303658942036829,
+        "tolerance": 0.05,
+        "passed": true,
+        "source": "de Vahl Davis (1983)"
+      },
+      {
+        "name": "Max v on horizontal centreline \u00b7 L/\u03b1",
+        "value": 68.56872804734192,
+        "reference": 68.59,
+        "error": -0.00031013198218519727,
+        "tolerance": 0.05,
+        "passed": true,
+        "source": "de Vahl Davis (1983)"
+      }
+    ]
+  },
+  "cylinder_re100": {
+    "title": "Vortex shedding behind a circular cylinder, Re = 100",
+    "description": "Laminar flow past a 2-D circular cylinder at Re = 100 (D = 1 m, U = 1 m/s, \u03bd = 0.01 m\u00b2/s), in a domain 30 D long and 20 D high with the cylinder 10 D from the inlet. Transient; measure the vortex-shedding frequency.",
+    "reference": "Williamson, Annu. Rev. Fluid Mech. 28 (1996): St = 0.2665 \u2212 1.018/\u221aRe",
+    "solver": "pimpleFoam",
+    "cells": 20588,
+    "elapsed_s": 402.8,
+    "converged_iterations": null,
+    "notes": "Symmetry planes 10 D above and below the cylinder (5 % blockage) raise St slightly compared with an unbounded flow. The period is measured from zero crossings of u_y at a probe 2 D behind the cylinder.",
+    "metrics": [
+      {
+        "name": "Strouhal number St = fD/U (7 periods)",
+        "value": 0.16704579321494273,
+        "reference": 0.1647,
+        "error": 0.014242824620174347,
+        "tolerance": 0.05,
+        "passed": true,
+        "source": "Williamson (1996)"
+      }
+    ]
+  }
+}
