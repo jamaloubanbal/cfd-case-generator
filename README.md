@@ -35,6 +35,18 @@ data** as part of the test suite.
   analytical solutions and published data, from laminar profiles to heat transfer and
   unsteady vortex shedding (all within 1.5 %, see below).
 
+## The web app
+
+<p align="center"><img src="docs/screenshots/ui_analysis.png" alt="Web app: problem description and the model's analysis" width="900"></p>
+
+<details>
+<summary><b>More screenshots</b>: boundary conditions and automatic corrections, physics checks</summary>
+<p align="center">
+  <img src="docs/screenshots/ui_corrections.png" alt="Boundary conditions, automatic corrections and the model's assumptions" width="900"><br><br>
+  <img src="docs/screenshots/ui_checks.png" alt="Physics checks and case generation" width="900">
+</p>
+</details>
+
 ## Gallery
 
 Each image comes from a case produced by the generator from the input below, run with its
