@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 
@@ -418,9 +419,13 @@ def _model_not_found(backend: str, model: str, key: str | None, url: str, label:
     var = OPENAI_COMPATIBLE_PROVIDERS[backend]["key_env"].replace("API_KEY", "MODEL")
     msg = f"{label}: model {model!r} is not available."
     if available:
-        preferred = [m for m in available if any(w in m for w in ("flash", "versatile", "instant", ":free"))]
-        shown = (preferred or available)[:12]
-        msg += " Available models include: " + ", ".join(shown)
+        # Text models only, newest first (names sort by version when compared as number lists)
+        skip = ("image", "audio", "tts", "embed", "vision", "whisper", "guard", "veo", "imagen")
+        text = [m for m in available if not any(s in m for s in skip)] or available
+        def version(m: str) -> list[float]:
+            return [float(x) for x in re.findall(r"\d+(?:\.\d+)?", m)] or [0.0]
+        text.sort(key=version, reverse=True)
+        msg += " Available text models (newest first): " + ", ".join(text[:12])
     return RuntimeError(msg + f". Choose one with --model, the sidebar, or the {var} variable.")
 
 
