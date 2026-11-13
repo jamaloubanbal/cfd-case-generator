@@ -74,6 +74,7 @@ def _render_explanation(working: dict) -> None:
                         backend=st.session_state.get("backend", "claude"),
                         model=st.session_state.get("model"),
                         api_key=st.session_state.get("api_key"),
+                        base_url=st.session_state.get("base_url"),
                         ollama_timeout=st.session_state.get("ollama_timeout", 120),
                     )
                 except Exception as exc:

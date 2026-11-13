@@ -287,8 +287,137 @@ def list_ollama_models(base_url: str = _OLLAMA_BASE_URL) -> list[str]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# OpenAI-compatible backends (Gemini, Groq, OpenRouter, LM Studio, …)
+# ─────────────────────────────────────────────────────────────────────────────
+
+#: Providers that speak the OpenAI chat-completions protocol.  Default models are
+#: suggestions that had free tiers at the time of writing — providers rename models
+#: often, so override with --model / the sidebar, or the <PROVIDER>_MODEL env var.
+OPENAI_COMPATIBLE_PROVIDERS: dict[str, dict] = {
+    "gemini": {
+        "label": "Google Gemini (free tier)",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "key_env": "GEMINI_API_KEY",
+        "model": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+        "key_url": "https://aistudio.google.com/apikey",
+    },
+    "groq": {
+        "label": "Groq (free tier)",
+        "base_url": "https://api.groq.com/openai/v1",
+        "key_env": "GROQ_API_KEY",
+        "model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+        "key_url": "https://console.groq.com/keys",
+    },
+    "openrouter": {
+        "label": "OpenRouter",
+        "base_url": "https://openrouter.ai/api/v1",
+        "key_env": "OPENROUTER_API_KEY",
+        "model": os.environ.get("OPENROUTER_MODEL", ""),   # pick one ending in ":free"
+        "key_url": "https://openrouter.ai/keys",
+    },
+    "openai-compatible": {
+        "label": "Other OpenAI-compatible server",
+        "base_url": os.environ.get("OPENAI_COMPAT_BASE_URL", "http://localhost:1234/v1"),  # LM Studio
+        "key_env": "OPENAI_COMPAT_API_KEY",
+        "model": os.environ.get("OPENAI_COMPAT_MODEL", ""),
+        "key_url": None,
+    },
+}
+
+
+def _compat_settings(backend: str, model: str | None, api_key: str | None,
+                     base_url: str | None) -> tuple[str, str, str | None, str]:
+    p = OPENAI_COMPATIBLE_PROVIDERS[backend]
+    key = api_key or os.environ.get(p["key_env"])
+    if not key and backend != "openai-compatible":        # local servers often need no key
+        hint = f" Get a free key at {p['key_url']}" if p["key_url"] else ""
+        raise RuntimeError(f"No API key for {p['label']}: set {p['key_env']} or enter it in the sidebar.{hint}")
+    chosen = model or p["model"]
+    if not chosen:
+        raise RuntimeError(f"Choose a model for {p['label']} (--model, or {p['key_env'].replace('API_KEY', 'MODEL')}).")
+    return (base_url or p["base_url"]).rstrip("/"), chosen, key, p["label"]
+
+
+def _compat_chat(backend: str, base_url: str, model: str, api_key: str | None,
+                 system: str, user: str, response_format: dict | None, timeout: int) -> str:
+    """One chat-completions call; returns the message text.  Raises requests.HTTPError on 4xx/5xx."""
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    body = {"model": model, "temperature": 0,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    if response_format:
+        body["response_format"] = response_format
+    resp = requests.post(f"{base_url}/chat/completions", json=body, headers=headers, timeout=timeout)
+    resp.raise_for_status()
+    choice = resp.json()["choices"][0]
+    if choice.get("finish_reason") == "length":
+        raise RuntimeError(f"{model}'s response was cut off. Try a shorter description.")
+    return choice["message"].get("content") or ""
+
+
+def _compat_error(exc: Exception, label: str) -> RuntimeError:
+    if isinstance(exc, requests.exceptions.HTTPError) and exc.response is not None:
+        code = exc.response.status_code
+        detail = exc.response.text[:300]
+        if code in (401, 403):
+            return RuntimeError(f"{label} rejected the API key ({code}). Check the key. {detail}")
+        if code == 429:
+            return RuntimeError(f"{label} rate limit reached (429) — free tiers allow a limited number "
+                                f"of requests per minute/day. Wait and retry. {detail}")
+        if code == 404:
+            return RuntimeError(f"{label}: model or endpoint not found (404) — check the model name. {detail}")
+        return RuntimeError(f"{label} HTTP error {code}: {detail}")
+    if isinstance(exc, requests.exceptions.ConnectionError):
+        return RuntimeError(f"Cannot reach {label}. Check the URL / your connection.")
+    if isinstance(exc, requests.exceptions.Timeout):
+        return RuntimeError(f"{label} did not answer in time.")
+    return RuntimeError(f"{label} error: {exc}")
+
+
+def _analyze_compat(user_description: str, backend: str, model: str | None, api_key: str | None,
+                    base_url: str | None, timeout: int = 180) -> dict:
+    """Analyse via an OpenAI-compatible API.
+
+    Providers differ in how much of structured output they support, so this tries, in
+    order: a strict JSON schema; JSON mode with the schema in the prompt; plain text with
+    the schema in the prompt.  A 400 response moves to the next mode.
+    """
+    url, model, key, label = _compat_settings(backend, model, api_key, base_url)
+    schema_prompt = (f"{_SYSTEM_PROMPT}\nReturn ONLY a JSON object that matches this JSON schema "
+                     f"(no markdown, no extra text):\n{json.dumps(ANALYSIS_SCHEMA)}")
+    modes = [
+        (_SYSTEM_PROMPT, {"type": "json_schema",
+                          "json_schema": {"name": "cfd_analysis", "schema": ANALYSIS_SCHEMA, "strict": True}}),
+        (schema_prompt, {"type": "json_object"}),
+        (schema_prompt, None),
+    ]
+    last_error: Exception | None = None
+    for system, fmt in modes:
+        for _attempt in range(2):                          # one retry on invalid JSON
+            try:
+                return _extract_json(_compat_chat(backend, url, model, key, system,
+                                                  user_description, fmt, timeout))
+            except json.JSONDecodeError as exc:
+                last_error = exc
+            except requests.exceptions.HTTPError as exc:
+                if exc.response is not None and exc.response.status_code == 400:
+                    last_error = exc
+                    break                                  # mode not supported → next mode
+                raise _compat_error(exc, label) from exc
+            except requests.exceptions.RequestException as exc:
+                raise _compat_error(exc, label) from exc
+    if isinstance(last_error, requests.exceptions.HTTPError):
+        raise _compat_error(last_error, label) from last_error
+    raise ValueError(f"{label} ({model}) did not return valid JSON: {last_error}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Unified public entry point
 # ─────────────────────────────────────────────────────────────────────────────
+
+BACKENDS = ("claude", "ollama", *OPENAI_COMPATIBLE_PROVIDERS)
+
 
 def analyze_cfd_problem(
     user_description: str,
@@ -296,6 +425,7 @@ def analyze_cfd_problem(
     model: str | None = None,
     api_key: str | None = None,
     ollama_timeout: int = 300,
+    base_url: str | None = None,
 ) -> dict:
     """
     Analyse a CFD problem using the chosen LLM backend.
@@ -305,14 +435,17 @@ def analyze_cfd_problem(
     user_description : str
         Free-text description of the CFD problem.
     backend : str
-        ``"claude"`` (default) or ``"ollama"``.
+        ``"claude"`` (default), ``"ollama"``, or an OpenAI-compatible provider:
+        ``"gemini"``, ``"groq"``, ``"openrouter"``, ``"openai-compatible"``.
     model : str | None
         Model identifier.  Defaults to :data:`DEFAULT_CLAUDE_MODEL` for Claude
         and :data:`DEFAULT_OLLAMA_MODEL` for Ollama.
     api_key : str | None
-        Anthropic API key (Claude backend only); falls back to ANTHROPIC_API_KEY.
+        API key; falls back to ANTHROPIC_API_KEY / GEMINI_API_KEY / GROQ_API_KEY / ….
     ollama_timeout : int
         HTTP timeout in seconds for Ollama requests.
+    base_url : str | None
+        Override the endpoint of an OpenAI-compatible provider.
 
     Returns
     -------
@@ -331,7 +464,9 @@ def analyze_cfd_problem(
         return _analyze_claude(user_description, model or DEFAULT_CLAUDE_MODEL, api_key)
     if backend == "ollama":
         return analyze_cfd_problem_ollama(user_description, model or DEFAULT_OLLAMA_MODEL, timeout=ollama_timeout)
-    raise ValueError(f"Unknown backend {backend!r}. Choose 'claude' or 'ollama'.")
+    if backend in OPENAI_COMPATIBLE_PROVIDERS:
+        return _analyze_compat(user_description, backend, model, api_key, base_url)
+    raise ValueError(f"Unknown backend {backend!r}. Choose one of: {', '.join(BACKENDS)}.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -409,6 +544,7 @@ def explain_case(
     api_key: str | None = None,
     ollama_base_url: str = _OLLAMA_BASE_URL,
     ollama_timeout: int = 120,
+    base_url: str | None = None,
 ) -> str:
     """
     Generate a plain-English "What to expect" explanation for the CFD case.
@@ -428,4 +564,11 @@ def explain_case(
     if backend == "ollama":
         return _explain_ollama(analysis, user_description, model or DEFAULT_OLLAMA_MODEL,
                                ollama_base_url, ollama_timeout)
+    if backend in OPENAI_COMPATIBLE_PROVIDERS:
+        url, chosen, key, label = _compat_settings(backend, model, api_key, base_url)
+        try:
+            return _compat_chat(backend, url, chosen, key, _EXPLAIN_SYSTEM,
+                                _explain_user_message(analysis, user_description), None, 180).strip()
+        except requests.exceptions.RequestException as exc:
+            raise _compat_error(exc, label) from exc
     raise ValueError(f"Unknown backend {backend!r}.")

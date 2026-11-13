@@ -1,8 +1,10 @@
 """
 Command-line interface.
 
-    # From a plain-English description (uses the LLM; needs ANTHROPIC_API_KEY or Ollama)
+    # From a plain-English description (uses an LLM)
     python -m app.cli describe "Laminar flow past a 2-D cylinder at Re = 100" -o cylinder/ --run
+    python -m app.cli describe "…" -o case/ --backend gemini      # free tier, GEMINI_API_KEY
+    python -m app.cli describe "…" -o case/ --backend ollama      # local, no key
 
     # From an analysis JSON (no LLM needed) — e.g. one of examples/*.json
     python -m app.cli generate examples/cylinder_vortex_shedding.json -o cylinder/ --run
@@ -18,7 +20,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -83,7 +84,12 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("input")
     d = sub.add_parser("describe", help="generate a case from a plain-English description (LLM)")
     d.add_argument("description")
-    d.add_argument("--backend", choices=["claude", "ollama"], default="claude")
+    d.add_argument("--backend", default="claude",
+                   choices=["claude", "ollama", "gemini", "groq", "openrouter", "openai-compatible"],
+                   help="LLM backend; API keys are read from ANTHROPIC_API_KEY, GEMINI_API_KEY, "
+                        "GROQ_API_KEY, OPENROUTER_API_KEY or OPENAI_COMPAT_API_KEY")
+    d.add_argument("--base-url", help="endpoint for --backend openai-compatible (default: LM Studio, "
+                                       "http://localhost:1234/v1)")
     d.add_argument("--model", help="model id (default: claude-opus-5-5 for Claude, qwen2.5:7b for Ollama; override with CFD_CLAUDE_MODEL / CFD_OLLAMA_MODEL)")
     d.add_argument("--save-analysis", metavar="FILE", help="write the sanitised analysis JSON here")
     for p in (g, d):
@@ -99,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             from app.llm import analyze_cfd_problem
             print(f"Analysing with {args.backend} …", flush=True)
             raw = analyze_cfd_problem(args.description, backend=args.backend, model=args.model,
-                                      api_key=os.environ.get("ANTHROPIC_API_KEY"))
+                                      base_url=args.base_url)   # keys come from the environment
             description = args.description
         else:
             raw, description = _load(args.input)

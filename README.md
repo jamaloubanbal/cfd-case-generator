@@ -15,8 +15,8 @@ data** as part of the test suite.
 
 ## What it can do
 
-- **Understand a problem description.** An LLM (Claude via the API, or a local model through
-  Ollama) picks the solver, fluid properties, boundary conditions, turbulence model and
+- **Understand a problem description.** An LLM (Claude, free cloud models such as Gemini or
+  Groq, or a local model through Ollama) picks the solver, fluid properties, boundary conditions, turbulence model and
   geometry. A JSON schema constrains its answer, and every value is sanity-checked:
   implausible numbers are corrected and shown to the user.
 - **Generate complete OpenFOAM cases**:
@@ -170,6 +170,27 @@ cfdgen check examples/backward_facing_step.json
 then either `export ANTHROPIC_API_KEY=sk-ant-...` or paste it in the sidebar. The default
 model is `claude-opus-5-5`. Pick another in the sidebar, or set `CFD_CLAUDE_MODEL`.
 If the default model declines a request, it is retried server-side on a fallback model.
+
+**Free cloud models (Gemini, Groq, OpenRouter).** These run much larger models than fit on a
+laptop, on free tiers with rate limits. Create a free key, export it, and pick the provider in
+the sidebar or with `--backend`:
+
+| Provider | Free key | Variable | Default model |
+|---|---|---|---|
+| Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+| Groq | [console.groq.com/keys](https://console.groq.com/keys) | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
+| OpenRouter | [openrouter.ai/keys](https://openrouter.ai/keys) | `OPENROUTER_API_KEY` | choose a `:free` model with `--model` |
+| Any OpenAI-compatible server (LM Studio, vLLM, …) | — | `OPENAI_COMPAT_API_KEY` | `--model`, `--base-url` |
+
+```bash
+export GEMINI_API_KEY="…"
+cfdgen describe "Laminar flow past a cylinder at Re = 100" -o test/ --backend gemini --run
+```
+
+Providers rename free models often: override the default with `--model` or the sidebar, or
+set `GEMINI_MODEL` / `GROQ_MODEL` / `OPENROUTER_MODEL`. The backend asks for strict JSON-schema
+output and falls back to JSON mode for providers that don't support it. Free tiers may use
+prompts to improve the provider's models.
 
 **Ollama (local, free, no API key).** Install [Ollama](https://ollama.com) ≥ 0.5, then run
 `ollama pull qwen2.5:7b`, and select *Ollama* in the sidebar or add `--backend ollama` to

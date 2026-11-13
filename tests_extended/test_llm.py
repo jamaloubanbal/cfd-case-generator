@@ -356,3 +356,40 @@ class TestAnalysisSchema:
         from app.schema import GEOMETRIES, SOLVERS
         assert set(SOLVERS) == set(GENERATORS)
         assert set(GEOMETRIES) == set(GEOMETRY_PATCHES) - {"stl_import"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OpenAI-compatible backends (Gemini, Groq, OpenRouter, …) — mocked HTTP
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _chat_response(content: str, status: int = 200):
+    import requests as _rq
+    resp = MagicMock(status_code=status, text="bad request")
+    resp.json.return_value = {"choices": [{"message": {"content": content}, "finish_reason": "stop"}]}
+    if status >= 400:
+        resp.raise_for_status.side_effect = _rq.exceptions.HTTPError(response=resp)
+    return resp
+
+
+def test_gemini_sends_strict_schema_and_bearer_key():
+    from app.llm import analyze_cfd_problem
+    from app.schema import ANALYSIS_SCHEMA
+    with patch("app.llm.requests.post", return_value=_chat_response(json.dumps(SAMPLE_ANALYSIS))) as post:
+        result = analyze_cfd_problem("air in a duct", backend="gemini", api_key="AIza-test")
+    url, kwargs = post.call_args.args[0], post.call_args.kwargs
+    assert url == "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    assert kwargs["headers"]["Authorization"] == "Bearer AIza-test"
+    assert kwargs["json"]["response_format"]["json_schema"]["schema"] == ANALYSIS_SCHEMA
+    assert result["solver"] == "simpleFoam"
+
+
+def test_provider_without_json_schema_falls_back_to_json_mode():
+    """Some providers reject response_format=json_schema with 400 → JSON mode, schema in the prompt."""
+    from app.llm import analyze_cfd_problem
+    responses = [_chat_response("", status=400), _chat_response(json.dumps(SAMPLE_ANALYSIS))]
+    with patch("app.llm.requests.post", side_effect=responses) as post:
+        result = analyze_cfd_problem("air in a duct", backend="groq", api_key="gsk-test")
+    second = post.call_args_list[1].kwargs["json"]
+    assert second["response_format"] == {"type": "json_object"}
+    assert '"additionalProperties"' in second["messages"][0]["content"]      # schema in the prompt
+    assert result["solver"] == "simpleFoam"

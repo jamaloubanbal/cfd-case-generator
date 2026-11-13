@@ -78,13 +78,16 @@ def render_problem_input() -> None:
     )
 
     backend = st.session_state.get("backend", "claude")
-    ready = (backend == "ollama" and ollama_is_reachable()) or (
-        backend == "claude" and bool(st.session_state.get("api_key"))
-    )
+    if backend == "ollama":
+        ready = ollama_is_reachable()
+    elif backend == "openai-compatible":
+        ready = bool(st.session_state.get("model"))
+    else:                                       # Claude, Gemini, Groq, OpenRouter need a key
+        ready = bool(st.session_state.get("api_key")) and bool(st.session_state.get("model"))
     help_text = ""
     if not ready:
-        help_text = ("Enter your Anthropic API key in the sidebar first." if backend == "claude"
-                     else "Ollama is not reachable. Run: ollama serve")
+        help_text = ("Ollama is not reachable. Run: ollama serve" if backend == "ollama"
+                     else "Enter the API key and model in the sidebar first.")
 
     clicked = st.button(
         "Analyse my problem", type="primary", key="btn_analyse",
@@ -103,6 +106,7 @@ def _run_analysis(description: str) -> None:
                 backend=st.session_state.get("backend", "claude"),
                 model=st.session_state.get("model"),
                 api_key=st.session_state.get("api_key"),
+                base_url=st.session_state.get("base_url"),
                 ollama_timeout=st.session_state.get("ollama_timeout", 300),
             )
             analysis, notes = sanitize_analysis(raw, description)
