@@ -149,6 +149,7 @@ def mesh_summary(analysis: dict) -> dict:
         "nx": int(mesh.get("nx") or max(50, int(domain_x / char_len * 10))),
         "ny": int(mesh.get("ny") or max(25, int(domain_y / char_len * 10))),
         "single_block": (analysis.get("geometry_type") or "channel") in SINGLE_BLOCK_GEOMETRIES,
+        "y1": domain_y / int(mesh.get("ny") or max(25, int(domain_y / char_len * 10))),
     }
 
 

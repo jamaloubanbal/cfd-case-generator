@@ -353,3 +353,14 @@ class TestRunChecks:
         assert any("turbulent" in c["title"].lower() or "laminar" in c["title"].lower()
                    or "transitional" in c["title"].lower()
                    for c in checks)
+
+
+def test_yplus_check_uses_graded_first_cell():
+    """The check used domain_y/ny (uniform) and warned y+ ≈ 4000 on a mesh graded to y+ ≈ 50."""
+    import copy
+    from tests.fixtures import SIMPLE_FOAM_ANALYSIS
+    a = copy.deepcopy(SIMPLE_FOAM_ANALYSIS)
+    a.update(Re=1e6, boundary_conditions=[{"patch_name": "inlet", "type": "fixedValue",
+                                           "values": {"U": [15.0, 0, 0]}}])
+    check = next(c for c in run_checks(a) if c["title"].startswith("Wall resolution"))
+    assert check["level"] == "ok", check

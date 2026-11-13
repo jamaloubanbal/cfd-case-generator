@@ -97,6 +97,22 @@ def _compute_grading_ratio(domain_h: float, n_cells: int, y1: float) -> float:
     return ratio
 
 
+def _first_cell_height(domain_h: float, n_cells: int, y1: float, both: bool = False) -> float:
+    """Height of the wall-adjacent cell that the grading helpers actually produce.
+
+    With *both* the edge is graded towards both ends (two halves of n_cells/2 cells).
+    Because the growth rate is capped, this can be larger than the target *y1*.
+    """
+    if both:
+        domain_h, n_cells = domain_h / 2.0, max(2, n_cells // 2)
+    n_cells = max(1, int(n_cells))
+    r = _compute_grading_ratio(domain_h, n_cells, y1)
+    if n_cells < 2 or abs(r - 1.0) < 0.02:
+        return domain_h / n_cells
+    e = r ** (1.0 / (n_cells - 1))
+    return domain_h * (e - 1.0) / (e ** n_cells - 1.0)
+
+
 def _floor_grading_str(domain_h: float, n_cells: int, y1: float) -> str:
     """simpleGrading string: fine cells at y = 0 (floor), coarse at top."""
     r = _compute_grading_ratio(domain_h, n_cells, y1)
@@ -572,6 +588,7 @@ class BaseCaseGenerator(ABC):
             "nx": int(ctx["nx"]),
             "ny": int(ctx["ny"]),
             "single_block": ctx["geometry_type"] in SINGLE_BLOCK_GEOMETRIES,
+            "y1": float(ctx.get("_y1_actual") or float(ctx["domain_y"]) / int(ctx["ny"])),
         }
 
     def _add_wall_grading(self, ctx: dict) -> None:
@@ -605,6 +622,12 @@ class BaseCaseGenerator(ABC):
         ctx["grading_y_ceil"]  = _ceil_grading_str(domain_y, ny, y1)
         ctx["grading_y_both"]  = _both_grading_str(domain_y, ny, y1)
         ctx["grading_x_both"]  = _both_grading_str(domain_x, nx, y1)
+        # First wall-cell height of the main wall (used by the y+ physics check);
+        # geometry branches in _build_geometry_extra overwrite it for their walls.
+        if ctx.get("geometry_type") == "cavity":
+            ctx["_y1_actual"] = _first_cell_height(domain_x, nx, y1, both=True)
+        else:
+            ctx["_y1_actual"] = _first_cell_height(domain_y, ny, y1, both=True)
 
     def _build_geometry_extra(self, geometry_type: str, analysis: dict, ctx: dict) -> dict:
         """
@@ -654,6 +677,7 @@ class BaseCaseGenerator(ABC):
                 # blockMesh requires identical y-grading on all three — B1 uses
                 # the two-sided grading too (its top is the branch opening).
                 grading_tj_main=_both_grading_str(H, ny_main, y1),
+                _y1_actual=_first_cell_height(H, ny_main, y1, both=True),
                 grading_tj_b1=_both_grading_str(H, ny_main, y1),
                 # B2 (branch): vertical block, no y-grading needed
                 grading_tj_branch="1",
@@ -684,6 +708,7 @@ class BaseCaseGenerator(ABC):
                 # Block-specific grading:
                 # Bottom row (B0,B1,B2): wall at y=0
                 grading_ob_bot=_floor_grading_str(yo1, ny_bot, y1),
+                _y1_actual=_first_cell_height(yo1, ny_bot, y1),
                 # Middle blocks (B3,B5): no horizontal walls → uniform
                 grading_ob_mid="1",
                 # Top row (B6,B7,B8): wall at y=domain_y
@@ -708,6 +733,7 @@ class BaseCaseGenerator(ABC):
                 # Block-specific grading:
                 # B0 (inlet section, y:[Hs,H]): walls at top (y=H) AND step floor (y=Hs)
                 grading_bs_b0=_both_grading_str(H - Hs, ny_top, y1),
+                _y1_actual=_first_cell_height(H - Hs, ny_top, y1, both=True),
                 # B1a (outlet upper, y:[Hs,H]) shares the x=xs face with B0, so
                 # it must use the same y-grading (also resolves the shear layer
                 # leaving the step corner).
@@ -768,6 +794,7 @@ class BaseCaseGenerator(ABC):
             # ── O-ring radial grading ─────────────────────────────────────
             r_depth = ri - R * _INV_SQRT2   # radial depth of O-ring
             cyl_grad_ceil  = _ceil_grading_str(r_depth, n_r, y1)
+            ctx["_y1_actual"] = _first_cell_height(r_depth, n_r, y1)
             cyl_grad_floor = _floor_grading_str(r_depth, n_r, y1)
 
             ctx.update(
@@ -814,6 +841,7 @@ class BaseCaseGenerator(ABC):
             dz = round(2.0 * pipe_r * _sin_half, 8)
 
             pipe_grad_ceil = _ceil_grading_str(pipe_r, ny, y1)
+            ctx["_y1_actual"] = _first_cell_height(pipe_r, ny, y1)
 
             ctx.update(
                 domain_x=pipe_l,
@@ -891,6 +919,7 @@ class BaseCaseGenerator(ABC):
             #   upper blocks (B1,B2,B3): j=0 is near airfoil wall → floor grading
             #   lower blocks (B5,B6,B7): j=max is near airfoil wall → ceil grading
             af_grad_upper = _floor_grading_str(R_far - t_half, n_up, y1)
+            ctx["_y1_actual"] = _first_cell_height(R_far - t_half, n_up, y1)
             af_grad_lower = _ceil_grading_str(R_far - t_half, n_dn, y1)
 
             ctx.update(
@@ -972,6 +1001,8 @@ class BaseCaseGenerator(ABC):
                 loc_z=round(loc_z, 6),
                 snappy_refine_min=snappy_refine_min,
                 snappy_refine_max=snappy_refine_max,
+                # surface cells are the background cells refined refine_max times
+                _y1_actual=bg_cell_size / 2 ** snappy_refine_max,
                 snappy_feature_level=snappy_feature_level,
                 snappy_n_layers=snappy_n_layers,
                 snappy_max_cells=snappy_max_cells,

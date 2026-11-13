@@ -203,8 +203,8 @@ def _check_yplus(
     Estimate the wall y⁺ of the first mesh cell and compare with the
     valid range for the chosen wall function.
 
-    Uses the Blasius turbulent flat-plate Cf correlation and assumes
-    uniform mesh spacing (no grading).
+    Uses the Blasius turbulent flat-plate Cf correlation and the first-cell
+    height of the generated (wall-graded) mesh.
     """
     if turb == "laminar":
         return _r("ok", "Wall treatment (laminar)",
@@ -213,8 +213,9 @@ def _check_yplus(
     domain_y = mp["domain_y"]
     ny       = mp["ny"]
 
-    # First-cell height (uniform spacing — generators default to simpleGrading 1 1 1)
-    y1 = domain_y / ny
+    # First wall-cell height of the generated mesh, including its wall grading
+    # (falls back to uniform spacing if the generator could not report it)
+    y1 = mp.get("y1") or domain_y / ny
 
     # Friction velocity u_τ = U × sqrt(Cf / 2)
     Cf    = _CF_A * (max(Re, 1_000) ** _CF_B)
@@ -263,8 +264,8 @@ def _check_yplus(
                 "warning",
                 f"Wall resolution ({label})",
                 f"y⁺ ≈ {yplus:.0f}: exceeds the valid range for nutkWallFunction "
-                "(30–300). Uniform mesh spacing may be too coarse near walls. "
-                "Add wall grading or increase ny.",
+                "(30–300). The near-wall cells are too coarse even with wall grading: "
+                "increase the mesh refinement (or ny).",
             )
         return _r(
             "ok",
@@ -386,4 +387,5 @@ def _estimate_mesh(analysis: dict, char_len: float) -> dict:
     """
     from app.editor import mesh_summary
     s = mesh_summary(analysis)
-    return {"domain_x": s["domain_x"], "domain_y": s["domain_y"], "nx": s["nx"], "ny": s["ny"]}
+    return {"domain_x": s["domain_x"], "domain_y": s["domain_y"], "nx": s["nx"], "ny": s["ny"],
+            "y1": s.get("y1")}
