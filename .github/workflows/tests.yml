@@ -55,7 +55,7 @@ jobs:
       - name: Install OpenFOAM (Ubuntu package)
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends openfoam
+          sudo apt-get install -y --no-install-recommends openfoam openmpi-bin
       - run: pip install -r requirements-dev.txt
       - name: Compare generated cases with reference data
         shell: bash

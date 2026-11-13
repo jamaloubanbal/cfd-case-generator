@@ -46,7 +46,8 @@ def _set_run_length(case_dir: Path, end_time: float,
 def run_benchmark(b: Benchmark, work: Path) -> dict:
     case_dir = work / b.key
     shutil.rmtree(case_dir, ignore_errors=True)
-    analysis = {**b.analysis, "n_cores": max(1, min(b.max_cores, os.cpu_count() or 1))}
+    cores = max(1, min(b.max_cores, os.cpu_count() or 1)) if shutil.which("mpirun") else 1
+    analysis = {**b.analysis, "n_cores": cores}
     GENERATORS[b.solver]().generate(analysis, case_dir)
     _set_run_length(case_dir, b.end_time, b.sampling)
 
@@ -54,7 +55,9 @@ def run_benchmark(b: Benchmark, work: Path) -> dict:
     proc = subprocess.run(["./Allrun"], cwd=case_dir, capture_output=True, text=True)
     elapsed = time.time() - t0
     if proc.returncode != 0:
-        raise RuntimeError(f"{b.key}: Allrun failed\n{proc.stdout}\n{proc.stderr}")
+        logs = "\n".join(f"--- {p.name} (last lines)\n" + "\n".join(p.read_text(errors="replace").splitlines()[-25:])
+                          for p in sorted(case_dir.glob("log.*")))
+        raise RuntimeError(f"{b.key}: Allrun failed\n{proc.stdout}\n{proc.stderr}\n{logs}")
 
     case = FoamCase(case_dir)
     log = (case_dir / f"log.{b.solver}").read_text(errors="replace")
