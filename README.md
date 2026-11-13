@@ -206,11 +206,14 @@ catches the common ones (see *How it works*), but review the analysis before run
 source /usr/share/openfoam/etc/bashrc     # or your OpenFOAM installation's etc/bashrc
 unzip simpleFoam_case.zip && cd simpleFoam
 ./Allrun                                  # writes log.blockMesh, log.simpleFoam, …
-paraview case.foam                        # after: touch case.foam
+paraview --no-mpi case.foam               # after: touch case.foam
 ./Allclean
 ```
 
 Paste `log.<solver>` into the app's **Convergence Monitor** to plot the residuals.
+
+With the Ubuntu/Debian `paraview` package, ParaView can hang silently at startup while
+initialising MPI; `--no-mpi` avoids it (or add `alias paraview='paraview --no-mpi'` to `~/.bashrc`).
 
 ### Example descriptions
 
