@@ -16,6 +16,15 @@ FoamFile
 
 numberOfSubdomains  {{ n_cores }};
 
-method          scotch;
+// "hierarchical" is built into every OpenFOAM installation, whereas "scotch"
+// needs the optional libscotch (absent from e.g. the Debian/Ubuntu package).
+// The {{ n_cores }} subdomains are split along x first (the streamwise direction).
+method          hierarchical;
+
+coeffs
+{
+    n           ({{ decomp_n[0] }} {{ decomp_n[1] }} {{ decomp_n[2] }});
+    order       xyz;
+}
 
 // ************************************************************************* //

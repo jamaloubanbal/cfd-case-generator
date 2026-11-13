@@ -81,8 +81,16 @@ class BuoyantSimpleFoamGenerator(BaseCaseGenerator):
         rho = 101325.0 / (self._R_AIR * max(T_initial, 200.0))
         mu = nu * rho
 
-        # Turbulence quantities (use buoyant velocity scale if U ~ 0)
-        U_scale = max(inlet_speed, 0.01)
+        # Turbulence quantities.  In natural convection there is no inlet, so
+        # the relevant velocity scale is the free-fall (buoyant) velocity
+        # U_b = sqrt(g·β·ΔT·L) with β = 1/T_mean for an ideal gas.  Using a
+        # tiny placeholder velocity instead gives k/ε ~1000× too small and the
+        # kEpsilon run diverges (negative temperature) within a few iterations.
+        g = 9.81
+        beta = 1.0 / max(T_initial, 1.0)
+        dT = abs(T_hot - T_cold)
+        U_buoyant = math.sqrt(g * beta * max(dT, 1.0) * max(char_len, 1e-6))
+        U_scale = max(inlet_speed if inlet_speed > 0.01 else 0.0, U_buoyant, 0.01)
         I = 0.05
         k_inlet = 1.5 * (U_scale * I) ** 2
         L_mix = char_len * 0.07

@@ -138,10 +138,10 @@ blocks
     hex ( 5  6  9  8  25 26 29 28) ({{ n_mid }} {{ n_r     }} 1) simpleGrading (1 {{ cyl_grad_ceil  }} 1)
     // B9  right  O-ring  i: cylinder-SE/NE → inner-sq-right (fine at cylinder = floor)
     hex ( 9  6 14 10  29 26 34 30) ({{ n_r   }} {{ n_cyl_h }} 1) simpleGrading ({{ cyl_grad_floor }} 1 1)
-    // B10 top    O-ring  j: cylinder-NE/NW → inner-sq-top   (fine at cylinder = floor)
-    hex (10 11 13 14  30 31 33 34) ({{ n_mid }} {{ n_r     }} 1) simpleGrading (1 {{ cyl_grad_floor }} 1)
-    // B11 left   O-ring  i: cylinder-SW/NW → inner-sq-left  (fine at cylinder = floor)
-    hex ( 8  5 13 11  28 25 33 31) ({{ n_r   }} {{ n_cyl_h }} 1) simpleGrading ({{ cyl_grad_floor }} 1 1)
+    // B10 top    O-ring  j: cylinder-NW/NE → inner-sq-top   (fine at cylinder = floor)
+    hex (11 10 14 13  31 30 34 33) ({{ n_mid }} {{ n_r     }} 1) simpleGrading (1 {{ cyl_grad_floor }} 1)
+    // B11 left   O-ring  i: inner-sq-left → cylinder-SW/NW  (fine at cylinder = ceil)
+    hex ( 5  8 11 13  25 28 31 33) ({{ n_r   }} {{ n_cyl_h }} 1) simpleGrading ({{ cyl_grad_ceil }} 1 1)
 );
 
 edges
@@ -234,8 +234,8 @@ boundary
             (14 15 19 18)   // B7
             ( 5  6  9  8)   // B8
             ( 9  6 14 10)   // B9
-            (10 11 13 14)   // B10
-            ( 8  5 13 11)   // B11
+            (11 10 14 13)   // B10
+            ( 5  8 11 13)   // B11
             // back (z = domain_z)
             (20 21 25 24)
             (21 22 26 25)
@@ -247,8 +247,8 @@ boundary
             (34 35 39 38)
             (25 26 29 28)
             (29 26 34 30)
-            (30 31 33 34)
-            (28 25 33 31)
+            (31 30 34 33)
+            (25 28 31 33)
         );
     }
 );

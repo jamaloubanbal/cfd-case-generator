@@ -864,11 +864,24 @@ class TestDecomposeParDict:
         content = (case_dir / "system" / "decomposeParDict").read_text()
         assert "numberOfSubdomains  8;" in content
 
-    def test_decomposepardict_scotch_method(self, tmp_path):
+    def test_decomposepardict_hierarchical_method(self, tmp_path):
+        """hierarchical is always available (scotch needs an optional library)."""
+        parallel_analysis = {**SIMPLE_FOAM_ANALYSIS, "n_cores": 8}
         case_dir = tmp_path / "case"
-        SimpleFoamGenerator().generate(SIMPLE_FOAM_ANALYSIS, case_dir)
+        SimpleFoamGenerator().generate(parallel_analysis, case_dir)
         content = (case_dir / "system" / "decomposeParDict").read_text()
-        assert "scotch" in content
+        assert "method          hierarchical;" in content
+        assert "n           (4 2 1);" in content
+
+    @pytest.mark.parametrize("n, expected", [
+        (1, (1, 1, 1)), (2, (2, 1, 1)), (4, (2, 2, 1)), (6, (3, 2, 1)),
+        (7, (7, 1, 1)), (8, (4, 2, 1)), (16, (4, 4, 1)),
+    ])
+    def test_decomposition_split_product(self, n, expected):
+        from app.generators.base import _decomposition_split
+        split = _decomposition_split(n)
+        assert split == expected
+        assert split[0] * split[1] * split[2] == n
 
     def test_decomposepardict_no_jinja_placeholders(self, tmp_path):
         parallel_analysis = {**SIMPLE_FOAM_ANALYSIS, "n_cores": 4}

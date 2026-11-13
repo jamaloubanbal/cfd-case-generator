@@ -79,6 +79,17 @@ solvers
         relTol          0.1;
     }
 {% endif %}
+
+    // PIMPLE solves every equation again on the final outer corrector and
+    // looks up "<field>Final" — without these entries the run aborts on the
+    // first time step whenever a turbulence model is active.
+    "(k|epsilon|omega|nuTilda)Final"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-08;
+        relTol          0;
+    }
 }
 
 PIMPLE

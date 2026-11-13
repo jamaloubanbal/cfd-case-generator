@@ -1,8 +1,8 @@
 /*--------------------------------*- C++ -*----------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     | Version:  v10
-    \\  /    A nd           | Web:      www.openfoam.org
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -20,13 +20,21 @@ solvers
     {
         nAlphaCorr      2;
         nAlphaSubCycles 1;
-        alphaOuterCorrectors yes;
         cAlpha          1;
         MULESCorr       yes;
         nLimiterIter    3;
         solver          smoothSolver;
         smoother        symGaussSeidel;
         tolerance       1e-08;
+        relTol          0;
+    }
+
+    // Flux-correction pressure (required by interFoam, see damBreak tutorial)
+    "pcorr.*"
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-5;
         relTol          0;
     }
 

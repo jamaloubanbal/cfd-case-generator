@@ -134,8 +134,8 @@ blocks
     // B6  lower-upstream   x∈[-R,0]    y∈[-R,-t/2]
     hex ( 0  4  5  1  16 20 21 17) ({{ n_le    }} {{ n_dn }} 1) simpleGrading (1 {{ af_grad_lower }} 1)
 
-    // B7  lower-wake       x∈[c,c+w]   y∈[-R,-t/2]
-    hex ( 8 12 13  9  24 28 29 25) ({{ n_wake  }} {{ n_dn }} 1) simpleGrading (1 1 1)
+    // B7  lower-wake       x∈[c,c+w]   y∈[-R,-t/2]  (shares x=c face with B5 → same y-grading)
+    hex ( 8 12 13  9  24 28 29 25) ({{ n_wake  }} {{ n_dn }} 1) simpleGrading (1 {{ af_grad_lower }} 1)
 );
 
 edges

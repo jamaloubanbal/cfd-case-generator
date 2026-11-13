@@ -119,6 +119,8 @@ boundary
             (2  3  13 12)   // bottom block 3
             (4  14 15 5)    // top block 0  (left of branch)
             (6  16 17 7)    // top block 3  (right of branch)
+            (5  15 18 8)    // left side wall of branch (block 2)
+            (6  9  19 16)   // right side wall of branch (block 2)
         );
     }
 

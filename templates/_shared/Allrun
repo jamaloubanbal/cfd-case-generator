@@ -1,6 +1,30 @@
 #!/bin/sh
-cd "${0%/*}" || exit
-. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
+cd "${0%/*}" || exit 1
+
+# Use the official OpenFOAM helpers when available.  Some distribution
+# packages (e.g. Debian/Ubuntu "openfoam") do not ship bin/tools/RunFunctions,
+# so fall back to minimal equivalents that write log.<application> files.
+if [ -n "$WM_PROJECT_DIR" ] && [ -f "$WM_PROJECT_DIR/bin/tools/RunFunctions" ]; then
+    . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+else
+    runApplication() {
+        app="$1"
+        if [ -f "log.$app" ]; then
+            echo "$app already run: remove log.$app to re-run"
+            return 0
+        fi
+        echo "Running $app on $PWD"
+        "$@" > "log.$app" 2>&1 || { echo "$app failed — see log.$app"; exit 1; }
+    }
+{% if n_cores > 1 %}
+    runParallel() {
+        app="$1"; shift
+        echo "Running $app in parallel on $PWD using {{ n_cores }} processes"
+        mpirun -np {{ n_cores }} "$app" -parallel "$@" > "log.$app" 2>&1 \
+            || { echo "$app failed — see log.$app"; exit 1; }
+    }
+{% endif %}
+fi
 
 runApplication blockMesh
 {% if geometry_type == "stl_import" -%}
@@ -14,6 +38,6 @@ runApplication setFields
 runApplication decomposePar
 runParallel {{ solver_name }}
 runApplication reconstructPar
-{%- else -%}
+{% else -%}
 runApplication {{ solver_name }}
-{%- endif %}
+{% endif %}

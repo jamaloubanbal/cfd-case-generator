@@ -55,22 +55,22 @@ boundary
     }
     bottom
     {
-        type symmetry;
+        type symmetryPlane;
         faces ( (0 1 5 4) );        // y = bg_ymin  (outward normal: -y)
     }
     top
     {
-        type symmetry;
+        type symmetryPlane;
         faces ( (2 3 7 6) );        // y = bg_ymax  (outward normal: +y)
     }
     front
     {
-        type symmetry;
+        type symmetryPlane;
         faces ( (0 3 2 1) );        // z = bg_zmin  (outward normal: -z)
     }
     back
     {
-        type symmetry;
+        type symmetryPlane;
         faces ( (4 5 6 7) );        // z = bg_zmax  (outward normal: +z)
     }
 );

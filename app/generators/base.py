@@ -43,6 +43,11 @@ def _wall_y1(Re, inlet_speed: float, nu: float, turb_model: str) -> float:
     return target_yplus * float(nu) / u_tau
 
 
+# Maximum ratio between the sizes of two adjacent cells (common best practice:
+# 1.1–1.25).  Larger growth rates produce high-aspect-ratio, poor-quality cells.
+_MAX_CELL_GROWTH: float = 1.2
+
+
 def _compute_grading_ratio(domain_h: float, n_cells: int, y1: float) -> float:
     """Compute OpenFOAM simpleGrading expansion ratio (last/first) for one wall.
 
@@ -86,9 +91,12 @@ def _compute_grading_ratio(domain_h: float, n_cells: int, y1: float) -> float:
             break
 
     e = 0.5 * (lo + hi)
+    # Mesh-quality guard: cap the cell-to-cell growth rate.  When the wall-
+    # function target y1 cannot be reached with n_cells, we accept a coarser
+    # first cell (higher y+) rather than producing extreme aspect ratios.
+    e = min(e, _MAX_CELL_GROWTH)
     ratio = e ** (n_cells - 1)
-    # Sanity: ignore tiny or enormous ratios
-    if ratio < 1.02 or ratio > 1e5:
+    if ratio < 1.02:
         return 1.0
     return ratio
 
@@ -115,6 +123,17 @@ def _both_grading_str(domain_h: float, n_cells: int, y1: float) -> str:
         return "1"
     inv_r = 1.0 / r
     return f"((0.5 0.5 {r:.4g})(0.5 0.5 {inv_r:.4g}))"
+
+
+def _decomposition_split(n_cores: int) -> tuple[int, int, int]:
+    """Split *n_cores* into (nx, ny, 1) subdomains for hierarchical decomposition.
+
+    Cases are 2-D (one cell in z), so z is never split.  The larger factor goes
+    to x because domains are longest in the streamwise direction.
+    """
+    n = max(1, int(n_cores))
+    ny = max(d for d in range(1, int(math.isqrt(n)) + 1) if n % d == 0)
+    return (n // ny, ny, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -206,8 +225,8 @@ GEOMETRY_PATCHES: dict[str, list[dict]] = {
     "cylinder": [
         {"name": "inlet",        "of_type": "patch",    "role": "inlet"},
         {"name": "outlet",       "of_type": "patch",    "role": "outlet"},
-        {"name": "top",          "of_type": "symmetry", "role": "symmetry"},
-        {"name": "bottom",       "of_type": "symmetry", "role": "symmetry"},
+        {"name": "top",          "of_type": "symmetryPlane", "role": "symmetry"},
+        {"name": "bottom",       "of_type": "symmetryPlane", "role": "symmetry"},
         {"name": "cylinder",     "of_type": "wall",     "role": "wall"},
         {"name": "frontAndBack", "of_type": "empty",    "role": "frontAndBack"},
     ],
@@ -224,8 +243,8 @@ GEOMETRY_PATCHES: dict[str, list[dict]] = {
     "airfoil": [
         {"name": "inlet",        "of_type": "patch",    "role": "inlet"},
         {"name": "outlet",       "of_type": "patch",    "role": "outlet"},
-        {"name": "top",          "of_type": "symmetry", "role": "symmetry"},
-        {"name": "bottom",       "of_type": "symmetry", "role": "symmetry"},
+        {"name": "top",          "of_type": "symmetryPlane", "role": "symmetry"},
+        {"name": "bottom",       "of_type": "symmetryPlane", "role": "symmetry"},
         {"name": "airfoil",      "of_type": "wall",     "role": "wall"},
         {"name": "frontAndBack", "of_type": "empty",    "role": "frontAndBack"},
     ],
@@ -233,10 +252,10 @@ GEOMETRY_PATCHES: dict[str, list[dict]] = {
     "stl_import": [
         {"name": "inlet",  "of_type": "patch",    "role": "inlet"},
         {"name": "outlet", "of_type": "patch",    "role": "outlet"},
-        {"name": "top",    "of_type": "symmetry", "role": "symmetry"},
-        {"name": "bottom", "of_type": "symmetry", "role": "symmetry"},
-        {"name": "front",  "of_type": "symmetry", "role": "symmetry"},
-        {"name": "back",   "of_type": "symmetry", "role": "symmetry"},
+        {"name": "top",    "of_type": "symmetryPlane", "role": "symmetry"},
+        {"name": "bottom", "of_type": "symmetryPlane", "role": "symmetry"},
+        {"name": "front",  "of_type": "symmetryPlane", "role": "symmetry"},
+        {"name": "back",   "of_type": "symmetryPlane", "role": "symmetry"},
         # STL wall patch appended in _build_geometry_extra with role='wall'
     ],
 }
@@ -333,7 +352,8 @@ class BaseCaseGenerator(ABC):
             path.chmod(path.stat().st_mode | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH)
 
         self.write(output_dir, "system/decomposeParDict",
-                   self.render("_shared/decomposeParDict", ctx))
+                   self.render("_shared/decomposeParDict",
+                               {**ctx, "decomp_n": _decomposition_split(int(ctx.get("n_cores", 1)))}))
 
         readme = self.render("_shared/README.md", ctx)
         self.write(output_dir, "README.md", readme)
@@ -452,7 +472,9 @@ class BaseCaseGenerator(ABC):
         if _raw_geo not in GEOMETRY_PATCHES:
             _raw_geo = self.default_geometry_type
         geometry_type = _raw_geo
-        patches = GEOMETRY_PATCHES[geometry_type]
+        patches = self._patches_with_inlet_velocities(
+            GEOMETRY_PATCHES[geometry_type], bcs, inlet_speed
+        )
 
         turb_model = analysis.get("turb_model") or "kEpsilon"
 
@@ -562,11 +584,11 @@ class BaseCaseGenerator(ABC):
                 xl=xl, xr=xr, H_branch=H + Lb,
                 nx_left=nx_left, nx_branch=nx_branch, nx_right=nx_right,
                 ny_main=ny_main, ny_branch=ny_branch,
-                # Block-specific grading:
-                # B0 (left) and B3 (right): walls at y=0 AND y=H
+                # Block-specific grading.  B0, B1 and B3 share y-z faces, so
+                # blockMesh requires identical y-grading on all three — B1 uses
+                # the two-sided grading too (its top is the branch opening).
                 grading_tj_main=_both_grading_str(H, ny_main, y1),
-                # B1 (center, under branch): wall at y=0 only
-                grading_tj_b1=_floor_grading_str(H, ny_main, y1),
+                grading_tj_b1=_both_grading_str(H, ny_main, y1),
                 # B2 (branch): vertical block, no y-grading needed
                 grading_tj_branch="1",
             )
@@ -620,8 +642,10 @@ class BaseCaseGenerator(ABC):
                 # Block-specific grading:
                 # B0 (inlet section, y:[Hs,H]): walls at top (y=H) AND step floor (y=Hs)
                 grading_bs_b0=_both_grading_str(H - Hs, ny_top, y1),
-                # B1a (outlet upper, y:[Hs,H]): wall at top (y=H) only
-                grading_bs_b1a=_ceil_grading_str(H - Hs, ny_top, y1),
+                # B1a (outlet upper, y:[Hs,H]) shares the x=xs face with B0, so
+                # it must use the same y-grading (also resolves the shear layer
+                # leaving the step corner).
+                grading_bs_b1a=_both_grading_str(H - Hs, ny_top, y1),
                 # B1b (outlet lower, y:[0,Hs]): wall at floor (y=0) only
                 grading_bs_b1b=_floor_grading_str(Hs, ny_bot, y1),
             )
@@ -893,6 +917,37 @@ class BaseCaseGenerator(ABC):
     # ------------------------------------------------------------------
     # Inlet BC helpers
     # ------------------------------------------------------------------
+
+    # Default inflow direction for inlet patches whose normal is not +x.
+    # (T-junction branch inlet sits on the top of the domain, flow enters downwards.)
+    _INLET_DIRECTION: dict[str, tuple[float, float, float]] = {
+        "inlet2": (0.0, -1.0, 0.0),
+    }
+
+    @classmethod
+    def _patches_with_inlet_velocities(cls, patches: list, bcs: list, inlet_speed: float) -> list:
+        """Return a copy of *patches* where every inlet carries its own ``U`` string.
+
+        A boundary condition whose ``patch_name`` matches the patch exactly wins;
+        otherwise the inlet speed is applied along the patch's inflow direction.
+        Without this, every inlet would get the first inlet's vector — e.g. a
+        T-junction branch inlet would receive a velocity tangential to its face
+        and no fluid would enter through it.
+        """
+        by_name = {bc.get("patch_name"): bc for bc in bcs}
+        out = []
+        for p in patches:
+            p = dict(p)
+            if p["role"] == "inlet":
+                val = (by_name.get(p["name"]) or {}).get("values", {}).get("U")
+                if isinstance(val, (list, tuple)) and len(val) >= 1:
+                    v = (list(val) + [0, 0, 0])[:3]
+                    p["U"] = f"({v[0]} {v[1]} {v[2]})"
+                elif p["name"] in cls._INLET_DIRECTION:
+                    d = cls._INLET_DIRECTION[p["name"]]
+                    p["U"] = f"({d[0] * inlet_speed:g} {d[1] * inlet_speed:g} {d[2] * inlet_speed:g})"
+            out.append(p)
+        return out
 
     @staticmethod
     def _get_inlet_velocity(bcs: list) -> str:

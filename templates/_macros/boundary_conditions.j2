@@ -29,7 +29,7 @@ boundaryField
         type            wedge;
 {%- elif p.role == 'inlet' %}
         type            fixedValue;
-        value           uniform {{ inlet_U }};
+        value           uniform {{ p.U if p.U is defined else inlet_U }};
 {%- elif p.role == 'outlet' %}
 {%- if outlet_type == 'inletOutlet' %}
         type            inletOutlet;
