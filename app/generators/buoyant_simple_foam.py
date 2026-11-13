@@ -103,6 +103,7 @@ class BuoyantSimpleFoamGenerator(BaseCaseGenerator):
         nx = max(20, int(char_len / char_len * 50))
         ny = max(20, int(char_len / char_len * 50))
         nz = 1
+        domain_x, domain_y, nx, ny = self._mesh_overrides(ctx, analysis, domain_x, domain_y, nx, ny)
 
         omega_inlet = eps_inlet / (0.09 * max(k_inlet, 1e-30))
         nuTilda_inlet = nu * 3.0

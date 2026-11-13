@@ -7,6 +7,7 @@ cases end-to-end when OpenFOAM is available.
 """
 
 import copy
+import math
 import re
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from tests.test_generators import (
     CYLINDER_ANALYSIS,
     INTER_FOAM_ANALYSIS,
     PIMPLE_FOAM_ANALYSIS,
+    SIMPLE_FOAM_ANALYSIS,
     T_JUNCTION_ANALYSIS,
     _generate_stl_case,
 )
@@ -170,3 +172,48 @@ def test_allrun_works_without_runfunctions(tmp_path):
     allrun = _read(tmp_path, "Allrun")
     assert 'if [ -n "$WM_PROJECT_DIR" ] && [ -f "$WM_PROJECT_DIR/bin/tools/RunFunctions" ]' in allrun
     assert "runApplication() {" in allrun
+
+
+# ── Parameter-editor mesh overrides reach the generated mesh ─────────────────
+
+def _cells(case: Path) -> list[list[int]]:
+    _, blocks = _parse_block_mesh(_read(case, "system/blockMeshDict"))
+    return [cells for _, cells, _ in blocks]
+
+
+def test_editor_nx_ny_override_reaches_single_block_mesh(tmp_path):
+    from app.editor import apply_overrides
+    a = apply_overrides(SIMPLE_FOAM_ANALYSIS, {"nx": 123, "ny": 45, "domain_x": 7.5})
+    SimpleFoamGenerator().generate(a, tmp_path)
+    assert _cells(tmp_path) == [[123, 45, 1]]
+    assert "7.5" in _read(tmp_path, "system/blockMeshDict")
+
+
+@pytest.mark.parametrize("solver, analysis", [
+    ("simpleFoam", SIMPLE_FOAM_ANALYSIS),
+    ("pimpleFoam", PIMPLE_FOAM_ANALYSIS),
+    ("buoyantSimpleFoam", BSF_ANALYSIS),
+    ("interFoam", INTER_FOAM_ANALYSIS),
+])
+def test_editor_defaults_match_generated_mesh(tmp_path, solver, analysis):
+    from app.editor import defaults_from_analysis
+    from app.generators import GENERATORS
+    defaults = defaults_from_analysis(analysis)
+    GENERATORS[solver]().generate(analysis, tmp_path)
+    assert _cells(tmp_path) == [[defaults["nx"], defaults["ny"], 1]]
+
+
+@pytest.mark.parametrize("analysis", [T_JUNCTION_ANALYSIS, CYLINDER_ANALYSIS, BACKSTEP_ANALYSIS],
+                         ids=["t_junction", "cylinder", "backstep"])
+def test_refinement_factor_scales_multiblock_meshes(tmp_path, analysis):
+    from app.editor import apply_overrides
+    SimpleFoamGenerator().generate(analysis, tmp_path / "base")
+    SimpleFoamGenerator().generate(apply_overrides(analysis, {"mesh_refinement": 2.0}), tmp_path / "fine")
+    base = sum(c[0] * c[1] for c in _cells(tmp_path / "base"))
+    fine = sum(c[0] * c[1] for c in _cells(tmp_path / "fine"))
+    assert fine > 2.5 * base   # ≈4× in 2-D, minus per-block minimum counts
+
+
+def test_grading_ratio_does_not_overflow_for_large_cell_counts():
+    # e**n with the old upper bound of 1000 overflowed for n > ~100
+    assert math.isfinite(_compute_grading_ratio(1.0, 400, 1e-7))

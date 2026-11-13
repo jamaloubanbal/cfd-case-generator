@@ -78,6 +78,7 @@ class PimpleFoamGenerator(BaseCaseGenerator):
         nx = max(50, int(domain_x / char_len * 10))
         ny = max(25, int(domain_y / char_len * 10))
         nz = 1
+        domain_x, domain_y, nx, ny = self._mesh_overrides(ctx, analysis, domain_x, domain_y, nx, ny)
 
         # Time-stepping: CFL < 0.5, target cell size = domain_x / nx
         cell_size = domain_x / nx

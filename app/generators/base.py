@@ -74,27 +74,23 @@ def _compute_grading_ratio(domain_h: float, n_cells: int, y1: float) -> float:
             return n_cells * y1 - domain_h
         return y1 * (e ** n_cells - 1.0) / (e - 1.0) - domain_h
 
-    lo, hi = 1.0 + 1e-8, 1_000.0
-    # Expand upper bound if necessary
-    while _residual(hi) < 0:
-        hi = min(hi * 2.0, 1e9)
-        if hi >= 1e9:
-            return 1.0  # safety guard
-
-    for _ in range(100):
-        mid = 0.5 * (lo + hi)
-        if _residual(mid) < 0:
-            lo = mid
-        else:
-            hi = mid
-        if hi - lo < 1e-7:
-            break
-
-    e = 0.5 * (lo + hi)
-    # Mesh-quality guard: cap the cell-to-cell growth rate.  When the wall-
-    # function target y1 cannot be reached with n_cells, we accept a coarser
-    # first cell (higher y+) rather than producing extreme aspect ratios.
-    e = min(e, _MAX_CELL_GROWTH)
+    # Mesh-quality guard: the cell-to-cell growth rate is capped.  When the
+    # wall-function target y1 cannot be reached with n_cells, we accept a
+    # coarser first cell (higher y+) rather than extreme aspect ratios.
+    # Searching only up to the cap also keeps e**n_cells finite for large n.
+    if _residual(_MAX_CELL_GROWTH) <= 0:
+        e = _MAX_CELL_GROWTH
+    else:
+        lo, hi = 1.0 + 1e-8, _MAX_CELL_GROWTH
+        for _ in range(100):
+            mid = 0.5 * (lo + hi)
+            if _residual(mid) < 0:
+                lo = mid
+            else:
+                hi = mid
+            if hi - lo < 1e-10:
+                break
+        e = 0.5 * (lo + hi)
     ratio = e ** (n_cells - 1)
     if ratio < 1.02:
         return 1.0
@@ -259,6 +255,15 @@ GEOMETRY_PATCHES: dict[str, list[dict]] = {
         # STL wall patch appended in _build_geometry_extra with role='wall'
     ],
 }
+
+
+# Geometries whose blockMeshDict is a single box: domain_x/y and nx/ny map
+# directly onto the mesh, so the parameter editor can override them.
+SINGLE_BLOCK_GEOMETRIES: tuple[str, ...] = ("channel", "cavity", "dambreak")
+
+# Allowed range for the global mesh refinement factor
+MIN_REFINEMENT: float = 0.5
+MAX_REFINEMENT: float = 4.0
 
 
 class BaseCaseGenerator(ABC):
@@ -509,6 +514,68 @@ class BaseCaseGenerator(ABC):
             "n_cores":        int(analysis.get("n_cores") or 1),
         }
 
+    def _mesh_overrides(
+        self, ctx: dict, analysis: dict,
+        domain_x: float, domain_y: float, nx: int, ny: int,
+    ) -> tuple[float, float, int, int]:
+        """Apply the parameter-editor mesh overrides to the solver's default sizing.
+
+        Overrides live in ``analysis["suggested_mesh"]`` (see ``app.editor``):
+
+        * ``domain_x``, ``domain_y``, ``nx``, ``ny`` — honoured for single-block
+          geometries, where they map 1:1 onto the blockMeshDict.  Multi-block
+          geometries are sized from ``geometry_params`` instead.
+        * ``refinement`` — factor applied to every cell count (all geometries
+          except ``stl_import``, whose resolution is set by snappyHexMesh).
+
+        Also stores the factor as ``ctx["_refine"]`` for the multi-block
+        branches of :meth:`_build_geometry_extra`.
+        """
+        mesh = analysis.get("suggested_mesh") or {}
+        geometry_type = ctx["geometry_type"]
+
+        if geometry_type in SINGLE_BLOCK_GEOMETRIES:
+            def _positive(key, cast, current):
+                try:
+                    val = cast(mesh.get(key))
+                except (TypeError, ValueError):
+                    return current
+                return val if val > 0 else current
+
+            domain_x = _positive("domain_x", float, domain_x)
+            domain_y = _positive("domain_y", float, domain_y)
+            nx = _positive("nx", int, nx)
+            ny = _positive("ny", int, ny)
+
+        try:
+            refine = float(mesh.get("refinement") or 1.0)
+        except (TypeError, ValueError):
+            refine = 1.0
+        refine = min(max(refine, MIN_REFINEMENT), MAX_REFINEMENT)
+        if geometry_type == "stl_import":
+            refine = 1.0
+        ctx["_refine"] = refine
+        if refine != 1.0:
+            nx = max(2, round(nx * refine))
+            ny = max(2, round(ny * refine))
+        return domain_x, domain_y, nx, ny
+
+    def mesh_summary(self, analysis: dict) -> dict:
+        """Return the mesh this generator would build for *analysis*.
+
+        Used by the parameter editor and the physics checks so that the values
+        shown in the UI are the values that end up in ``blockMeshDict``.
+        """
+        ctx = self._build_context(analysis)
+        return {
+            "geometry_type": ctx["geometry_type"],
+            "domain_x": float(ctx["domain_x"]),
+            "domain_y": float(ctx["domain_y"]),
+            "nx": int(ctx["nx"]),
+            "ny": int(ctx["ny"]),
+            "single_block": ctx["geometry_type"] in SINGLE_BLOCK_GEOMETRIES,
+        }
+
     def _add_wall_grading(self, ctx: dict) -> None:
         """
         Compute wall-grading Jinja variables and add them to *ctx* in-place.
@@ -563,6 +630,7 @@ class BaseCaseGenerator(ABC):
         char_len = analysis.get("characteristic_length", 1.0)
 
         y1 = ctx.get("_y1_target", float("inf"))
+        f = float(ctx.get("_refine", 1.0))   # global mesh refinement factor
 
         if geometry_type == "t_junction":
             L  = float(geo_params.get("channel_length") or ctx.get("domain_x") or char_len * 10)
@@ -574,11 +642,11 @@ class BaseCaseGenerator(ABC):
             xl = (L - bw) / 2
             xr = (L + bw) / 2
             dz = round(H * 0.1, 4)
-            nx_left   = max(20, round(xl / L * 60))
-            nx_branch = max(10, round(bw / L * 60))
-            nx_right  = max(20, round((L - xr) / L * 60))
-            ny_main   = max(15, round(H  / (H + Lb) * 40))
-            ny_branch = max(15, round(Lb / (H + Lb) * 40))
+            nx_left   = max(round(20 * f), round(xl / L * 60 * f))
+            nx_branch = max(round(10 * f), round(bw / L * 60 * f))
+            nx_right  = max(round(20 * f), round((L - xr) / L * 60 * f))
+            ny_main   = max(round(15 * f), round(H  / (H + Lb) * 40 * f))
+            ny_branch = max(round(15 * f), round(Lb / (H + Lb) * 40 * f))
             ctx.update(
                 domain_x=L, domain_y=H, domain_z=dz,
                 xl=xl, xr=xr, H_branch=H + Lb,
@@ -604,12 +672,12 @@ class BaseCaseGenerator(ABC):
             yo1 = (H - oh) / 2
             yo2 = yo1 + oh
             dz  = round(H * 0.1, 4)
-            nx_left  = max(15, round(xo1 / L * 80))
-            nx_obs   = max(10, round(ow  / L * 80))
-            nx_right = max(25, round((L - xo2) / L * 80))
-            ny_bot   = max(10, round(yo1 / H * 40))
-            ny_obs   = max(10, round(oh  / H * 40))
-            ny_top   = max(10, round((H - yo2) / H * 40))
+            nx_left  = max(round(15 * f), round(xo1 / L * 80 * f))
+            nx_obs   = max(round(10 * f), round(ow  / L * 80 * f))
+            nx_right = max(round(25 * f), round((L - xo2) / L * 80 * f))
+            ny_bot   = max(round(10 * f), round(yo1 / H * 40 * f))
+            ny_obs   = max(round(10 * f), round(oh  / H * 40 * f))
+            ny_top   = max(round(10 * f), round((H - yo2) / H * 40 * f))
             ctx.update(
                 domain_x=L, domain_y=H, domain_z=dz,
                 xo1=xo1, xo2=xo2, yo1=yo1, yo2=yo2,
@@ -630,10 +698,10 @@ class BaseCaseGenerator(ABC):
             Hs  = float(geo_params.get("step_height")    or H / 2)
             xs  = float(geo_params.get("step_x")         or L * 0.3)
             dz  = round(H * 0.1, 4)
-            nx_inlet  = max(15, round(xs       / L * 60))
-            nx_outlet = max(40, round((L - xs) / L * 60))
-            ny_top    = max(15, round((H - Hs) / H * 30))
-            ny_bot    = max(10, round(Hs        / H * 30))
+            nx_inlet  = max(round(15 * f), round(xs       / L * 60 * f))
+            nx_outlet = max(round(40 * f), round((L - xs) / L * 60 * f))
+            ny_top    = max(round(15 * f), round((H - Hs) / H * 30 * f))
+            ny_bot    = max(round(10 * f), round(Hs        / H * 30 * f))
             ctx.update(
                 domain_x=L, domain_y=H, domain_z=dz,
                 xs=xs, Hs=Hs,

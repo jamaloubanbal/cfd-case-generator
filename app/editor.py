@@ -89,13 +89,18 @@ def apply_overrides(analysis: dict, overrides: dict) -> dict:
         a["turb_model"] = turb
 
     # ── Mesh parameters (forwarded via suggested_mesh) ───────────────────────
-    # Generators check suggested_mesh first before falling back to defaults,
-    # so placing overrides here is picked up automatically.
-    mesh = a.setdefault("suggested_mesh", {})
+    # BaseCaseGenerator._mesh_overrides() reads these: nx/ny/domain_x/domain_y
+    # apply to single-block geometries, "refinement" scales every geometry.
+    mesh = a.get("suggested_mesh")
+    if not isinstance(mesh, dict):
+        mesh = a["suggested_mesh"] = {}
     for key in ("nx", "ny", "domain_x", "domain_y"):
         val = overrides.get(key)
         if val is not None:
             mesh[key] = val
+    refinement = overrides.get("mesh_refinement")
+    if refinement is not None:
+        mesh["refinement"] = float(refinement)
 
     # ── Parallel cores ───────────────────────────────────────────────────────
     n_cores = overrides.get("n_cores")
@@ -118,6 +123,34 @@ def apply_overrides(analysis: dict, overrides: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers shared with validation.py (kept private here to avoid circular deps)
 # ─────────────────────────────────────────────────────────────────────────────
+
+def mesh_summary(analysis: dict) -> dict:
+    """Domain size and cell counts the selected generator will produce.
+
+    Falls back to the simpleFoam channel sizing when the solver is unknown.
+    """
+    from app.generators import GENERATORS          # local import: generators are heavier
+    from app.generators.base import SINGLE_BLOCK_GEOMETRIES
+
+    gen_cls = GENERATORS.get(analysis.get("solver", ""))
+    if gen_cls is not None:
+        try:
+            return gen_cls().mesh_summary(analysis)
+        except Exception:                          # malformed analysis → use fallback
+            pass
+    char_len = float(analysis.get("characteristic_length") or 1.0)
+    mesh = analysis.get("suggested_mesh") or {}
+    domain_x = float(mesh.get("domain_x") or 20.0 * char_len)
+    domain_y = float(mesh.get("domain_y") or 10.0 * char_len)
+    return {
+        "geometry_type": analysis.get("geometry_type") or "channel",
+        "domain_x": domain_x,
+        "domain_y": domain_y,
+        "nx": int(mesh.get("nx") or max(50, int(domain_x / char_len * 10))),
+        "ny": int(mesh.get("ny") or max(25, int(domain_y / char_len * 10))),
+        "single_block": (analysis.get("geometry_type") or "channel") in SINGLE_BLOCK_GEOMETRIES,
+    }
+
 
 def _get_inlet_speed(bcs: list) -> float:
     """Extract scalar inlet speed from a boundary conditions list."""
@@ -149,10 +182,13 @@ def defaults_from_analysis(analysis: dict) -> dict:
     char_len = float(analysis.get("characteristic_length") or 1.0)
     mesh     = analysis.get("suggested_mesh") or {}
 
-    domain_x = float(mesh.get("domain_x") or 20.0 * char_len)
-    domain_y = float(mesh.get("domain_y") or 10.0 * char_len)
-    nx       = int(mesh.get("nx") or max(50, int(domain_x / char_len * 10)))
-    ny       = int(mesh.get("ny") or max(25, int(domain_y / char_len * 10)))
+    # Ask the solver's generator what it will actually build, so the editor
+    # shows the real blockMesh values (they differ per solver and geometry).
+    summary  = mesh_summary(analysis)
+    domain_x = summary["domain_x"]
+    domain_y = summary["domain_y"]
+    nx       = summary["nx"]
+    ny       = summary["ny"]
 
     n_cores = int(analysis.get("n_cores") or 1)
 
@@ -169,6 +205,8 @@ def defaults_from_analysis(analysis: dict) -> dict:
         "domain_x":             domain_x,
         "domain_y":             domain_y,
         "n_cores":              n_cores,
+        "mesh_refinement":      float(mesh.get("refinement") or 1.0),
+        "single_block":         summary["single_block"],
         "snappy_refine_min":    int(geo_params.get("refine_min")    or 1),
         "snappy_refine_max":    int(geo_params.get("refine_max")    or 2),
         "snappy_feature_level": int(geo_params.get("feature_level") or 3),

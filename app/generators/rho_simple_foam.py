@@ -93,6 +93,7 @@ class RhoSimpleFoamGenerator(BaseCaseGenerator):
         nx = max(60, int(char_len * 30 / char_len * 2))
         ny = max(40, int(char_len * 20 / char_len * 2))
         nz = 1
+        domain_x, domain_y, nx, ny = self._mesh_overrides(ctx, analysis, domain_x, domain_y, nx, ny)
 
         omega_inlet = eps_inlet / (0.09 * max(k_inlet, 1e-30))
         nuTilda_inlet = nu * 3.0

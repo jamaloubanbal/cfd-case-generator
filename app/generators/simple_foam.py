@@ -90,6 +90,7 @@ class SimpleFoamGenerator(BaseCaseGenerator):
         nx = max(50, int(domain_x / char_len * 10))
         ny = max(25, int(domain_y / char_len * 10))
         nz = 1
+        domain_x, domain_y, nx, ny = self._mesh_overrides(ctx, analysis, domain_x, domain_y, nx, ny)
 
         omega_inlet = eps_inlet / (0.09 * max(k_inlet, 1e-30))
         nuTilda_inlet = nu * 3.0

@@ -365,16 +365,9 @@ def _is_gas(rho: float, nu: float, fluid_name: str) -> bool:
 
 def _estimate_mesh(analysis: dict, char_len: float) -> dict:
     """
-    Replicate the generator's default mesh-sizing logic to get approximate
-    domain dimensions and cell counts for use in validation checks.
-
-    Follows the same formulas as SimpleFoamGenerator._build_context().
+    Domain dimensions and cell counts of the mesh the generator will build
+    (including any parameter-editor overrides), for use in validation checks.
     """
-    mesh = analysis.get("suggested_mesh") or {}
-
-    domain_x = float(mesh.get("domain_x") or 20.0 * char_len)
-    domain_y = float(mesh.get("domain_y") or 10.0 * char_len)
-    nx       = int(mesh.get("nx")       or max(50, int(domain_x / char_len * 10)))
-    ny       = int(mesh.get("ny")       or max(25, int(domain_y / char_len * 10)))
-
-    return {"domain_x": domain_x, "domain_y": domain_y, "nx": nx, "ny": ny}
+    from app.editor import mesh_summary
+    s = mesh_summary(analysis)
+    return {"domain_x": s["domain_x"], "domain_y": s["domain_y"], "nx": s["nx"], "ny": s["ny"]}

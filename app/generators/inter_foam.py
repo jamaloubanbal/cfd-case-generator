@@ -65,15 +65,19 @@ class InterFoamGenerator(BaseCaseGenerator):
         domain_y = round(max(char_len * 2.0, 0.4), 4)
         domain_z = round(0.05, 4)  # thin 2D slab
 
-        # Initial water column (can be overridden via geometry_params)
-        geo_params = analysis.get("geometry_params") or {}
-        x_water = round(float(geo_params.get("x_water") or domain_x * 0.3), 4)
-        y_water = round(float(geo_params.get("y_water") or domain_y * 0.5), 4)
-
         # Cell count aiming for ~dx ≈ domain_x/100
         nx = max(100, int(domain_x / 0.01))
         ny = max(40,  int(domain_y / 0.01))
         nz = 1
+        domain_x, domain_y, nx, ny = self._mesh_overrides(ctx, analysis, domain_x, domain_y, nx, ny)
+
+        # Initial water column (can be overridden via geometry_params);
+        # clamped so it always lies inside the basin.
+        geo_params = analysis.get("geometry_params") or {}
+        x_water = float(geo_params.get("x_water") or domain_x * 0.3)
+        y_water = float(geo_params.get("y_water") or domain_y * 0.5)
+        x_water = round(min(max(x_water, 0.05 * domain_x), 0.9 * domain_x), 4)
+        y_water = round(min(max(y_water, 0.05 * domain_y), 0.9 * domain_y), 4)
 
         # Time-stepping: gravity wave speed ~ sqrt(g*h)
         g = 9.81
