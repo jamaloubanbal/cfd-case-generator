@@ -19,3 +19,6 @@ venv/
 log.*
 processor*/
 postProcessing/
+
+# Cases generated inside the repo (e.g. cfdgen ... -o test/)
+/test/

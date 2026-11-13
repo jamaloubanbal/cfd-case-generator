@@ -339,7 +339,7 @@ def _check_resolution(mp: dict, Re) -> dict:
     return _r(
         "ok",
         label,
-        f"Mesh size ({ncells:,} cells) is appropriate for a 2-D RANS case.",
+        f"Mesh size ({ncells:,} cells) is appropriate for a 2-D case.",
     )
 
 
