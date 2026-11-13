@@ -31,13 +31,13 @@ from app.validation import run_checks
 _ICONS = {"ok": "✔", "info": "ℹ", "warning": "⚠", "error": "✖"}
 
 
-def _load(path: str) -> dict:
+def _load(path: str) -> tuple[dict, str | None]:
     data = json.loads(Path(path).read_text())
-    return data.get("analysis", data)
+    return data.get("analysis", data), data.get("description")
 
 
-def _prepare(raw: dict) -> dict:
-    analysis, notes = sanitize_analysis(raw)
+def _prepare(raw: dict, description: str | None = None) -> dict:
+    analysis, notes = sanitize_analysis(raw, description)
     for n in notes:
         print(f"  corrected: {n}")
     return analysis
@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     d = sub.add_parser("describe", help="generate a case from a plain-English description (LLM)")
     d.add_argument("description")
     d.add_argument("--backend", choices=["claude", "ollama"], default="claude")
-    d.add_argument("--model", help="model id (default: CFD_CLAUDE_MODEL or claude-opus-5-5 / mistral)")
+    d.add_argument("--model", help="model id (default: claude-opus-5-5 for Claude, qwen2.5:7b for Ollama; override with CFD_CLAUDE_MODEL / CFD_OLLAMA_MODEL)")
     d.add_argument("--save-analysis", metavar="FILE", help="write the sanitised analysis JSON here")
     for p in (g, d):
         p.add_argument("-o", "--output", required=True, help="case directory to create")
@@ -100,9 +100,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Analysing with {args.backend} …", flush=True)
             raw = analyze_cfd_problem(args.description, backend=args.backend, model=args.model,
                                       api_key=os.environ.get("ANTHROPIC_API_KEY"))
+            description = args.description
         else:
-            raw = _load(args.input)
-        analysis = _prepare(raw)
+            raw, description = _load(args.input)
+        analysis = _prepare(raw, description)
     except AnalysisError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

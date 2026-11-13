@@ -87,6 +87,15 @@ flowchart LR
    - viscosities in the wrong units, implausible temperatures or speeds
    - solver/geometry combinations that cannot work
    - geometry that does not fit in its domain
+   - inlet velocities that do not point into the domain
+   - a Reynolds number that disagrees with U·L/ν: a value stated in your description wins
+     and the velocity is rescaled, otherwise Re is recomputed from the velocity
+   - a steady solver for a bluff body above the vortex-shedding threshold (switched to the
+     transient pimpleFoam)
+
+   These were added after testing local models: for "Laminar flow past a cylinder at
+   Re = 100", both `mistral` and `qwen2.5:7b` returned inputs giving Re ≈ 6 700–67 000 and
+   a steady solver. The sanitiser now repairs both answers to a correct Re = 100 transient case.
 
    It repairs each problem and shows the user every correction.
 3. **Review.** The UI shows the analysis and runs physics checks: Reynolds and Mach regime,
@@ -162,9 +171,12 @@ then either `export ANTHROPIC_API_KEY=sk-ant-...` or paste it in the sidebar. Th
 model is `claude-opus-5-5`. Pick another in the sidebar, or set `CFD_CLAUDE_MODEL`.
 If the default model declines a request, it is retried server-side on a fallback model.
 
-**Ollama (local, free).** Install [Ollama](https://ollama.com) ≥ 0.5, then run
-`ollama pull mistral` and `ollama serve`, and select *Ollama* in the sidebar. Models of 7B
-parameters or more give noticeably better analyses. `llama3`, `qwen2.5` and `phi4` work well.
+**Ollama (local, free, no API key).** Install [Ollama](https://ollama.com) ≥ 0.5, then run
+`ollama pull qwen2.5:7b`, and select *Ollama* in the sidebar or add `--backend ollama` to
+`cfdgen describe`. The default local model is `qwen2.5:7b` (set `CFD_OLLAMA_MODEL`, or use
+`--model`, to change it). In a side-by-side test it followed the schema and the physics rules
+better than `mistral`. Small local models still make numerical mistakes. The sanitiser
+catches the common ones (see *How it works*), but review the analysis before running.
 
 ### Running a generated case
 

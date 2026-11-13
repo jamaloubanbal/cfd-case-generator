@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import copy
 import math
+import re
 from typing import Any
 
 from app.schema import GEOMETRIES, GEOMETRY_PARAM_KEYS, SOLVERS, TURB_MODELS
@@ -53,11 +54,14 @@ def _in_range(value: Any, lo: float, hi: float) -> float | None:
     return f if f is not None and lo <= f <= hi else None
 
 
-def sanitize_analysis(analysis: Any) -> tuple[dict, list[str]]:
+def sanitize_analysis(analysis: Any, description: str | None = None) -> tuple[dict, list[str]]:
     """Return ``(clean_analysis, notes)``.
 
     *notes* lists every automatic correction in plain English so the UI can
     show the user what was changed.  The input is never mutated.
+
+    *description* is the user's original text; a Reynolds number stated in it takes
+    precedence over the model's numbers.
 
     Raises
     ------
@@ -165,14 +169,23 @@ def sanitize_analysis(analysis: Any) -> tuple[dict, list[str]]:
         elif a.get(key) is not None:
             a[key] = float(a[key])
 
-    # ── Reynolds number (recompute when missing or non-numeric) ──────────────
-    re_val = _to_float(a.get("Re"))
-    inlet_speed = _first_inlet_speed(a["boundary_conditions"])
-    if re_val is None and inlet_speed > 0:
-        re_val = inlet_speed * char_len / nu
-        if a.get("Re") is not None:
-            notes.append(f"Recomputed Re = {re_val:.3g} from inlet speed, length and viscosity.")
-    a["Re"] = re_val if re_val is None or re_val > 0 else None
+    # ── Inlet velocities must point into the domain ──────────────────────────
+    _fix_inlet_directions(a, notes)
+
+    # ── Reynolds number: consistent with U·L/ν and with the user's request ───
+    a["Re"] = _consistent_reynolds(a, solver, char_len, nu, description, notes)
+
+    # ── Bluff body above the shedding threshold needs a transient solver ─────
+    crit = _SHEDDING_RE.get(a.get("geometry_type"))
+    if (crit and a["solver"] == "simpleFoam" and a["turb_model"] == "laminar"
+            and a["Re"] is not None and a["Re"] > crit):
+        notes.append(
+            f"Re = {a['Re']:.3g} is above the vortex-shedding threshold (Re ≈ {crit:g}) for a "
+            f"{a['geometry_type'].replace('_', ' ')}: a steady solver cannot converge, so the "
+            "transient pimpleFoam is used instead of simpleFoam."
+        )
+        a["solver"] = "pimpleFoam"
+        a["is_transient"] = True
 
     # ── Geometry parameters: positive numbers that fit inside the domain ─────
     a["geometry_params"] = _sanitize_geometry_params(
@@ -182,6 +195,116 @@ def sanitize_analysis(analysis: Any) -> tuple[dict, list[str]]:
     a["is_transient"] = bool(a.get("is_transient", solver in ("pimpleFoam", "interFoam")))
     a["warnings"] = [str(w) for w in (a.get("warnings") or []) if w]
     return a, notes
+
+
+# Geometries whose main inlet is the x = 0 face (flow must enter in +x)
+_INLET_PLUS_X = {"channel", "t_junction", "rectangular_obstacle", "backstep", "cylinder",
+                 "pipe", "airfoil", "stl_import"}
+# Laminar Reynolds number above which the wake sheds vortices periodically
+_SHEDDING_RE = {"cylinder": 47.0, "rectangular_obstacle": 50.0}
+_RE_TOLERANCE = 0.10
+_INCOMPRESSIBLE = ("simpleFoam", "pimpleFoam")
+
+_SUPERSCRIPT = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹⁻", "0123456789-")
+_RE_PATTERN = re.compile(
+    r"\b(?:Re(?:_\w+)?|Reynolds(?:\s+number)?)\s*(?:=|≈|~|:|of|is|at)?\s*"
+    r"(?P<num>\d[\d,]*(?:\.\d+)?)"
+    r"(?:\s*[eE](?P<exp>[-+]?\d+))?"                                   # 1e6
+    r"(?:\s*(?:\^|\*\*)\s*(?P<pow>[-+]?\d+)|(?P<sup>[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+))?"   # 10^5, 10⁵
+    r"(?:\s*[x×*]\s*10\s*(?:(?:\^|\*\*)\s*(?P<pow10>[-+]?\d+)|(?P<sup10>[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+)))?"  # 2 × 10⁶
+    r"(?:\s*(?P<word>million|thousand|billion|[kKM])\b)?"            # 2 million, 50k
+)
+_WORDS = {"thousand": 1e3, "k": 1e3, "K": 1e3, "million": 1e6, "M": 1e6, "billion": 1e9}
+
+
+def stated_reynolds(description: str | None) -> float | None:
+    """Reynolds number written in the user's description, e.g. "Re = 100", "Reynolds number
+    of 2,000", "Re = 2 million", "Re = 5e5", "Re = 10^5", "Re = 2 × 10⁶"."""
+    if not description:
+        return None
+    m = _RE_PATTERN.search(description)
+    if not m:
+        return None
+    value = _to_float(m.group("num").replace(",", ""))
+    if value is None:
+        return None
+    if m.group("exp"):
+        value *= 10.0 ** int(m.group("exp"))
+    power = m.group("pow") or (m.group("sup") or "").translate(_SUPERSCRIPT)
+    if power:
+        value = value ** int(power)
+    power10 = m.group("pow10") or (m.group("sup10") or "").translate(_SUPERSCRIPT)
+    if power10:
+        value *= 10.0 ** int(power10)
+    if m.group("word"):
+        value *= _WORDS[m.group("word")]
+    return value if value > 0 else None
+
+
+def _fix_inlet_directions(a: dict, notes: list[str]) -> None:
+    """Small models sometimes put the inlet velocity in the wrong component (e.g. (0, U, 0))."""
+    geometry = a.get("geometry_type")
+    if geometry not in _INLET_PLUS_X:
+        return
+    for bc in a["boundary_conditions"]:
+        name, U = bc["patch_name"], bc["values"].get("U")
+        if "inlet" not in name.lower() or not U:
+            continue
+        speed = math.sqrt(sum(c * c for c in U))
+        if speed == 0:
+            continue
+        if geometry == "t_junction" and name == "inlet2":          # branch inlet on the top face
+            if U[1] > -0.1 * speed:
+                bc["values"]["U"] = [0.0, -speed, 0.0]
+                notes.append(f"Inlet velocity on {name} {_vec(U)} did not enter the branch — "
+                             f"using (0, -{speed:g}, 0).")
+        elif U[0] < 0.1 * speed:
+            bc["values"]["U"] = [speed, 0.0, 0.0]
+            notes.append(f"Inlet velocity on {name} {_vec(U)} did not point into the domain (+x) — "
+                         f"using ({speed:g}, 0, 0).")
+
+
+def _vec(U) -> str:
+    return "(" + ", ".join(f"{c:g}" for c in U) + ")"
+
+
+def _consistent_reynolds(a: dict, solver: str, char_len: float, nu: float,
+                         description: str | None, notes: list[str]) -> float | None:
+    """Make Re, the inlet velocity, the length and the viscosity agree.
+
+    * The user's description states Re → it wins: the inlet velocities are rescaled
+      (incompressible solvers only — for compressible flow that would change the Mach number).
+    * Otherwise the velocity wins: the model's Re is replaced by U·L/ν when they disagree.
+    """
+    re_model = _to_float(a.get("Re"))
+    re_model = re_model if re_model and re_model > 0 else None
+    speed = _first_inlet_speed(a["boundary_conditions"])
+    re_flow = speed * char_len / nu if speed > 0 else None
+    if re_flow is None:
+        return re_model
+
+    re_user = stated_reynolds(description)
+    if re_user and abs(re_flow / re_user - 1) > _RE_TOLERANCE:
+        if solver in _INCOMPRESSIBLE:
+            scale = re_user / re_flow
+            for bc in a["boundary_conditions"]:
+                if "inlet" in bc["patch_name"].lower() and bc["values"].get("U"):
+                    bc["values"]["U"] = [c * scale for c in bc["values"]["U"]]
+            a["characteristic_velocity"] = speed * scale
+            notes.append(
+                f"The model's inputs give Re = U·L/ν = {re_flow:.3g}, but the description asks for "
+                f"Re = {re_user:g}: inlet velocity rescaled from {speed:.4g} to {speed * scale:.4g} m/s "
+                f"(L = {char_len:g} m, ν = {nu:g} m²/s)."
+            )
+            return re_user
+        notes.append(f"The description asks for Re = {re_user:g} but U·L/ν = {re_flow:.3g}; the "
+                     "velocity is kept (it sets the Mach number) — check the inputs.")
+        return re_flow
+
+    if re_model and abs(re_flow / re_model - 1) > _RE_TOLERANCE:
+        notes.append(f"The model reported Re = {re_model:.3g}, but its inlet velocity, length and "
+                     f"viscosity give U·L/ν = {re_flow:.3g} — using {re_flow:.3g}.")
+    return re_flow
 
 
 def _first_inlet_speed(bcs: list) -> float:

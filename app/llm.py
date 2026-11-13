@@ -48,6 +48,10 @@ _FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 _OLLAMA_BASE_URL = "http://localhost:11434"
 
+#: Local model used when none is given; override with the CFD_OLLAMA_MODEL env var.
+#: qwen2.5:7b follows the schema and physics rules noticeably better than mistral.
+DEFAULT_OLLAMA_MODEL = os.environ.get("CFD_OLLAMA_MODEL", "qwen2.5:7b")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Analysis prompt (shared by both backends; the schema enforces the format)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -255,7 +259,7 @@ def _ollama_parse_with_retry(
 
 def analyze_cfd_problem_ollama(
     user_description: str,
-    model: str = "mistral",
+    model: str = DEFAULT_OLLAMA_MODEL,
     base_url: str = _OLLAMA_BASE_URL,
     timeout: int = 300,
 ) -> dict:
@@ -304,7 +308,7 @@ def analyze_cfd_problem(
         ``"claude"`` (default) or ``"ollama"``.
     model : str | None
         Model identifier.  Defaults to :data:`DEFAULT_CLAUDE_MODEL` for Claude
-        and ``"mistral"`` for Ollama.
+        and :data:`DEFAULT_OLLAMA_MODEL` for Ollama.
     api_key : str | None
         Anthropic API key (Claude backend only); falls back to ANTHROPIC_API_KEY.
     ollama_timeout : int
@@ -326,7 +330,7 @@ def analyze_cfd_problem(
     if backend == "claude":
         return _analyze_claude(user_description, model or DEFAULT_CLAUDE_MODEL, api_key)
     if backend == "ollama":
-        return analyze_cfd_problem_ollama(user_description, model or "mistral", timeout=ollama_timeout)
+        return analyze_cfd_problem_ollama(user_description, model or DEFAULT_OLLAMA_MODEL, timeout=ollama_timeout)
     raise ValueError(f"Unknown backend {backend!r}. Choose 'claude' or 'ollama'.")
 
 
@@ -422,6 +426,6 @@ def explain_case(
     if backend == "claude":
         return _explain_claude(analysis, user_description, model or DEFAULT_CLAUDE_MODEL, api_key)
     if backend == "ollama":
-        return _explain_ollama(analysis, user_description, model or "mistral",
+        return _explain_ollama(analysis, user_description, model or DEFAULT_OLLAMA_MODEL,
                                ollama_base_url, ollama_timeout)
     raise ValueError(f"Unknown backend {backend!r}.")

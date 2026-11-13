@@ -7,7 +7,7 @@ import os
 import streamlit as st
 
 from app.geometry_sketches import get_label, get_sketch
-from app.llm import DEFAULT_CLAUDE_MODEL, list_ollama_models, ollama_is_reachable
+from app.llm import DEFAULT_CLAUDE_MODEL, DEFAULT_OLLAMA_MODEL, list_ollama_models, ollama_is_reachable
 
 CLAUDE_MODELS = list(dict.fromkeys([DEFAULT_CLAUDE_MODEL, "claude-opus-5-5",
                                     "claude-sonnet-5-5", "claude-haiku-5-5"]))
@@ -102,14 +102,16 @@ def _ollama_settings() -> None:
         st.success("Ollama is running.", icon="✅")
         available = list_ollama_models()
         if not available:
-            available = ["mistral"]
-            st.warning("No models found — defaulting to mistral.", icon="⚠️")
+            available = [DEFAULT_OLLAMA_MODEL]
+            st.warning(f"No models found — run: ollama pull {DEFAULT_OLLAMA_MODEL}", icon="⚠️")
     else:
         st.error("Ollama not reachable.", icon="🔴")
         st.caption("`ollama serve`")
-        available = ["mistral"]
+        available = [DEFAULT_OLLAMA_MODEL]
 
-    default_idx = available.index("mistral") if "mistral" in available else 0
+    # Prefer the recommended model (Ollama lists "qwen2.5:7b" as-is, "mistral" as "mistral:latest")
+    preferred = [DEFAULT_OLLAMA_MODEL, "qwen2.5:7b", "mistral:latest", "mistral"]
+    default_idx = next((available.index(m) for m in preferred if m in available), 0)
     model = st.selectbox("Model", options=available, index=default_idx, key="ollama_model")
     timeout = st.slider(
         "Timeout (s)", min_value=60, max_value=600, value=300, step=30,

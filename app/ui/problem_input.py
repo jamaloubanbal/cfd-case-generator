@@ -105,7 +105,7 @@ def _run_analysis(description: str) -> None:
                 api_key=st.session_state.get("api_key"),
                 ollama_timeout=st.session_state.get("ollama_timeout", 300),
             )
-            analysis, notes = sanitize_analysis(raw)
+            analysis, notes = sanitize_analysis(raw, description)
         except AnalysisError as exc:
             st.error(f"**The analysis could not be used:** {exc}")
             st.stop()
