@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 
 import anthropic
@@ -342,6 +343,11 @@ def _compat_settings(backend: str, model: str | None, api_key: str | None,
     return (base_url or p["base_url"]).rstrip("/"), chosen, key, p["label"]
 
 
+# Temporary provider errors worth waiting for: rate limit, overload, gateway problems
+_BUSY_STATUSES = {429, 500, 502, 503, 504}
+_BUSY_RETRY_DELAYS = (5.0, 15.0, 30.0)
+
+
 def _compat_chat(backend: str, base_url: str, model: str, api_key: str | None,
                  system: str, user: str, response_format: dict | None, timeout: int) -> str:
     """One chat-completions call; returns the message text.  Raises requests.HTTPError on 4xx/5xx."""
@@ -352,7 +358,16 @@ def _compat_chat(backend: str, base_url: str, model: str, api_key: str | None,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     if response_format:
         body["response_format"] = response_format
-    resp = requests.post(f"{base_url}/chat/completions", json=body, headers=headers, timeout=timeout)
+    for delay in (*_BUSY_RETRY_DELAYS, None):
+        resp = requests.post(f"{base_url}/chat/completions", json=body, headers=headers, timeout=timeout)
+        if resp.status_code not in _BUSY_STATUSES or delay is None:
+            break
+        # Overloaded (503) or rate-limited (429): wait as the server asks, or back off
+        retry_after = str(resp.headers.get("Retry-After", "")) if hasattr(resp.headers, "get") else ""
+        wait = min(float(retry_after), 120.0) if retry_after.replace(".", "", 1).isdigit() else delay
+        print(f"  {model} is busy (HTTP {resp.status_code}) — retrying in {wait:.0f} s …",
+              file=sys.stderr, flush=True)
+        time.sleep(wait)
     resp.raise_for_status()
     choice = resp.json()["choices"][0]
     if choice.get("finish_reason") == "length":
@@ -380,6 +395,10 @@ def _compat_error(exc: Exception, label: str) -> RuntimeError:
         detail = exc.response.text[:300]
         if code in (401, 403):
             return RuntimeError(f"{label} rejected the API key ({code}). Check the key. {detail}")
+        if code in (500, 502, 503, 504):
+            return RuntimeError(f"{label} is overloaded or unavailable ({code}) even after retrying. "
+                                "This is usually temporary: try again in a few minutes, or use "
+                                "another model (--model) or backend. " + detail[:120])
         if code == 429:
             return RuntimeError(f"{label} rate limit reached (429) — free tiers allow a limited number "
                                 f"of requests per minute/day. Wait and retry. {detail}")
