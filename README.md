@@ -32,7 +32,8 @@ data** as part of the test suite.
   monitor plots residuals from any OpenFOAM log, and `app/postprocess` reads meshes and fields
   in pure Python, independent of OpenFOAM's function objects.
 - **Prove the results are right:** validation benchmarks compare generated cases with
-  analytical solutions and published data (all within 0.4 %, see below).
+  analytical solutions and published data, from laminar profiles to heat transfer and
+  unsteady vortex shedding (all within 1.5 %, see below).
 
 ## Gallery
 
@@ -59,12 +60,17 @@ runs it in OpenFOAM and compares it with the reference. Full report with plots:
 | Plane Poiseuille flow, Re = 100 | centreline velocity, pressure gradient, profile | analytical | ≤ 0.14 % |
 | Hagen–Poiseuille pipe (axisymmetric), Re = 100 | centreline velocity, pressure gradient, profile | analytical | ≤ 0.18 % |
 | Natural convection cavity, Ra = 10⁵ | Nusselt number, u_max, v_max | de Vahl Davis (1983) | ≤ 0.33 % |
+| Vortex shedding behind a cylinder, Re = 100 | Strouhal number (shedding frequency) | Williamson (1996) | +1.4 % ¹ |
+
+¹ Expected to be slightly high: the symmetry planes 10 D from the cylinder (5 % blockage)
+speed up the shedding compared with the unbounded reference.
 
 <p align="center"><img src="docs/validation/cavity_ra1e5.png" alt="Natural convection cavity compared with de Vahl Davis" width="900"></p>
+<p align="center"><img src="docs/validation/cylinder_re100.png" alt="Cylinder vortex shedding Strouhal number compared with Williamson" width="900"></p>
 
 ```bash
 source /usr/share/openfoam/etc/bashrc
-python -m validation.run          # ≈ 4 min; writes docs/validation/
+python -m validation.run          # ≈ 12 min on 6 cores; writes docs/validation/
 ```
 
 ---
@@ -231,7 +237,7 @@ The default suite is kept small: the OpenFOAM runs plus one fast regression test
 pip install -r requirements-dev.txt
 source /usr/share/openfoam/etc/bashrc
 pytest                                  # core: 37 OpenFOAM cases + regression tests (~2 min)
-pytest -m benchmark -v                  # validation against reference data (~4 min)
+pytest -m benchmark -v                  # validation against reference data (~12 min)
 pytest tests_extended                   # extended suite: generators, LLM, UI, CLI, … (~25 s)
 ```
 
@@ -286,9 +292,9 @@ tests_extended/             # extended tests, run manually
 - **Turbulence modelling.** Laminar or RANS (`kEpsilon`, `kOmegaSST`, `SpalartAllmaras`) with
   wall functions; no LES/DES and no low-Re wall resolution. The y⁺ physics check assumes
   uniform near-wall spacing, so it is pessimistic for wall-graded meshes.
-- **Validation coverage.** The benchmarks cover laminar flows and natural convection;
-  turbulent and transient cases (e.g. backward-facing step reattachment, cylinder Strouhal
-  number) are the next ones to add.
+- **Validation coverage.** The benchmarks cover laminar steady and unsteady flow and natural
+  convection. Turbulent (RANS) cases, e.g. backward-facing step reattachment, are the next
+  ones to add.
 - **Boundary conditions.** Uniform inflow, zero-gradient / fixed-pressure outlets and
   no-slip walls. Turbulent inflow profiles and mapped BCs are not generated.
 - **Airfoil geometry.** The airfoil is a rectangular-section body of the requested chord and
