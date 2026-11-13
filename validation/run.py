@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -28,21 +29,26 @@ from validation.benchmarks import BENCHMARKS, Benchmark, Metric
 REPO = Path(__file__).resolve().parent.parent
 
 
-def _set_run_length(case_dir: Path, end_time: float) -> None:
-    """Run for *end_time* and write the final state (and every 25 % of the run)."""
+def _set_run_length(case_dir: Path, end_time: float,
+                    sampling: tuple[float, int] | None = None) -> None:
+    """Run for *end_time*.  Write every 25 % of the run, or — with *sampling* =
+    (interval, count) — every *interval*, keeping only the last *count* results."""
     cd = case_dir / "system" / "controlDict"
     text = cd.read_text()
+    interval, keep = sampling or (end_time / 4, 0)
     text = re.sub(r"^endTime\s+[^;]+;", f"endTime         {end_time:g};", text, flags=re.M)
-    text = re.sub(r"^writeControl\s+[^;]+;", "writeControl    runTime;", text, flags=re.M)
-    text = re.sub(r"^writeInterval\s+[^;]+;", f"writeInterval   {end_time / 4:g};", text, flags=re.M)
+    text = re.sub(r"^writeControl\s+[^;]+;", "writeControl    adjustableRunTime;", text, flags=re.M)
+    text = re.sub(r"^writeInterval\s+[^;]+;", f"writeInterval   {interval:g};", text, flags=re.M)
+    text = re.sub(r"^purgeWrite\s+[^;]+;", f"purgeWrite      {keep};", text, flags=re.M)
     cd.write_text(text)
 
 
 def run_benchmark(b: Benchmark, work: Path) -> dict:
     case_dir = work / b.key
     shutil.rmtree(case_dir, ignore_errors=True)
-    GENERATORS[b.solver]().generate(b.analysis, case_dir)
-    _set_run_length(case_dir, b.end_time)
+    analysis = {**b.analysis, "n_cores": max(1, min(b.max_cores, os.cpu_count() or 1))}
+    GENERATORS[b.solver]().generate(analysis, case_dir)
+    _set_run_length(case_dir, b.end_time, b.sampling)
 
     t0 = time.time()
     proc = subprocess.run(["./Allrun"], cwd=case_dir, capture_output=True, text=True)

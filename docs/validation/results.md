@@ -8,13 +8,14 @@ with its own `Allrun`, and post-processed in Python (`app/postprocess`).
 |---|---|---:|---:|---:|---:|:-:|
 | Plane Poiseuille flow (laminar channel) | Centreline velocity u_max / U_mean | 1.498 | 1.5 | -0.14 % | ±1 % | ✅ |
 | Plane Poiseuille flow (laminar channel) | Pressure gradient dp/dx | -0.0001199 | -0.00012 | -0.08 % | ±2 % | ✅ |
-| Plane Poiseuille flow (laminar channel) | Profile: 1 + max deviation from exact / u_max | 1.001 | 1 | +0.08 % | ±1 % | ✅ |
+| Plane Poiseuille flow (laminar channel) | Profile: max |u − u_exact| / u_max | 1.001 | 1 | +0.08 % | ±1 % | ✅ |
 | Hagen–Poiseuille flow (laminar pipe, axisymmetric) | Centreline velocity u_max / U_mean | 1.997 | 2 | -0.16 % | ±1 % | ✅ |
 | Hagen–Poiseuille flow (laminar pipe, axisymmetric) | Pressure gradient dp/dx | -0.0003205 | -0.00032 | +0.15 % | ±2 % | ✅ |
-| Hagen–Poiseuille flow (laminar pipe, axisymmetric) | Profile: 1 + max deviation from exact / u_max | 1.002 | 1 | +0.18 % | ±1.5 % | ✅ |
+| Hagen–Poiseuille flow (laminar pipe, axisymmetric) | Profile: max |u − u_exact| / u_max | 1.002 | 1 | +0.18 % | ±1.5 % | ✅ |
 | Natural convection in a square cavity, Ra = 10⁵ | Average Nusselt number (hot wall) | 4.506 | 4.519 | -0.30 % | ±3 % | ✅ |
 | Natural convection in a square cavity, Ra = 10⁵ | Max u on vertical centreline · L/α | 34.84 | 34.73 | +0.33 % | ±5 % | ✅ |
 | Natural convection in a square cavity, Ra = 10⁵ | Max v on horizontal centreline · L/α | 68.57 | 68.59 | -0.03 % | ±5 % | ✅ |
+| Vortex shedding behind a circular cylinder, Re = 100 | Strouhal number St = fD/U (7 periods) | 0.167 | 0.1647 | +1.42 % | ±5 % | ✅ |
 
 ## Plane Poiseuille flow (laminar channel)
 
@@ -43,3 +44,13 @@ with its own `Allrun`, and post-processed in Python (`app/postprocess`).
 - **Notes:** Compressible perfect-gas solver with ΔT = 10 K (≈ Boussinesq); uniform 100 × 100 mesh; the reference is a Boussinesq solution at Pr = 0.71 (case: Pr = 0.713).
 
 ![Natural convection in a square cavity, Ra = 10⁵](cavity_ra1e5.png)
+
+## Vortex shedding behind a circular cylinder, Re = 100
+
+> Laminar flow past a 2-D circular cylinder at Re = 100 (D = 1 m, U = 1 m/s, ν = 0.01 m²/s), in a domain 30 D long and 20 D high with the cylinder 10 D from the inlet. Transient; measure the vortex-shedding frequency.
+
+- **Solver:** `pimpleFoam` · **cells:** 20,588 · **run time:** 408 s
+- **Reference:** Williamson, Annu. Rev. Fluid Mech. 28 (1996): St = 0.2665 − 1.018/√Re
+- **Notes:** Symmetry planes 10 D above and below the cylinder (5 % blockage) raise St slightly compared with an unbounded flow. The period is measured from zero crossings of u_y at a probe 2 D behind the cylinder.
+
+![Vortex shedding behind a circular cylinder, Re = 100](cylinder_re100.png)

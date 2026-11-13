@@ -51,6 +51,10 @@ class Benchmark:
     plot: Callable[[FoamCase, dict, list[Metric], str], None]
     notes: str = ""
     meta: dict = field(default_factory=dict)
+    # (interval, count): save every `interval` and keep the last `count` results — for
+    # time-series metrics, since OpenFOAM function objects (probes) crash in this build
+    sampling: tuple[float, int] | None = None
+    max_cores: int = 1         # run in parallel on up to this many cores
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -375,6 +379,97 @@ NATURAL_CONVECTION_CAVITY = Benchmark(
 )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. Vortex shedding behind a circular cylinder, Re = 100 — Williamson (1996)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_CYL = {"D": 1.0, "U": 1.0, "nu": 0.01, "L": 30.0, "H": 20.0, "cx": 10.0, "Re": 100.0}
+# Williamson, Annu. Rev. Fluid Mech. 28 (1996) 477–539: St = 0.2665 − 1.018/√Re (laminar shedding)
+_ST_REF = 0.2665 - 1.018 / math.sqrt(_CYL["Re"])
+
+
+def _wake_probe_series(case: FoamCase, b: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Cross-stream velocity u_y at (cx + 2D, cy) for every saved time."""
+    cc = case.cell_centres
+    target = np.array([b["cx"] + 2 * b["D"], b["H"] / 2])
+    cell = int(np.argmin(np.hypot(cc[:, 0] - target[0], cc[:, 1] - target[1])))
+    times = [t for t in case.times() if float(t) > 0]
+    return np.array([float(t) for t in times]), np.array([case.field("U", t)[cell, 1] for t in times])
+
+
+def _shedding_period(t: np.ndarray, uy: np.ndarray) -> tuple[float, int]:
+    """Mean period from upward zero crossings of u_y − mean (linearly interpolated)."""
+    s = uy - uy.mean()
+    idx = np.where((s[:-1] < 0) & (s[1:] >= 0))[0]
+    crossings = t[idx] - s[idx] * (t[idx + 1] - t[idx]) / (s[idx + 1] - s[idx])
+    if len(crossings) < 3:
+        return float("nan"), 0
+    return float(np.diff(crossings).mean()), len(crossings) - 1
+
+
+def _cylinder_eval(case: FoamCase, b: dict) -> list[Metric]:
+    t, uy = _wake_probe_series(case, b)
+    period, n = _shedding_period(t, uy)
+    st = b["D"] / (b["U"] * period) if n else 0.0
+    return [Metric(f"Strouhal number St = fD/U ({n} periods)", st, _ST_REF, 0.05, "",
+                   "Williamson (1996)")]
+
+
+def _cylinder_plot(case: FoamCase, b: dict, metrics: list[Metric], out: str) -> None:
+    plt, fig, axes = _fig(1, 3, (16, 4.2))
+    a1, a2, a3 = axes
+    tl = case.latest_time()
+    U = case.field("U", tl)
+    plot_cells(a1, case, U[:, 1] / b["U"], cmap="RdBu_r", vmin=-0.8, vmax=0.8, label="u_y / U")
+    a1.plot(b["cx"] + 2 * b["D"], b["H"] / 2, "k+", ms=10, mew=2)
+    a1.set(xlim=(b["cx"] - 3, b["cx"] + 15), ylim=(b["H"] / 2 - 5, b["H"] / 2 + 5),
+           title=f"u_y at t = {float(tl):.0f} D/U  (+ probe)", xlabel="x / D", ylabel="y / D")
+
+    t, uy = _wake_probe_series(case, b)
+    a2.plot(t, uy / b["U"], "-", color="C0")
+    a2.set(xlabel="t · U / D", ylabel="u_y / U at probe", title="Wake velocity at x = 2D behind the cylinder")
+
+    re = np.linspace(50, 180, 100)
+    a3.plot(re, 0.2665 - 1.018 / np.sqrt(re), "k-", label="Williamson (1996) fit")
+    a3.plot(b["Re"], metrics[0].value, "o", ms=9, color="C3", label=f"generated case: St = {metrics[0].value:.4f}")
+    a3.set(xlabel="Re", ylabel="St", title="Strouhal number")
+    a3.legend()
+    fig.suptitle("Laminar vortex shedding behind a cylinder, Re = 100 (pimpleFoam)")
+    fig.tight_layout()
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+
+
+CYLINDER_SHEDDING = Benchmark(
+    key="cylinder_re100",
+    title="Vortex shedding behind a circular cylinder, Re = 100",
+    description="Laminar flow past a 2-D circular cylinder at Re = 100 (D = 1 m, U = 1 m/s, "
+                "ν = 0.01 m²/s), in a domain 30 D long and 20 D high with the cylinder 10 D from "
+                "the inlet. Transient; measure the vortex-shedding frequency.",
+    reference="Williamson, Annu. Rev. Fluid Mech. 28 (1996): St = 0.2665 − 1.018/√Re",
+    solver="pimpleFoam",
+    analysis=_analysis(
+        "pimpleFoam", "cylinder", nu=_CYL["nu"], U=_CYL["U"], L=_CYL["D"],
+        bcs=[{"patch_name": "inlet", "type": "fixedValue", "values": {"U": [_CYL["U"], 0.0, 0.0]}},
+             {"patch_name": "outlet", "type": "zeroGradient", "values": {}}],
+        geometry_params={"cylinder_radius": _CYL["D"] / 2, "channel_length": _CYL["L"],
+                         "channel_height": _CYL["H"], "cx": _CYL["cx"], "cy": _CYL["H"] / 2},
+    ),
+    # From a symmetric start the wake needs ~100 D/U to start shedding and more to saturate:
+    # sampling while the amplitude still grows under-predicted St by 4 %.
+    end_time=200.0,
+    sampling=(0.25, 200),           # last 50 D/U ≈ 8 periods, 24 samples per period
+    max_cores=6,
+    evaluate=lambda c, _a: _cylinder_eval(c, _CYL),
+    plot=lambda c, _a, m, out: _cylinder_plot(c, _CYL, m, out),
+    notes="Symmetry planes 10 D above and below the cylinder (5 % blockage) raise St slightly "
+          "compared with an unbounded flow. The period is measured from zero crossings of u_y "
+          "at a probe 2 D behind the cylinder.",
+    meta=_CYL,
+)
+
+
 BENCHMARKS: dict[str, Benchmark] = {
-    b.key: b for b in (POISEUILLE_CHANNEL, POISEUILLE_PIPE, NATURAL_CONVECTION_CAVITY)
+    b.key: b for b in (POISEUILLE_CHANNEL, POISEUILLE_PIPE, NATURAL_CONVECTION_CAVITY,
+                       CYLINDER_SHEDDING)
 }

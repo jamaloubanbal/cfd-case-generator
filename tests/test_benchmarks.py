@@ -2,7 +2,7 @@
 Validation benchmarks as tests: generated cases must reproduce analytical and
 published reference results within tolerance.
 
-Slow (≈ 4 min in total) and needs OpenFOAM:
+Slow (≈ 12 min in total) and needs OpenFOAM:
 
     source /usr/share/openfoam/etc/bashrc
     pytest -m benchmark -v
