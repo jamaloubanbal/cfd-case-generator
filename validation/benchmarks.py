@@ -1,0 +1,380 @@
+"""
+Benchmark definitions.
+
+Each benchmark is an *analysis* dict — exactly what the LLM produces for a
+problem description — so the validation exercises the real generator path.
+After the run, ``evaluate`` reads the results with :mod:`app.postprocess`
+(pure Python, no OpenFOAM function objects) and returns metrics with their
+reference values, and ``plot`` draws a comparison figure.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+from typing import Callable
+
+import numpy as np
+
+from app.postprocess import FoamCase
+from app.postprocess.render import plot_cells
+
+
+@dataclass
+class Metric:
+    name: str
+    value: float
+    reference: float
+    tolerance: float          # relative, e.g. 0.02 = 2 %
+    unit: str = ""
+    source: str = ""
+
+    @property
+    def error(self) -> float:
+        return (self.value - self.reference) / self.reference
+
+    @property
+    def passed(self) -> bool:
+        return bool(abs(self.error) <= self.tolerance)
+
+
+@dataclass
+class Benchmark:
+    key: str
+    title: str
+    description: str          # the plain-English problem, as a user would type it
+    reference: str            # citation for the reference data
+    solver: str
+    analysis: dict
+    end_time: float           # iterations (steady) or seconds (transient)
+    evaluate: Callable[[FoamCase, dict], list[Metric]]
+    plot: Callable[[FoamCase, dict, list[Metric], str], None]
+    notes: str = ""
+    meta: dict = field(default_factory=dict)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _column(case: FoamCase, x_target: float) -> np.ndarray:
+    """Indices of the cells in the mesh column whose centre x is closest to *x_target*."""
+    x = case.cell_centres[:, 0]
+    xs = np.unique(np.round(x, 10))
+    x_col = xs[np.argmin(np.abs(xs - x_target))]
+    return np.where(np.isclose(x, x_col, rtol=0, atol=1e-9 + 1e-6 * abs(x_col)))[0]
+
+
+def _row(case: FoamCase, y_target: float, coord=None) -> np.ndarray:
+    y = case.cell_centres[:, 1] if coord is None else coord
+    ys = np.unique(np.round(y, 10))
+    y_row = ys[np.argmin(np.abs(ys - y_target))]
+    return np.where(np.isclose(y, y_row, rtol=0, atol=1e-9 + 1e-6 * abs(y_row)))[0]
+
+
+def _analysis(solver: str, geometry: str, *, nu: float, U: float, L: float,
+              turb: str = "laminar", fluid: str = "air", rho: float = 1.2,
+              bcs: list | None = None, geometry_params: dict | None = None,
+              mesh: dict | None = None, **extra) -> dict:
+    a = {
+        "solver": solver,
+        "solver_justification": "Validation benchmark.",
+        "fluid": {"name": fluid, "nu": nu, "rho": rho},
+        "turb_model": turb,
+        "geometry_type": geometry,
+        "geometry_params": geometry_params or {},
+        "boundary_conditions": bcs or [
+            {"patch_name": "inlet", "type": "fixedValue", "values": {"U": [U, 0.0, 0.0]}},
+            {"patch_name": "outlet", "type": "zeroGradient", "values": {}},
+            {"patch_name": "walls", "type": "noSlip", "values": {}},
+        ],
+        "numerical_schemes": {},
+        "Re": U * L / nu if U else None,
+        "is_transient": solver in ("pimpleFoam", "interFoam"),
+        "suggested_mesh": mesh or {},
+        "characteristic_length": L,
+        "characteristic_velocity": U,
+        "warnings": [],
+        "n_cores": 1,
+    }
+    a.update(extra)
+    return a
+
+
+def _fig(nrows=1, ncols=2, size=(11, 4)):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(nrows, ncols, figsize=size)
+    return plt, fig, axes
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Plane Poiseuille flow (laminar channel) — analytical solution
+# ─────────────────────────────────────────────────────────────────────────────
+
+_CH = {"H": 0.1, "L": 2.0, "U": 0.01, "nu": 1e-5}          # Re_H = 100
+
+
+def _channel_eval(case: FoamCase, b: dict) -> list[Metric]:
+    t = case.latest_time()
+    U, p = case.field("U", t), case.field("p", t)
+    H, L, Um, nu = b["H"], b["L"], b["U"], b["nu"]
+    col = _column(case, 0.8 * L)
+    u_max = U[col, 0].max()
+    row = _row(case, H / 2)
+    xr = case.cell_centres[row, 0]
+    sel = row[(xr > 0.5 * L) & (xr < 0.9 * L)]
+    dpdx = np.polyfit(case.cell_centres[sel, 0], p[sel], 1)[0]
+    y = case.cell_centres[col, 1]
+    u_an = 6 * Um * (y / H) * (1 - y / H)
+    src = "analytical (plane Poiseuille)"
+    return [
+        Metric("Centreline velocity u_max / U_mean", u_max / Um, 1.5, 0.01, "", src),
+        Metric("Pressure gradient dp/dx", dpdx, -12 * nu * Um / H**2, 0.02, "m/s²", src),
+        Metric("Profile: 1 + max deviation from exact / u_max", 1 + np.abs(U[col, 0] - u_an).max() / (1.5 * Um),
+               1.0, 0.01, "(1 + error)", src),
+    ]
+
+
+def _channel_plot(case: FoamCase, b: dict, metrics: list[Metric], out: str) -> None:
+    t = case.latest_time()
+    U, p = case.field("U", t), case.field("p", t)
+    H, L, Um, nu = b["H"], b["L"], b["U"], b["nu"]
+    plt, fig, (a1, a2) = _fig()
+    col = _column(case, 0.8 * L)
+    y = case.cell_centres[col, 1]
+    order = np.argsort(y)
+    yy = np.linspace(0, H, 200)
+    a1.plot(6 * (yy / H) * (1 - yy / H), yy / H, "k-", label="analytical")
+    a1.plot(U[col, 0][order] / Um, y[order] / H, "o", ms=4, mfc="none", color="C0", label="generated case")
+    a1.set(xlabel="u / U_mean", ylabel="y / H", title="Velocity profile at x = 0.8 L")
+    a1.legend()
+    row = _row(case, H / 2)
+    x = case.cell_centres[row, 0]
+    o = np.argsort(x)
+    a2.plot(x[o] / L, p[row][o], "-", color="C0", label="generated case")
+    xs = np.linspace(0.4, 1.0, 50) * L
+    dp = -12 * nu * Um / H**2
+    a2.plot(xs / L, dp * (xs - L), "k--", label="analytical slope (developed flow)")
+    a2.set(xlabel="x / L", ylabel="p (kinematic) [m²/s²]", title="Centreline pressure")
+    a2.legend()
+    fig.suptitle("Plane Poiseuille flow, Re_H = 100 (simpleFoam, laminar)")
+    fig.tight_layout()
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+
+
+POISEUILLE_CHANNEL = Benchmark(
+    key="poiseuille_channel",
+    title="Plane Poiseuille flow (laminar channel)",
+    description="Laminar flow of a fluid with ν = 1e-5 m²/s between two parallel plates 0.1 m "
+                "apart, 2 m long, mean velocity 0.01 m/s (Re = 100).",
+    reference="Analytical: u(y) = 6·U·(y/H)(1 − y/H), dp/dx = −12 ν U / H²",
+    solver="simpleFoam",
+    analysis=_analysis("simpleFoam", "channel", nu=_CH["nu"], U=_CH["U"], L=_CH["H"],
+                       mesh={"domain_x": _CH["L"], "domain_y": _CH["H"], "nx": 200, "ny": 40}),
+    end_time=3000,
+    evaluate=lambda c, _a: _channel_eval(c, _CH),
+    plot=lambda c, _a, m, out: _channel_plot(c, _CH, m, out),
+    meta=_CH,
+)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Hagen–Poiseuille flow (laminar pipe, axisymmetric wedge) — analytical
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PI = {"R": 0.05, "L": 2.0, "U": 0.01, "nu": 1e-5}          # Re_D = 100
+
+
+def _pipe_radius(case: FoamCase) -> np.ndarray:
+    cc = case.cell_centres
+    return np.hypot(cc[:, 1], cc[:, 2])
+
+
+def _pipe_eval(case: FoamCase, b: dict) -> list[Metric]:
+    t = case.latest_time()
+    U, p = case.field("U", t), case.field("p", t)
+    R, L, Um, nu = b["R"], b["L"], b["U"], b["nu"]
+    col = _column(case, 0.8 * L)
+    u_max = U[col, 0].max()
+    r = _pipe_radius(case)
+    row = _row(case, 0.0, coord=r)
+    xr = case.cell_centres[row, 0]
+    sel = row[(xr > 0.5 * L) & (xr < 0.9 * L)]
+    dpdx = np.polyfit(case.cell_centres[sel, 0], p[sel], 1)[0]
+    u_an = 2 * Um * (1 - (r[col] / R) ** 2)
+    src = "analytical (Hagen–Poiseuille)"
+    return [
+        Metric("Centreline velocity u_max / U_mean", u_max / Um, 2.0, 0.01, "", src),
+        Metric("Pressure gradient dp/dx", dpdx, -8 * nu * Um / R**2, 0.02, "m/s²", src),
+        Metric("Profile: 1 + max deviation from exact / u_max", 1 + np.abs(U[col, 0] - u_an).max() / (2 * Um),
+               1.0, 0.015, "(1 + error)", src),
+    ]
+
+
+def _pipe_plot(case: FoamCase, b: dict, metrics: list[Metric], out: str) -> None:
+    t = case.latest_time()
+    U, p = case.field("U", t), case.field("p", t)
+    R, L, Um, nu = b["R"], b["L"], b["U"], b["nu"]
+    plt, fig, (a1, a2) = _fig()
+    col = _column(case, 0.8 * L)
+    r = _pipe_radius(case)[col]
+    o = np.argsort(r)
+    rr = np.linspace(0, R, 200)
+    a1.plot(2 * (1 - (rr / R) ** 2), rr / R, "k-", label="analytical")
+    a1.plot(U[col, 0][o] / Um, r[o] / R, "o", ms=3, mfc="none", color="C1", label="generated case")
+    a1.set(xlabel="u / U_mean", ylabel="r / R", title="Velocity profile at x = 0.8 L")
+    a1.legend()
+    plot_cells(a2, case, U[:, 0] / Um, cmap="viridis", label="u / U_mean")
+    a2.set_aspect("auto")
+    a2.set(xlabel="x [m]", ylabel="r [m]", title="Axial velocity (5° wedge mesh)")
+    fig.suptitle("Hagen–Poiseuille pipe flow, Re_D = 100 (simpleFoam, laminar, axisymmetric)")
+    fig.tight_layout()
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+
+
+POISEUILLE_PIPE = Benchmark(
+    key="poiseuille_pipe",
+    title="Hagen–Poiseuille flow (laminar pipe, axisymmetric)",
+    description="Laminar flow in a circular pipe of radius 5 cm and length 2 m, mean velocity "
+                "0.01 m/s, ν = 1e-5 m²/s (Re_D = 100).",
+    reference="Analytical: u(r) = 2·U·(1 − r²/R²), dp/dx = −8 ν U / R²",
+    solver="simpleFoam",
+    analysis=_analysis("simpleFoam", "pipe", nu=_PI["nu"], U=_PI["U"], L=2 * _PI["R"],
+                       geometry_params={"pipe_radius": _PI["R"], "pipe_length": _PI["L"]}),
+    end_time=3000,
+    evaluate=lambda c, _a: _pipe_eval(c, _PI),
+    plot=lambda c, _a, m, out: _pipe_plot(c, _PI, m, out),
+    meta=_PI,
+)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. Differentially heated square cavity, Ra = 1e5 — de Vahl Davis (1983)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _cavity_setup(Ra: float = 1e5, dT: float = 10.0, T_mean: float = 300.0,
+                  nu: float = 1.5e-5, Pr: float = 0.713) -> dict:
+    g, beta = 9.81, 1.0 / T_mean
+    L = (Ra * nu**2 / (g * beta * dT * Pr)) ** (1.0 / 3.0)
+    return {"Ra": Ra, "dT": dT, "T_hot": T_mean + dT / 2, "T_cold": T_mean - dT / 2,
+            "nu": nu, "Pr": Pr, "L": L, "alpha": nu / Pr}
+
+
+_CAV = _cavity_setup()
+
+# de Vahl Davis, "Natural convection of air in a square cavity: a bench mark numerical
+# solution", Int. J. Numer. Meth. Fluids 3 (1983) 249–264 — Ra = 1e5 values.
+_DVD = {"Nu_avg": 4.519, "u_max": 34.73, "y_umax": 0.855, "v_max": 68.59, "x_vmax": 0.066}
+
+
+def _rows_by_y(case: FoamCase) -> list[np.ndarray]:
+    y = np.round(case.cell_centres[:, 1], 10)
+    return [np.where(y == v)[0] for v in np.unique(y)]
+
+
+def _nusselt(case: FoamCase, b: dict, t: str) -> np.ndarray:
+    """Local Nu along the hot wall (x = 0) from a 2nd-order one-sided T gradient."""
+    T = case.field("T", t)
+    x = case.cell_centres[:, 0]
+    nus = []
+    for row in _rows_by_y(case):
+        o = row[np.argsort(x[row])][:2]
+        coeff = np.polyfit([0.0, x[o[0]], x[o[1]]], [b["T_hot"], T[o[0]], T[o[1]]], 2)
+        nus.append(-coeff[1] * b["L"] / b["dT"])
+    return np.array(nus)
+
+
+def _centreline(case: FoamCase, U: np.ndarray, axis: int, b: dict):
+    """Velocity on the vertical (axis=0 → u vs y) or horizontal (axis=1 → v vs x) centreline,
+    averaged over the two cell columns/rows either side of the centre."""
+    cc = case.cell_centres
+    coord = cc[:, axis]
+    vals = np.unique(np.round(coord, 10))
+    mid = vals[np.argsort(np.abs(vals - b["L"] / 2))[:2]]
+    other = 1 - axis
+    lines = []
+    for m in mid:
+        idx = np.where(np.isclose(coord, m, atol=1e-12))[0]
+        idx = idx[np.argsort(cc[idx, other])]
+        lines.append((cc[idx, other], U[idx, axis]))   # u on vertical, v on horizontal line
+    pos = lines[0][0]
+    vel = 0.5 * (lines[0][1] + lines[1][1])
+    return pos / b["L"], vel * b["L"] / b["alpha"]
+
+
+def _cavity_eval(case: FoamCase, b: dict) -> list[Metric]:
+    t = case.latest_time()
+    U = case.field("U", t)
+    nu_avg = _nusselt(case, b, t).mean()
+    _, u = _centreline(case, U, 0, b)
+    _, v = _centreline(case, U, 1, b)
+    src = "de Vahl Davis (1983)"
+    return [
+        Metric("Average Nusselt number (hot wall)", nu_avg, _DVD["Nu_avg"], 0.03, "", src),
+        Metric("Max u on vertical centreline · L/α", u.max(), _DVD["u_max"], 0.05, "", src),
+        Metric("Max v on horizontal centreline · L/α", v.max(), _DVD["v_max"], 0.05, "", src),
+    ]
+
+
+def _cavity_plot(case: FoamCase, b: dict, metrics: list[Metric], out: str) -> None:
+    t = case.latest_time()
+    T, U = case.field("T", t), case.field("U", t)
+    plt, fig, (a1, a2, a3) = _fig(1, 3, (15, 4.4))
+    plot_cells(a1, case, T, cmap="coolwarm", label="T [K]")
+    cc = case.cell_centres
+    step = max(1, int(math.sqrt(case.n_cells) // 20))
+    grid = np.round(cc[:, 0] / (b["L"] / math.sqrt(case.n_cells))).astype(int)
+    gridy = np.round(cc[:, 1] / (b["L"] / math.sqrt(case.n_cells))).astype(int)
+    sel = (grid % step == 0) & (gridy % step == 0)
+    a1.quiver(cc[sel, 0], cc[sel, 1], U[sel, 0], U[sel, 1], color="k", scale_units="xy",
+              angles="xy", width=0.004)
+    a1.set(title="Temperature and velocity", xlabel="x [m]", ylabel="y [m]")
+
+    y, u = _centreline(case, U, 0, b)
+    a2.plot(u, y, "-", color="C0", label="generated case")
+    a2.plot(_DVD["u_max"], _DVD["y_umax"], "ks", label="de Vahl Davis u_max")
+    a2.set(xlabel="u · L / α", ylabel="y / L", title="u on vertical centreline")
+    a2.legend(loc="lower right")
+
+    nus = _nusselt(case, b, t)
+    yy = np.unique(np.round(cc[:, 1], 10)) / b["L"]
+    a3.plot(nus, yy, "-", color="C3", label=f"local Nu (mean {nus.mean():.3f})")
+    a3.axvline(_DVD["Nu_avg"], color="k", ls="--", label=f"de Vahl Davis mean {_DVD['Nu_avg']}")
+    a3.set(xlabel="Nu", ylabel="y / L", title="Hot-wall Nusselt number")
+    a3.legend()
+    fig.suptitle("Differentially heated cavity, Ra = 10⁵ (buoyantSimpleFoam, laminar)")
+    fig.tight_layout()
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+
+
+NATURAL_CONVECTION_CAVITY = Benchmark(
+    key="cavity_ra1e5",
+    title="Natural convection in a square cavity, Ra = 10⁵",
+    description=f"Natural convection of air in a square cavity of side {_CAV['L'] * 100:.2f} cm, "
+                f"hot left wall at {_CAV['T_hot']:.0f} K, cold right wall at {_CAV['T_cold']:.0f} K, "
+                "adiabatic top and bottom (Ra = 1e5). Steady state, laminar.",
+    reference="de Vahl Davis, Int. J. Numer. Meth. Fluids 3 (1983) 249–264",
+    solver="buoyantSimpleFoam",
+    analysis=_analysis(
+        "buoyantSimpleFoam", "cavity", nu=_CAV["nu"], U=0.0, L=_CAV["L"],
+        bcs=[{"patch_name": "hotWall", "type": "fixedValue", "values": {"T": _CAV["T_hot"]}},
+             {"patch_name": "coldWall", "type": "fixedValue", "values": {"T": _CAV["T_cold"]}}],
+        mesh={"refinement": 2.0},
+    ),
+    end_time=15000,           # stops earlier once residualControl is met (~9 000 iterations)
+    evaluate=lambda c, _a: _cavity_eval(c, _CAV),
+    plot=lambda c, _a, m, out: _cavity_plot(c, _CAV, m, out),
+    notes="Compressible perfect-gas solver with ΔT = 10 K (≈ Boussinesq); uniform 100 × 100 mesh; "
+          "the reference is a Boussinesq solution at Pr = 0.71 (case: Pr = 0.713).",
+    meta=_CAV,
+)
+
+
+BENCHMARKS: dict[str, Benchmark] = {
+    b.key: b for b in (POISEUILLE_CHANNEL, POISEUILLE_PIPE, NATURAL_CONVECTION_CAVITY)
+}
