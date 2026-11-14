@@ -1,1064 +1,2126 @@
-[
- {
-  "backend": "ollama",
-  "model": "llama3.1:8b",
-  "cases": {
-   "cyl_re100": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "transient": false,
-     "Re": false
+{
+ "holdout": [
+  {
+   "backend": "gemini",
+   "model": "gemini-3.1-flash-lite",
+   "cases": {
+    "h_glycerine_pipe": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.8
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true
+    "h_chimney_wind": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.8
     },
-    "error": null,
-    "seconds": 92.6
-   },
-   "cyl_re40": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "transient": true,
-     "Re": false
+    "h_wire_wake": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 3.0
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true
+    "h_fast_duct": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 2.5
     },
-    "error": null,
-    "seconds": 64.2
-   },
-   "cyl_air_turbulent": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_microchannel": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.2
     },
-    "sanitised": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_room_convection": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.7
     },
-    "error": null,
-    "seconds": 59.8
-   },
-   "pipe_turbulent": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "h_step_water": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.7
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "h_wind_block": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.6
     },
-    "error": null,
-    "seconds": 50.7
-   },
-   "pipe_oil_laminar": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": false,
-     "Re": true,
-     "nu": true
+    "h_slow_wing": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.7
     },
-    "sanitised": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_gate_release": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "error": null,
+     "seconds": 3.0
+    }
+   }
+  },
+  {
+   "backend": "ollama",
+   "model": "llama3.1:8b",
+   "cases": {
+    "h_glycerine_pipe": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 82.3
     },
-    "error": null,
-    "seconds": 57.8
-   },
-   "plates_laminar": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": false,
-     "nu": true
+    "h_chimney_wind": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 62.3
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": false,
-     "nu": true
+    "h_wire_wake": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 78.0
     },
-    "error": null,
-    "seconds": 61.4
-   },
-   "duct_turbulent": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "h_fast_duct": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 60.6
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "h_microchannel": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 64.4
     },
-    "error": null,
-    "seconds": 61.4
-   },
-   "channel_startup": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "h_room_convection": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 71.0
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "h_step_water": {
+     "raw": {
+      "solver": true,
+      "geometry": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 64.7
     },
-    "error": null,
-    "seconds": 69.2
-   },
-   "backstep": {
-    "raw": {
-     "solver": true,
-     "geometry": false,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_wind_block": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 72.4
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": false,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_slow_wing": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 65.3
     },
-    "error": null,
-    "seconds": 65.3
-   },
-   "t_junction": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_gate_release": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "error": null,
+     "seconds": 53.3
+    }
+   }
+  },
+  {
+   "backend": "ollama",
+   "model": "mistral",
+   "cases": {
+    "h_glycerine_pipe": {
+     "raw": {
+      "solver": true,
+      "geometry": false,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 97.4
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_chimney_wind": {
+     "raw": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 74.0
     },
-    "error": null,
-    "seconds": 57.0
-   },
-   "building_wind": {
-    "raw": {
-     "solver": false,
-     "geometry": false,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_wire_wake": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 78.1
     },
-    "sanitised": {
-     "solver": false,
-     "geometry": false,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_fast_duct": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 85.9
     },
-    "error": null,
-    "seconds": 60.0
-   },
-   "square_shedding": {
-    "raw": {
-     "solver": false,
-     "geometry": false,
-     "laminar": false,
-     "transient": false,
-     "Re": true,
-     "nu": true
+    "h_microchannel": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 79.6
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": false,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "h_room_convection": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 92.1
     },
-    "error": null,
-    "seconds": 53.5
-   },
-   "wing_low_speed": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_step_water": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 102.5
     },
-    "sanitised": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "h_wind_block": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 75.5
     },
-    "error": null,
-    "seconds": 63.7
-   },
-   "airfoil_transonic": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": false
+    "h_slow_wing": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 72.6
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true
+    "h_gate_release": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "error": null,
+     "seconds": 82.8
+    }
+   }
+  },
+  {
+   "backend": "ollama",
+   "model": "qwen2.5:7b",
+   "cases": {
+    "h_glycerine_pipe": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 76.8
     },
-    "error": null,
-    "seconds": 60.0
-   },
-   "channel_compressible": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "Re": true
+    "h_chimney_wind": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 63.8
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true
+    "h_wire_wake": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 65.2
     },
-    "error": null,
-    "seconds": 49.3
-   },
-   "cavity_temperatures": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "nu": true
+    "h_fast_duct": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": false,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 57.3
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "nu": true
+    "h_microchannel": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 58.8
     },
-    "error": null,
-    "seconds": 67.5
-   },
-   "cavity_ra1e5": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "nu": true
+    "h_room_convection": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 70.1
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "nu": true
+    "h_step_water": {
+     "raw": {
+      "solver": true,
+      "geometry": false,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 65.3
     },
-    "error": null,
-    "seconds": 60.9
-   },
-   "dam_break": {
-    "raw": {
-     "solver": false,
-     "geometry": false,
-     "transient": false
+    "h_wind_block": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 65.3
     },
-    "sanitised": {
-     "solver": false,
-     "geometry": false,
-     "transient": false
+    "h_slow_wing": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 68.9
     },
-    "error": null,
-    "seconds": 52.5
-   },
-   "dam_sloshing": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "transient": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "transient": true
-    },
-    "error": null,
-    "seconds": 58.0
-   },
-   "heated_channel_forced": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 58.0
+    "h_gate_release": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "error": null,
+     "seconds": 66.8
+    }
    }
   }
- },
- {
-  "backend": "ollama",
-  "model": "mistral",
-  "cases": {
-   "cyl_re100": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "transient": false,
-     "Re": false
+ ],
+ "dev": [
+  {
+   "backend": "gemini",
+   "model": "gemini-3.1-flash-lite",
+   "cases": {
+    "cyl_re100": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 6.8
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true
+    "cyl_re40": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 2.6
     },
-    "error": null,
-    "seconds": 95.2
-   },
-   "cyl_re40": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": false
+    "cyl_air_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.8
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true
+    "pipe_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.5
     },
-    "error": null,
-    "seconds": 77.6
-   },
-   "cyl_air_turbulent": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "pipe_oil_laminar": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.2
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "plates_laminar": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.4
     },
-    "error": null,
-    "seconds": 72.1
-   },
-   "pipe_turbulent": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "duct_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.4
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "channel_startup": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 3.5
     },
-    "error": null,
-    "seconds": 68.5
-   },
-   "pipe_oil_laminar": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "Re": false,
-     "nu": true
+    "backstep": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 10.3
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": false,
-     "nu": true
+    "t_junction": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.7
     },
-    "error": null,
-    "seconds": 72.7
-   },
-   "plates_laminar": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "Re": false,
-     "nu": true
+    "building_wind": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 7.7
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "Re": false,
-     "nu": true
+    "square_shedding": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 8.6
     },
-    "error": null,
-    "seconds": 70.1
-   },
-   "duct_turbulent": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "wing_low_speed": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.8
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "airfoil_transonic": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 2.8
     },
-    "error": null,
-    "seconds": 74.6
-   },
-   "channel_startup": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "channel_compressible": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 7.7
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "cavity_temperatures": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 2.6
     },
-    "error": null,
-    "seconds": 69.5
-   },
-   "backstep": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "Re": true,
-     "nu": true
+    "cavity_ra1e5": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 3.5
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "dam_break": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "error": null,
+     "seconds": 2.4
     },
-    "error": null,
-    "seconds": 82.7
-   },
-   "t_junction": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": false,
-     "nu": true
+    "dam_sloshing": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "error": null,
+     "seconds": 2.7
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": false,
-     "nu": true
+    "heated_channel_forced": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 19.0
+    }
+   }
+  },
+  {
+   "backend": "ollama",
+   "model": "llama3.1:8b",
+   "cases": {
+    "cyl_re100": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "transient": false,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 92.6
     },
-    "error": null,
-    "seconds": 73.9
-   },
-   "building_wind": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "cyl_re40": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 64.2
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "cyl_air_turbulent": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 59.8
     },
-    "error": null,
-    "seconds": 73.4
-   },
-   "square_shedding": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "pipe_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 50.7
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
+    "pipe_oil_laminar": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 57.8
     },
-    "error": null,
-    "seconds": 69.4
-   },
-   "wing_low_speed": {
-    "raw": {
-     "solver": false,
-     "geometry": false,
-     "laminar": true,
-     "Re": false,
-     "nu": true
+    "plates_laminar": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 61.4
     },
-    "sanitised": {
-     "solver": false,
-     "geometry": false,
-     "laminar": true,
-     "Re": false,
-     "nu": true
+    "duct_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 61.4
     },
-    "error": null,
-    "seconds": 71.6
-   },
-   "airfoil_transonic": {
-    "raw": {
-     "solver": true,
-     "geometry": false,
-     "laminar": true,
-     "Re": false
+    "channel_startup": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 69.2
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": false,
-     "laminar": true,
-     "Re": true
+    "backstep": {
+     "raw": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 65.3
     },
-    "error": null,
-    "seconds": 72.8
-   },
-   "channel_compressible": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "Re": true
+    "t_junction": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 57.0
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true
+    "building_wind": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 60.0
     },
-    "error": null,
-    "seconds": 71.0
-   },
-   "cavity_temperatures": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "nu": true
+    "square_shedding": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "laminar": false,
+      "transient": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 53.5
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "nu": true
+    "wing_low_speed": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 63.7
     },
-    "error": null,
-    "seconds": 92.4
-   },
-   "cavity_ra1e5": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "nu": true
+    "airfoil_transonic": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 60.0
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "nu": true
+    "channel_compressible": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 49.3
     },
-    "error": null,
-    "seconds": 84.0
-   },
-   "dam_break": {
-    "raw": {
-     "solver": false,
-     "geometry": false,
-     "transient": false
+    "cavity_temperatures": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 67.5
     },
-    "sanitised": {
-     "solver": false,
-     "geometry": false,
-     "transient": false
+    "cavity_ra1e5": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 60.9
     },
-    "error": null,
-    "seconds": 73.2
-   },
-   "dam_sloshing": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "transient": true
+    "dam_break": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "error": null,
+     "seconds": 52.5
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "transient": true
+    "dam_sloshing": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "error": null,
+     "seconds": 58.0
     },
-    "error": null,
-    "seconds": 78.9
-   },
-   "heated_channel_forced": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "heated_channel_forced": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 58.0
+    }
+   }
+  },
+  {
+   "backend": "ollama",
+   "model": "mistral",
+   "cases": {
+    "cyl_re100": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "transient": false,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 95.2
     },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
+    "cyl_re40": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 77.6
     },
-    "error": null,
-    "seconds": 71.6
+    "cyl_air_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 72.1
+    },
+    "pipe_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 68.5
+    },
+    "pipe_oil_laminar": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 72.7
+    },
+    "plates_laminar": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 70.1
+    },
+    "duct_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 74.6
+    },
+    "channel_startup": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 69.5
+    },
+    "backstep": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 82.7
+    },
+    "t_junction": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 73.9
+    },
+    "building_wind": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 73.4
+    },
+    "square_shedding": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 69.4
+    },
+    "wing_low_speed": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "laminar": true,
+      "Re": false,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 71.6
+    },
+    "airfoil_transonic": {
+     "raw": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 72.8
+    },
+    "channel_compressible": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 71.0
+    },
+    "cavity_temperatures": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 92.4
+    },
+    "cavity_ra1e5": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 84.0
+    },
+    "dam_break": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "error": null,
+     "seconds": 73.2
+    },
+    "dam_sloshing": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true
+     },
+     "error": null,
+     "seconds": 78.9
+    },
+    "heated_channel_forced": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 71.6
+    }
+   }
+  },
+  {
+   "backend": "ollama",
+   "model": "qwen2.5:7b",
+   "cases": {
+    "cyl_re100": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "transient": false,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 85.1
+    },
+    "cyl_re40": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 63.9
+    },
+    "cyl_air_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 61.5
+    },
+    "pipe_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 56.1
+    },
+    "pipe_oil_laminar": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 56.4
+    },
+    "plates_laminar": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 61.0
+    },
+    "duct_turbulent": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 56.6
+    },
+    "channel_startup": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 62.5
+    },
+    "backstep": {
+     "raw": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 66.9
+    },
+    "t_junction": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 65.5
+    },
+    "building_wind": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 67.2
+    },
+    "square_shedding": {
+     "raw": {
+      "solver": true,
+      "geometry": false,
+      "laminar": false,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": false,
+      "laminar": true,
+      "transient": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 70.9
+    },
+    "wing_low_speed": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 66.6
+    },
+    "airfoil_transonic": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 68.6
+    },
+    "channel_compressible": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": false,
+      "Re": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true
+     },
+     "error": null,
+     "seconds": 57.3
+    },
+    "cavity_temperatures": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 62.7
+    },
+    "cavity_ra1e5": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "laminar": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 79.3
+    },
+    "dam_break": {
+     "raw": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "sanitised": {
+      "solver": false,
+      "geometry": false,
+      "transient": false
+     },
+     "error": null,
+     "seconds": 71.4
+    },
+    "dam_sloshing": {
+     "raw": {
+      "solver": false,
+      "geometry": true,
+      "transient": false
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "transient": false
+     },
+     "error": null,
+     "seconds": 71.6
+    },
+    "heated_channel_forced": {
+     "raw": {
+      "solver": true,
+      "geometry": true,
+      "laminar": false,
+      "Re": true,
+      "nu": true
+     },
+     "sanitised": {
+      "solver": true,
+      "geometry": true,
+      "laminar": true,
+      "Re": true,
+      "nu": true
+     },
+     "error": null,
+     "seconds": 59.6
+    }
    }
   }
- },
- {
-  "backend": "ollama",
-  "model": "qwen2.5:7b",
-  "cases": {
-   "cyl_re100": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "transient": false,
-     "Re": false
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true
-    },
-    "error": null,
-    "seconds": 85.1
-   },
-   "cyl_re40": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "transient": true,
-     "Re": false
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true
-    },
-    "error": null,
-    "seconds": 63.9
-   },
-   "cyl_air_turbulent": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 61.5
-   },
-   "pipe_turbulent": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "transient": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 56.1
-   },
-   "pipe_oil_laminar": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 56.4
-   },
-   "plates_laminar": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 61.0
-   },
-   "duct_turbulent": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "transient": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 56.6
-   },
-   "channel_startup": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 62.5
-   },
-   "backstep": {
-    "raw": {
-     "solver": true,
-     "geometry": false,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": false,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 66.9
-   },
-   "t_junction": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 65.5
-   },
-   "building_wind": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 67.2
-   },
-   "square_shedding": {
-    "raw": {
-     "solver": true,
-     "geometry": false,
-     "laminar": false,
-     "transient": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": false,
-     "laminar": true,
-     "transient": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 70.9
-   },
-   "wing_low_speed": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 66.6
-   },
-   "airfoil_transonic": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": false
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true
-    },
-    "error": null,
-    "seconds": 68.6
-   },
-   "channel_compressible": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": false,
-     "Re": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true
-    },
-    "error": null,
-    "seconds": 57.3
-   },
-   "cavity_temperatures": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 62.7
-   },
-   "cavity_ra1e5": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "laminar": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 79.3
-   },
-   "dam_break": {
-    "raw": {
-     "solver": false,
-     "geometry": false,
-     "transient": false
-    },
-    "sanitised": {
-     "solver": false,
-     "geometry": false,
-     "transient": false
-    },
-    "error": null,
-    "seconds": 71.4
-   },
-   "dam_sloshing": {
-    "raw": {
-     "solver": false,
-     "geometry": true,
-     "transient": false
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "transient": false
-    },
-    "error": null,
-    "seconds": 71.6
-   },
-   "heated_channel_forced": {
-    "raw": {
-     "solver": true,
-     "geometry": true,
-     "laminar": false,
-     "Re": true,
-     "nu": true
-    },
-    "sanitised": {
-     "solver": true,
-     "geometry": true,
-     "laminar": true,
-     "Re": true,
-     "nu": true
-    },
-    "error": null,
-    "seconds": 59.6
-   }
-  }
- }
-]
+ ]
+}

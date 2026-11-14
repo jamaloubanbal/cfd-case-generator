@@ -93,17 +93,25 @@ transient, the Reynolds number actually simulated (U·L/ν within 15 %) and the 
 answer is scored raw and after the sanitiser, i.e. what the app actually generates. Full
 results: [`docs/evaluation/results.md`](docs/evaluation/results.md).
 
-| Model (local, via Ollama) | Fully correct: raw answer | Fully correct: after sanitiser |
-|---|---:|---:|
-| `qwen2.5:7b` | 30 % | **80 %** |
-| `mistral` (7B) | 45 % | **70 %** |
-| `llama3.1:8b` | 30 % | **60 %** |
+Fully correct answers (all checked fields right):
 
-The evaluation exposed systematic mistakes that the sanitiser now repairs. Models chose laminar
-flow at Re = 13 million, turbulence models at Re = 40, an incompressible solver at Mach 0.73,
-and a velocity of 0.82 m/s for "Mach 0.8". It also showed the sanitiser itself breaking correct
-geometries when the solver was wrong; that is fixed too. These cases also served to develop
-those rules, so the "after" numbers are optimistic (see the report's notes).
+| Model | Held-out: raw | **Held-out: after sanitiser** | Dev set: after sanitiser | Time per answer |
+|---|---:|---:|---:|---:|
+| `gemini-3.1-flash-lite` (free cloud tier) | 100 % | **100 %** | 100 % | 3 s |
+| `qwen2.5:7b` (local) | 40 % | **80 %** | 80 % | 65 s |
+| `mistral` 7B (local) | 40 % | **60 %** | 70 % | 83 s |
+| `llama3.1:8b` (local) | 20 % | **40 %** | 60 % | 65 s |
+
+The **held-out** cases (10) were written after the sanitiser rules were developed and
+[committed before any model saw them](evals/cases_holdout.json), so they give the unbiased
+numbers. The 20 **development** cases are the ones that exposed systematic mistakes the
+sanitiser now repairs: laminar flow at Re = 13 million, turbulence models at Re = 40, an
+incompressible solver at Mach 0.73, 0.82 m/s for "Mach 0.8", and the sanitiser itself breaking
+correct geometries when the solver was wrong.
+
+Takeaways: a free cloud model gets every case right. For local 7–8B models, the sanitiser
+roughly doubles the share of correct setups, and the gains carry over to unseen
+descriptions (qwen: 40 % → 80 % on the held-out set).
 
 ```bash
 python -m evals.run --backend ollama --model qwen2.5:7b          # or --backend gemini …

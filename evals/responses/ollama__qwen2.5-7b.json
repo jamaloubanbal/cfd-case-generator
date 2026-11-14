@@ -2246,6 +2246,1094 @@
     ]
    },
    "seconds": 59.6
+  },
+  "h_glycerine_pipe": {
+   "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "Steady incompressible single-phase flow, as the flow is in a pipe and the velocity is relatively low.",
+    "fluid": {
+     "name": "glycerine",
+     "nu": 0.0012,
+     "rho": 1261.1
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "inlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0.2,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 300,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 300,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "pipe_wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 300,
+       "alpha.water": null
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steady",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "linear",
+     "snGradSchemes": "none",
+     "justification": "Standard choices for incompressible flow"
+    },
+    "Re": 2300,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 10000,
+     "domain_description": "3 cm diameter pipe with a length of 10 cm"
+    },
+    "characteristic_length": 0.03,
+    "characteristic_velocity": 0.2,
+    "Ma": null,
+    "T_ref": null,
+    "p_ref": null,
+    "turb_model": "laminar",
+    "geometry_type": "pipe",
+    "geometry_params": {
+     "channel_length": 0.1,
+     "channel_height": null,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": null,
+     "obstacle_height": null,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": 0.015,
+     "cx": 0.015,
+     "cy": 0,
+     "pipe_radius": 0.015,
+     "pipe_length": 0.1,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": null
+    },
+    "warnings": [
+     "The geometry type is assumed to be a pipe based on the provided information."
+    ]
+   },
+   "seconds": 76.8
+  },
+  "h_chimney_wind": {
+   "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "The problem describes a steady incompressible flow, and the wind speed is relatively low, so incompressibility is a reasonable assumption.",
+    "fluid": {
+     "name": "air",
+     "nu": 1.5e-05,
+     "rho": 1.225
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "inlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        8,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 293.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 293.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 293.15,
+       "alpha.water": null
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steadyState",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "linear",
+     "snGradSchemes": "none",
+     "justification": "Standard choices for incompressible flow"
+    },
+    "Re": 2300,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 100000,
+     "domain_description": "A 30 cm diameter chimney in a 2-D cross-wind of 8 m/s"
+    },
+    "characteristic_length": 0.3,
+    "characteristic_velocity": 8,
+    "Ma": null,
+    "T_ref": null,
+    "p_ref": null,
+    "turb_model": "laminar",
+    "geometry_type": "cylinder",
+    "geometry_params": {
+     "channel_length": null,
+     "channel_height": null,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": null,
+     "obstacle_height": null,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": 0.15,
+     "cx": 0.15,
+     "cy": 0,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": null
+    },
+    "warnings": [
+     "The geometry is described as a 2-D cross-wind, but the chimney is 30 cm in diameter. This implies a 2-D cross-section of a 3-D chimney. The 2-D assumption is used here, but users should verify the 2-D approximation is valid for their specific case."
+    ]
+   },
+   "seconds": 63.8
+  },
+  "h_wire_wake": {
+   "analysis": {
+    "solver": "pimpleFoam",
+    "solver_justification": "The problem involves unsteady flow, which is best handled by a transient solver like pimpleFoam.",
+    "fluid": {
+     "name": "water",
+     "nu": 1e-06,
+     "rho": 1000
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "inlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        -0.02,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 0
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steady",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "default",
+     "snGradSchemes": "default",
+     "justification": "For simplicity and stability, steady schemes are chosen for this problem."
+    },
+    "Re": 2300,
+    "is_transient": true,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 100000,
+     "domain_description": "A channel with a wire placed across it."
+    },
+    "characteristic_length": 0.005,
+    "characteristic_velocity": 0.02,
+    "Ma": 0.0002,
+    "T_ref": 300,
+    "p_ref": 101325,
+    "turb_model": "SpalartAllmaras",
+    "geometry_type": "cylinder",
+    "geometry_params": {
+     "channel_length": null,
+     "channel_height": null,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": 0.005,
+     "obstacle_height": 0.005,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": 0.0025,
+     "cx": 0.0025,
+     "cy": 0.0,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": 0.05
+    },
+    "warnings": [
+     "The channel length and height are not specified. A default value of 0.1 m is assumed for the channel height and 0.1 m for the channel length.",
+     "The exact position of the cylinder is not specified. The cylinder is assumed to be centered at (0.0025, 0.0) in the channel."
+    ]
+   },
+   "seconds": 65.2
+  },
+  "h_fast_duct": {
+   "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "The flow is steady and incompressible, and the velocity is below the threshold for compressible flow (Mach number ~0.3).",
+    "fluid": {
+     "name": "air",
+     "nu": 1.5e-05,
+     "rho": 1.225
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "inlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        200,
+        0,
+        0
+       ],
+       "p": null,
+       "T": 300,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": null,
+       "T": 300,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": null,
+       "T": null,
+       "alpha.water": null
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steadyState",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "default",
+     "snGradSchemes": "default",
+     "justification": "Standard choices for incompressible flow"
+    },
+    "Re": 20000,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 10000,
+     "domain_description": "2D duct with height 5 cm"
+    },
+    "characteristic_length": 0.05,
+    "characteristic_velocity": 200,
+    "Ma": null,
+    "T_ref": 300,
+    "p_ref": null,
+    "turb_model": "laminar",
+    "geometry_type": "channel",
+    "geometry_params": {
+     "channel_length": null,
+     "channel_height": 0.05,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": null,
+     "obstacle_height": null,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": null,
+     "cx": null,
+     "cy": null,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": null
+    },
+    "warnings": [
+     "The channel height is provided, but the channel length is not specified. A default value will be used for the mesh generation."
+    ]
+   },
+   "seconds": 57.3
+  },
+  "h_microchannel": {
+   "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "The flow is steady and incompressible, and the velocity is relatively low, making simpleFoam the appropriate choice.",
+    "fluid": {
+     "name": "water",
+     "nu": 1e-06,
+     "rho": 1000
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "inlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0.005,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 0
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steadyState",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "linear",
+     "snGradSchemes": "none",
+     "justification": "Standard choices for incompressible flow"
+    },
+    "Re": null,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 100000,
+     "domain_description": "microchannel with height 0.5 mm and length to be determined based on flow characteristics"
+    },
+    "characteristic_length": 0.0005,
+    "characteristic_velocity": 0.005,
+    "Ma": null,
+    "T_ref": 300,
+    "p_ref": null,
+    "turb_model": "laminar",
+    "geometry_type": "channel",
+    "geometry_params": {
+     "channel_length": null,
+     "channel_height": 0.0005,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": null,
+     "obstacle_height": null,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": null,
+     "cx": null,
+     "cy": null,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": null
+    },
+    "warnings": [
+     "The channel length is not specified. A reasonable assumption is that the channel is long enough to ensure fully developed flow, but this should be verified based on the specific application."
+    ]
+   },
+   "seconds": 58.8
+  },
+  "h_room_convection": {
+   "analysis": {
+    "solver": "buoyantSimpleFoam",
+    "solver_justification": "Buoyancy-driven flow due to temperature differences is the primary driver of the flow.",
+    "fluid": {
+     "name": "air",
+     "nu": 1.5e-05,
+     "rho": 1.225
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "hotWall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 303.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "coldWall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 288.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "inlet",
+      "type": "inletOutlet",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 288.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "outlet",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 288.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "symmetry",
+      "type": "symmetry",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 288.15,
+       "alpha.water": null
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steady",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "default",
+     "snGradSchemes": "default",
+     "justification": "For steady-state, buoyancy-driven flow, a simple scheme is sufficient."
+    },
+    "Re": null,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 10000,
+     "domain_description": "2D room with dimensions 3m x 3m"
+    },
+    "characteristic_length": 3,
+    "characteristic_velocity": 0.1,
+    "Ma": null,
+    "T_ref": 288.15,
+    "p_ref": 101325,
+    "turb_model": "laminar",
+    "geometry_type": "cavity",
+    "geometry_params": {
+     "channel_length": 3,
+     "channel_height": 3,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": null,
+     "obstacle_height": null,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": null,
+     "cx": null,
+     "cy": null,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": null
+    },
+    "warnings": [
+     "The characteristic velocity is assumed to be 0.1 m/s, which is a reasonable estimate for natural convection in a 2D room."
+    ]
+   },
+   "seconds": 70.1
+  },
+  "h_step_water": {
+   "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "The flow is steady and incompressible, and the velocity is below the threshold for compressible flow (Mach number ~0.3).",
+    "fluid": {
+     "name": "water",
+     "nu": 1e-06,
+     "rho": 1000
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "inlet1",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        -0.3,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "step",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 0
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steadyState",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "linear",
+     "snGradSchemes": "none",
+     "justification": "Standard choices for incompressible flow"
+    },
+    "Re": 150,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 100000,
+     "domain_description": "2D channel with a backward-facing step"
+    },
+    "characteristic_length": 0.002,
+    "characteristic_velocity": 0.3,
+    "Ma": null,
+    "T_ref": 300,
+    "p_ref": null,
+    "turb_model": "laminar",
+    "geometry_type": "channel",
+    "geometry_params": {
+     "channel_length": null,
+     "channel_height": 0.002,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": 0.001,
+     "obstacle_height": 0.001,
+     "step_height": 0.001,
+     "step_x": null,
+     "cylinder_radius": null,
+     "cx": null,
+     "cy": null,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": null
+    },
+    "warnings": [
+     "The channel length and step_x are not specified. A reasonable assumption is that the channel length is much larger than the step height, and the step_x is the step height."
+    ]
+   },
+   "seconds": 65.3
+  },
+  "h_wind_block": {
+   "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "Steady incompressible flow with no significant compressibility effects.",
+    "fluid": {
+     "name": "air",
+     "nu": 1.5e-05,
+     "rho": 1.225
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "inlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        5,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 293.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 293.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 293.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "symmetry",
+      "type": "symmetry",
+      "values": {
+       "U": null,
+       "p": null,
+       "T": null,
+       "alpha.water": null
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steady",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "default",
+     "snGradSchemes": "default",
+     "justification": "Standard schemes for incompressible flow"
+    },
+    "Re": 15000,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 100000,
+     "domain_description": "2D rectangular domain with a block of 2m x 2m"
+    },
+    "characteristic_length": 2,
+    "characteristic_velocity": 5,
+    "Ma": 0.001,
+    "T_ref": 293.15,
+    "p_ref": 101325,
+    "turb_model": "laminar",
+    "geometry_type": "rectangular_obstacle",
+    "geometry_params": {
+     "channel_length": null,
+     "channel_height": null,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": 2,
+     "obstacle_height": 2,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": null,
+     "cx": null,
+     "cy": null,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": null
+    },
+    "warnings": [
+     "Assuming the flow is 2D and incompressible. For more accurate results, consider using a 3D model or a compressible solver if the flow is significantly compressible."
+    ]
+   },
+   "seconds": 65.3
+  },
+  "h_slow_wing": {
+   "analysis": {
+    "solver": "simpleFoam",
+    "solver_justification": "The problem describes a steady incompressible flow over a wing section, which is suitable for the simpleFoam solver.",
+    "fluid": {
+     "name": "air",
+     "nu": 1.5e-05,
+     "rho": 1.225
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "inlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        15
+       ],
+       "p": 101325,
+       "T": 288.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 288.15,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "symmetry",
+      "type": "symmetry",
+      "values": {
+       "U": null,
+       "p": null,
+       "T": null,
+       "alpha.water": null
+      }
+     },
+     {
+      "patch_name": "wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 101325,
+       "T": 288.15,
+       "alpha.water": null
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steadyState",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "default",
+     "snGradSchemes": "default",
+     "justification": "Standard choices for incompressible flow"
+    },
+    "Re": 15000,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 100000,
+     "domain_description": "A wing section with a 0.2 m chord in air at 15 m/s."
+    },
+    "characteristic_length": 0.2,
+    "characteristic_velocity": 15,
+    "Ma": 0.03,
+    "T_ref": 288.15,
+    "p_ref": 101325,
+    "turb_model": "kEpsilon",
+    "geometry_type": "airfoil",
+    "geometry_params": {
+     "channel_length": null,
+     "channel_height": null,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": null,
+     "obstacle_height": null,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": null,
+     "cx": null,
+     "cy": null,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": 0.2,
+     "thickness": 0.012,
+     "r_far": 0.15,
+     "wake_length": 0.1
+    },
+    "warnings": [
+     "The geometry parameters for the channel, branch, obstacle, step, cylinder, and pipe are not provided. Default values will be used for these parameters."
+    ]
+   },
+   "seconds": 68.9
+  },
+  "h_gate_release": {
+   "analysis": {
+    "solver": "rhoSimpleFoam",
+    "solver_justification": "The problem involves steady compressible flow, and the primary driver is gravity, which suggests a high-speed flow scenario.",
+    "fluid": {
+     "name": "water",
+     "nu": 1e-06,
+     "rho": 1000
+    },
+    "boundary_conditions": [
+     {
+      "patch_name": "gate",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 0
+      }
+     },
+     {
+      "patch_name": "inlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "outlet",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     },
+     {
+      "patch_name": "wall",
+      "type": "fixedValue",
+      "values": {
+       "U": [
+        0,
+        0,
+        0
+       ],
+       "p": 0,
+       "T": 300,
+       "alpha.water": 1
+      }
+     }
+    ],
+    "numerical_schemes": {
+     "ddtSchemes": "steady",
+     "gradSchemes": "Gauss linear",
+     "divSchemes": "Gauss linear limited 0.3",
+     "laplacianSchemes": "Gauss linear limited 0.3",
+     "interpolationSchemes": "linear",
+     "snGradSchemes": "corrected",
+     "justification": "Standard schemes for steady-state simulations"
+    },
+    "Re": null,
+    "is_transient": false,
+    "suggested_mesh": {
+     "type": "blockMesh",
+     "approximate_cell_count": 100000,
+     "domain_description": "A tank with a gate and a flooded area"
+    },
+    "characteristic_length": 0.1,
+    "characteristic_velocity": 1,
+    "Ma": 0.1,
+    "T_ref": 300,
+    "p_ref": 101325,
+    "turb_model": "kEpsilon",
+    "geometry_type": "cavity",
+    "geometry_params": {
+     "channel_length": 1,
+     "channel_height": 1,
+     "branch_width": null,
+     "branch_height": null,
+     "obstacle_width": null,
+     "obstacle_height": null,
+     "step_height": null,
+     "step_x": null,
+     "cylinder_radius": null,
+     "cx": null,
+     "cy": null,
+     "pipe_radius": null,
+     "pipe_length": null,
+     "chord": null,
+     "thickness": null,
+     "r_far": null,
+     "wake_length": null
+    },
+    "warnings": [
+     "The geometry type is assumed to be a cavity as the problem involves a tank with a gate and a flooded area. The exact geometry dimensions are not provided, so default values are used.",
+     "The Re and Ma numbers are not provided, so they are assumed based on the problem description. The Ma number is set to 0.1 as a reasonable assumption for a gravity-driven flow."
+    ]
+   },
+   "seconds": 66.8
   }
  }
 }
