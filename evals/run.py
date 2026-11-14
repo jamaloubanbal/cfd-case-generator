@@ -26,7 +26,11 @@ from app.sanitize import AnalysisError, sanitize_analysis
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
-CASES = json.loads((ROOT / "cases.json").read_text())["cases"]
+# "dev": used while developing the sanitiser rules; "holdout": written afterwards and
+# committed before any model saw them — the unbiased estimate.
+SETS = {name: json.loads((ROOT / f).read_text())["cases"]
+        for name, f in (("dev", "cases.json"), ("holdout", "cases_holdout.json"))}
+CASES = SETS["dev"]
 RESPONSES = ROOT / "responses"
 FIELDS = ("solver", "geometry", "laminar", "transient", "Re", "nu")
 RE_TOLERANCE = 0.15
@@ -103,14 +107,15 @@ def _response_file(backend: str, model: str) -> Path:
     return RESPONSES / f"{backend}__{re.sub(r'[^A-Za-z0-9._-]+', '-', model)}.json"
 
 
-def collect(backend: str, model: str, delay: float, retry_errors: bool, only: list[str] | None) -> None:
+def collect(backend: str, model: str, delay: float, retry_errors: bool, only: list[str] | None,
+            cases: list[dict]) -> None:
     from app.llm import analyze_cfd_problem
 
     path = _response_file(backend, model)
     data = json.loads(path.read_text()) if path.exists() else {
         "backend": backend, "model": model, "answers": {}}
     RESPONSES.mkdir(exist_ok=True)
-    for case in CASES:
+    for case in cases:
         cid = case["id"]
         if only and cid not in only:
             continue
@@ -136,31 +141,25 @@ def _pct(values: list[bool]) -> str:
     return f"{100 * sum(values) / len(values):.0f} %" if values else "—"
 
 
-def report(out_dir: Path) -> str:
+def _score_models(cases: list[dict]) -> list[dict]:
     models = []
     for path in sorted(RESPONSES.glob("*.json")):
         d = json.loads(path.read_text())
         rows = {}
-        for case in CASES:
+        for case in cases:
             ans = d["answers"].get(case["id"])
-            if ans is None:
-                continue
-            rows[case["id"]] = {**score_case(case, ans.get("analysis")),
-                                "error": ans.get("error"), "seconds": ans.get("seconds")}
+            if ans is not None:
+                rows[case["id"]] = {**score_case(case, ans.get("analysis")),
+                                    "error": ans.get("error"), "seconds": ans.get("seconds")}
         if rows:
             models.append({"backend": d["backend"], "model": d["model"], "cases": rows})
+    return models
 
-    lines = [
-        "# LLM evaluation",
-        "",
-        f"How accurately each model turns a plain-English description into a CFD setup, on "
-        f"{len(CASES)} cases with known answers ([`evals/cases.json`](../../evals/cases.json)).",
-        "**Raw**: the model's answer as returned. **Sanitised**: after the validation layer "
-        "(`app/sanitize.py`), i.e. what the app actually generates.",
-        "",
-        "| Model | Cases | Solver | Geometry | Laminar/RANS | Steady/transient | Re (±15 %) | Viscosity | **Fully correct** | Median time |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
-    ]
+
+def _section(title: str, intro: str, cases: list[dict], models: list[dict]) -> list[str]:
+    lines = [f"## {title}", "", intro, "",
+             "| Model | Cases | Solver | Geometry | Laminar/RANS | Steady/transient | Re (±15 %) | Viscosity | **Fully correct** | Median time |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for m in models:
         for stage in ("raw", "sanitised"):
             per_field = {f: [r[stage][f] for r in m["cases"].values() if f in r[stage]] for f in FIELDS}
@@ -170,11 +169,10 @@ def report(out_dir: Path) -> str:
             name = f"`{m['model']}` ({m['backend']})" if stage == "raw" else "↳ after sanitiser"
             lines.append(f"| {name} | {len(m['cases'])} | " + " | ".join(_pct(per_field[f]) for f in FIELDS)
                          + f" | **{_pct(full)}** | {median if stage == 'raw' else ''} |")
-
-    lines += ["", "## Per case (sanitised: ✅ fully correct, ❌ wrong fields listed)", "",
+    lines += ["", "Per case, after the sanitiser (✅ fully correct, ❌ wrong fields):", "",
               "| Case | " + " | ".join(f"`{m['model']}`" for m in models) + " |",
               "|---|" + "---|" * len(models)]
-    for case in CASES:
+    for case in cases:
         cells = []
         for m in models:
             r = m["cases"].get(case["id"])
@@ -186,21 +184,44 @@ def report(out_dir: Path) -> str:
                 wrong = [f for f, ok in r["sanitised"].items() if not ok]
                 cells.append("✅" if not wrong else "❌ " + ", ".join(wrong))
         lines.append(f"| {case['id']} | " + " | ".join(cells) + " |")
-    lines += ["", "## Notes", "",
-              "- These 20 cases were also used to find weaknesses in the sanitiser (solver/geometry "
-              "conflicts, laminar vs RANS by Reynolds number, Mach > 0.3 needs a compressible solver, "
-              "a stated Mach number sets the velocity). The rules are general physics, not tuned to "
-              "particular sentences, but the *after sanitiser* numbers are measured on the same cases; "
-              "a fresh set of descriptions would give an unbiased estimate.",
-              "- Not fixed on purpose: all local models misread the dam-break description (they used "
-              "gravity, 9.81, as an inlet velocity). Catching that would need keyword rules fitted to "
-              "these test sentences, which would inflate the score without improving the app.",
+    return lines + [""]
+
+
+def report(out_dir: Path) -> str:
+    dev, holdout = _score_models(SETS["dev"]), _score_models(SETS["holdout"])
+    lines = [
+        "# LLM evaluation",
+        "",
+        "How accurately each model turns a plain-English description into a CFD setup. "
+        "**Raw**: the model's answer as returned. **Sanitised**: after the validation layer "
+        "(`app/sanitize.py`), i.e. what the app actually generates.",
+        "",
+    ]
+    if holdout:
+        lines += _section(
+            f"Held-out set ({len(SETS['holdout'])} cases): unbiased estimate",
+            "Written after the sanitiser rules were developed and committed before any model was "
+            "run on them ([`evals/cases_holdout.json`](../../evals/cases_holdout.json)); the sanitiser "
+            "was not changed after seeing these results.",
+            SETS["holdout"], holdout)
+    lines += _section(
+        f"Development set ({len(SETS['dev'])} cases)",
+        "Used to find weaknesses in the sanitiser ([`evals/cases.json`](../../evals/cases.json)), so "
+        "the *after sanitiser* numbers here are optimistic.",
+        SETS["dev"], dev)
+    lines += ["## Notes", "",
+              "- Sanitiser rules developed on the development set: solver/geometry conflicts, laminar "
+              "vs RANS by Reynolds number, Ma > 0.3 needs a compressible solver, a stated Mach number "
+              "sets the velocity. They are general physics, not tuned to particular sentences.",
+              "- Not fixed on purpose: all local models misread the dev-set dam-break description (they "
+              "used gravity, 9.81, as an inlet velocity). Catching that would need keyword rules fitted "
+              "to test sentences, which would inflate the score without improving the app.",
               "- Local models ran on a laptop GPU (GTX 1650 Ti); cloud models are much faster."]
     text = "\n".join(lines) + "\n"
 
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "results.md").write_text(text)
-    (out_dir / "results.json").write_text(json.dumps(models, indent=1))
+    (out_dir / "results.json").write_text(json.dumps({"holdout": holdout, "dev": dev}, indent=1))
     return text
 
 
@@ -211,6 +232,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--delay", type=float, default=0.0, help="seconds between requests (free-tier rate limits)")
     ap.add_argument("--retry-errors", action="store_true", help="ask again for cases that failed before")
     ap.add_argument("--only", nargs="*", help="case ids to run")
+    ap.add_argument("--set", choices=["all", "dev", "holdout"], default="all",
+                    help="which cases to ask about (already-cached answers are skipped)")
     ap.add_argument("--report", action="store_true", help="only re-score cached answers and write the report")
     ap.add_argument("--out", default=str(REPO / "docs" / "evaluation"))
     args = ap.parse_args(argv)
@@ -218,8 +241,9 @@ def main(argv: list[str] | None = None) -> int:
     if not args.report:
         if not (args.backend and args.model):
             ap.error("--backend and --model are required (or use --report)")
-        print(f"Evaluating {args.model} ({args.backend}) on {len(CASES)} cases")
-        collect(args.backend, args.model, args.delay, args.retry_errors, args.only)
+        cases = SETS["dev"] + SETS["holdout"] if args.set == "all" else SETS[args.set]
+        print(f"Evaluating {args.model} ({args.backend}) on {len(cases)} cases")
+        collect(args.backend, args.model, args.delay, args.retry_errors, args.only, cases)
     print(report(Path(args.out)))
     return 0
 
