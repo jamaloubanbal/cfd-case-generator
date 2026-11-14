@@ -1,0 +1,156 @@
+{
+ "note": "Held-out cases: written after the sanitiser rules were developed on cases.json and committed before any model was run on them. Do not tune the sanitiser on these.",
+ "cases": [
+  {
+   "id": "h_glycerine_pipe",
+   "description": "Glycerine with a kinematic viscosity of 1.2e-3 m²/s is pumped at 0.2 m/s through a 3 cm diameter pipe.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "pipe"
+    ],
+    "laminar": true,
+    "Re": 5.000000000000001,
+    "nu": 0.0012
+   }
+  },
+  {
+   "id": "h_chimney_wind",
+   "description": "A 30 cm diameter chimney stands in a 2-D cross-wind of 8 m/s (air).",
+   "expected": {
+    "solver": [
+     "simpleFoam",
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "cylinder"
+    ],
+    "laminar": false,
+    "Re": 160000.0,
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "h_wire_wake",
+   "description": "Unsteady wake behind a 5 mm diameter wire placed across a water flow of 2 cm/s.",
+   "expected": {
+    "solver": [
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "cylinder"
+    ],
+    "laminar": true,
+    "transient": true,
+    "Re": 100.00000000000001,
+    "nu": 1e-06
+   }
+  },
+  {
+   "id": "h_fast_duct",
+   "description": "Air at 200 m/s and 300 K flows through a straight 2-D duct 5 cm high.",
+   "expected": {
+    "solver": [
+     "rhoSimpleFoam"
+    ],
+    "geometry": [
+     "channel"
+    ],
+    "laminar": false,
+    "Re": 666666.6666666666
+   }
+  },
+  {
+   "id": "h_microchannel",
+   "description": "Water creeps at 5 mm/s through a microchannel 0.5 mm high.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "channel"
+    ],
+    "laminar": true,
+    "Re": 2.5000000000000004,
+    "nu": 1e-06
+   }
+  },
+  {
+   "id": "h_room_convection",
+   "description": "Buoyancy-driven air circulation in a closed 2-D room 3 m square, with one wall at 30 °C and the opposite wall at 15 °C.",
+   "expected": {
+    "solver": [
+     "buoyantSimpleFoam"
+    ],
+    "geometry": [
+     "cavity"
+    ],
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "h_step_water",
+   "description": "Water at 0.3 m/s passes over a backward-facing step 1 cm high in a channel 2 cm high.",
+   "expected": {
+    "solver": [
+     "simpleFoam",
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "backstep"
+    ],
+    "Re": [
+     3000.0,
+     6000.0
+    ],
+    "nu": 1e-06
+   }
+  },
+  {
+   "id": "h_wind_block",
+   "description": "Steady wind of 5 m/s past a rectangular block 2 m wide and 2 m high standing on open ground (2-D).",
+   "expected": {
+    "solver": [
+     "simpleFoam",
+     "pimpleFoam"
+    ],
+    "geometry": [
+     "rectangular_obstacle"
+    ],
+    "laminar": false,
+    "Re": 666666.6666666666,
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "h_slow_wing",
+   "description": "A wing section with a 0.2 m chord in air at 15 m/s.",
+   "expected": {
+    "solver": [
+     "simpleFoam"
+    ],
+    "geometry": [
+     "airfoil"
+    ],
+    "laminar": false,
+    "Re": 200000.0,
+    "nu": 1.5e-05
+   }
+  },
+  {
+   "id": "h_gate_release",
+   "description": "Water held behind a gate in a tank is suddenly released and floods the dry side of the tank under gravity.",
+   "expected": {
+    "solver": [
+     "interFoam"
+    ],
+    "geometry": [
+     "dambreak"
+    ],
+    "transient": true
+   }
+  }
+ ]
+}
