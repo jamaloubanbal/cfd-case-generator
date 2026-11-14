@@ -264,6 +264,21 @@ def _relevant_files(case_dir: Path, d: Diagnosis) -> list[str]:
     return out[:5]
 
 
+def _match_sent_file(rel: str, sent: list[str]) -> str:
+    """Map a near-miss path to the file the model was shown, if unambiguous.
+
+    Small models often get the diagnosis right but the path wrong, e.g. "0/fvSchemes" for
+    "system/fvSchemes" or "0/p.boundaryField.outlet" for "0/p".  Unknown names stay as they
+    are (and are then rejected).
+    """
+    if rel in sent:
+        return rel
+    name = Path(rel).name
+    name = re.sub(r"\.(boundaryField|internalField|dimensions)\b.*$", "", name)
+    candidates = [s for s in sent if Path(s).name in (name, name.split(".")[0])]
+    return candidates[0] if len(candidates) == 1 else rel
+
+
 def _reject_reason(case_dir: Path, rel: str, content: str) -> str | None:
     target = (case_dir / rel).resolve()
     if case_dir.resolve() not in target.parents:
@@ -292,12 +307,13 @@ def llm_fix(case_dir: Path, d: Diagnosis, backend: str, model: str | None = None
 
     parts = [f"Failing application: {d.application}", f"Error: {d.message}",
              f"End of log.{d.application}:\n{d.log_tail}"]
-    for rel in _relevant_files(case_dir, d):
+    sent = _relevant_files(case_dir, d)
+    for rel in sent:
         text = (case_dir / rel).read_text(errors="replace")[:_MAX_FILE_CHARS]
         parts.append(f"=== {rel} ===\n{text}")
     answer = ask_json(_FIX_SYSTEM, "\n\n".join(parts), FIX_SCHEMA, backend=backend, model=model,
                       api_key=api_key, base_url=base_url)
-    rel = str(answer.get("file", "")).strip().lstrip("./")
+    rel = _match_sent_file(str(answer.get("file", "")).strip().lstrip("./"), sent)
     content = answer.get("content", "")
     reason = _reject_reason(case_dir, rel, content)
     if reason:

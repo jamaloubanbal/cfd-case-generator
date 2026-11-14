@@ -125,6 +125,32 @@ def build(name: str, work: Path) -> Path:
     return case
 
 
+def write_report(results: dict) -> None:
+    """docs/evaluation/agent_results.md: one column per mode, one row per fault."""
+    modes = list(results)
+    label = {m: ("rules only" if m == "rules" else m.split(":", 1)[1].replace("/", " · ")
+                 + (" (LLM only)" if m.startswith("llm:") else " (rules + LLM)")) for m in modes}
+    lines = ["# Repair agent: fault-injection benchmark", "",
+             "A working case is generated, one realistic fault is injected (most are bugs this project "
+             "actually had), and the agent must make the case run again ([`evals/faults.py`](../../evals/faults.py)). "
+             "✅ repaired (by which fixer), ❌ not repaired.", "",
+             "| Fault | " + " | ".join(label[m] for m in modes) + " |",
+             "|---|" + ":-:|" * len(modes)]
+    for name, (_, _, what) in FAULTS.items():
+        cells = []
+        for m in modes:
+            r = results[m].get(name)
+            if r is None:
+                cells.append("—")
+            else:
+                who = "rules" if r["fixers"] and all(f == "rules" for f in r["fixers"]) else "LLM"
+                cells.append(f"✅ {who}" if r["repaired"] else "❌")
+        lines.append(f"| {what} | " + " | ".join(cells) + " |")
+    lines.append("| **Repaired** | " + " | ".join(
+        f"**{sum(v['repaired'] for v in results[m].values())}/{len(results[m])}**" for m in modes) + " |")
+    (RESULTS.parent / "agent_results.md").write_text("\n".join(lines) + "\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="only verify that each fault breaks its case")
@@ -155,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.check:
         RESULTS.parent.mkdir(parents=True, exist_ok=True)
         RESULTS.write_text(json.dumps(results, indent=1))
+        write_report(results)
         ok = sum(v["repaired"] for v in results[key].values())
         print(f"\n{key}: {ok}/{len(results[key])} faults repaired")
     return 0

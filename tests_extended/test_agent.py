@@ -46,3 +46,12 @@ def test_unsafe_llm_edits_are_rejected(case, rel, content, reason):
 
 def test_reasonable_llm_edit_is_accepted(case):
     assert _reject_reason(case, "system/fvSolution", HEADER + "solvers\n{\n    p { solver GAMG; }\n}\n") is None
+
+
+@pytest.mark.parametrize("given, expected", [
+    ("0/fvSchemes", "system/fvSchemes"), ("0/p.boundaryField.outlet", "0/p"),
+    ("system/fvSolution", "system/fvSolution"), ("constant/unknownDict", "constant/unknownDict"),
+])
+def test_near_miss_paths_map_to_files_the_model_was_shown(given, expected):
+    from app.agent import _match_sent_file
+    assert _match_sent_file(given, ["0/p", "system/fvSolution", "system/fvSchemes"]) == expected

@@ -118,6 +118,36 @@ python -m evals.run --backend ollama --model qwen2.5:7b          # or --backend 
 python -m evals.run --report                                      # re-score cached answers
 ```
 
+## Run-and-fix agent
+
+`cfdgen generate … --fix gemini` (or `cfdgen fix CASE_DIR --backend gemini`) runs the case.
+If it fails, the agent diagnoses the failure from the OpenFOAM logs and repairs it in two
+layers, then reruns:
+
+1. **Rules** for failures with a known fix: a missing `…Final` or `pcorr` solver entry, a
+   missing divergence scheme, divergence (stronger under-relaxation with α_p ≈ 1 − α_U,
+   pressure limits, or a smaller Courant number).
+2. **An LLM** for the rest: it gets the error, the end of the log and the relevant
+   dictionaries, and returns one corrected file.
+
+**Safety rails:** the LLM may only rewrite existing dictionaries in `system/`, `constant/`
+and `0/` (never `Allrun` or the mesh). Edits containing code-execution directives
+(`#codeStream`, `coded…` conditions, `systemCall`) are rejected, and so is a "fix" that
+shortens the run. Every attempt is logged with a diff in `agent_report.md`.
+
+**Fault-injection benchmark** ([`evals/faults.py`](evals/faults.py), full table in
+[`docs/evaluation/agent_results.md`](docs/evaluation/agent_results.md)): 10 realistic faults,
+mostly bugs this project actually had, are injected into working cases.
+
+| Repair mode | Faults repaired |
+|---|---:|
+| Rules only | 6 / 10 |
+| Rules + `qwen2.5:7b` (local) | 8 / 10 ¹ |
+| **Rules + `gemini-3.1-flash-lite`** | **10 / 10** |
+
+¹ 7/10 before the agent learned to map near-miss paths (e.g. `0/fvSchemes` → `system/fvSchemes`)
+onto the files the model was shown; qwen often had the right diagnosis but the wrong path.
+
 ---
 
 ## How it works

@@ -81,5 +81,173 @@
    ],
    "seconds": 1
   }
+ },
+ "both:ollama/qwen2.5:7b": {
+  "pimple_missing_final_solvers": {
+   "repaired": true,
+   "fix_attempts": 2,
+   "fixers": [
+    "rules",
+    "rules"
+   ],
+   "seconds": 4
+  },
+  "interfoam_missing_pcorr": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 1
+  },
+  "interfoam_missing_phirb_scheme": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 2
+  },
+  "missing_div_scheme": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 4
+  },
+  "buoyant_unstable_relaxation": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 2
+  },
+  "rho_missing_pressure_limits": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 2
+  },
+  "patch_type_mismatch": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "LLM (ollama)"
+   ],
+   "seconds": 69
+  },
+  "missing_bc_value": {
+   "repaired": false,
+   "fix_attempts": 3,
+   "fixers": [
+    "LLM (ollama)",
+    "LLM (ollama)",
+    "LLM (ollama)"
+   ],
+   "seconds": 104
+  },
+  "dictionary_syntax_error": {
+   "repaired": false,
+   "fix_attempts": 1,
+   "fixers": [
+    "LLM (ollama)"
+   ],
+   "seconds": 39
+  },
+  "unknown_solver_keyword": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "LLM (ollama)"
+   ],
+   "seconds": 67
+  }
+ },
+ "both:gemini/gemini-3.1-flash-lite": {
+  "pimple_missing_final_solvers": {
+   "repaired": true,
+   "fix_attempts": 2,
+   "fixers": [
+    "rules",
+    "rules"
+   ],
+   "seconds": 3
+  },
+  "interfoam_missing_pcorr": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 1
+  },
+  "interfoam_missing_phirb_scheme": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 1
+  },
+  "missing_div_scheme": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 4
+  },
+  "buoyant_unstable_relaxation": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 2
+  },
+  "rho_missing_pressure_limits": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "rules"
+   ],
+   "seconds": 2
+  },
+  "patch_type_mismatch": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "LLM (gemini)"
+   ],
+   "seconds": 20
+  },
+  "missing_bc_value": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "LLM (gemini)"
+   ],
+   "seconds": 6
+  },
+  "dictionary_syntax_error": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "LLM (gemini)"
+   ],
+   "seconds": 6
+  },
+  "unknown_solver_keyword": {
+   "repaired": true,
+   "fix_attempts": 1,
+   "fixers": [
+    "LLM (gemini)"
+   ],
+   "seconds": 6
+  }
  }
 }
