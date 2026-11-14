@@ -179,7 +179,8 @@ def _claude_client(api_key: str | None) -> anthropic.Anthropic:
 # Claude backend
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _analyze_claude(user_description: str, model: str, api_key: str | None) -> dict:
+def _analyze_claude(user_description: str, model: str, api_key: str | None,
+                    system: str = _SYSTEM_PROMPT, schema: dict = ANALYSIS_SCHEMA) -> dict:
     """Run the analysis via the Claude API with a JSON-schema-constrained response."""
     client = _claude_client(api_key)
     try:
@@ -187,9 +188,9 @@ def _analyze_claude(user_description: str, model: str, api_key: str | None) -> d
             client, model,
             effort="medium",
             max_tokens=16000,
-            system=_SYSTEM_PROMPT,
+            system=system,
             messages=[{"role": "user", "content": user_description}],
-            output_config={"format": {"type": "json_schema", "schema": ANALYSIS_SCHEMA}},
+            output_config={"format": {"type": "json_schema", "schema": schema}},
         )
     except anthropic.APIError as exc:
         raise RuntimeError(f"Anthropic API error: {exc}") from exc
@@ -211,6 +212,8 @@ def _ollama_parse_with_retry(
     base_url: str,
     timeout: int = 300,
     max_attempts: int = 3,
+    system: str = _SYSTEM_PROMPT,
+    schema: dict = ANALYSIS_SCHEMA,
 ) -> dict:
     """POST to Ollama /api/generate with the analysis schema as ``format``.
 
@@ -219,7 +222,7 @@ def _ollama_parse_with_retry(
     """
     last_error: Exception | None = None
     endpoint = f"{base_url.rstrip('/')}/api/generate"
-    prompt = f"{_SYSTEM_PROMPT}\n\nUser problem:\n{user_description}"
+    prompt = f"{system}\n\nUser problem:\n{user_description}"
 
     for attempt in range(1, max_attempts + 1):
         try:
@@ -228,7 +231,7 @@ def _ollama_parse_with_retry(
                 json={
                     "model": model,
                     "prompt": prompt,
-                    "format": ANALYSIS_SCHEMA,
+                    "format": schema,
                     "stream": False,
                     "options": {"temperature": 0},
                 },
@@ -430,7 +433,8 @@ def _model_not_found(backend: str, model: str, key: str | None, url: str, label:
 
 
 def _analyze_compat(user_description: str, backend: str, model: str | None, api_key: str | None,
-                    base_url: str | None, timeout: int | None = None) -> dict:
+                    base_url: str | None, timeout: int | None = None,
+                    system: str = _SYSTEM_PROMPT, schema: dict = ANALYSIS_SCHEMA) -> dict:
     """Analyse via an OpenAI-compatible API.
 
     Providers differ in how much of structured output they support, so this tries, in
@@ -438,21 +442,21 @@ def _analyze_compat(user_description: str, backend: str, model: str | None, api_
     the schema in the prompt.  A 400 response moves to the next mode.
     """
     url, model, key, label = _compat_settings(backend, model, api_key, base_url)
-    schema_prompt = (f"{_SYSTEM_PROMPT}\nReturn ONLY a JSON object that matches this JSON schema "
-                     f"(no markdown, no extra text):\n{json.dumps(ANALYSIS_SCHEMA)}")
+    schema_prompt = (f"{system}\nReturn ONLY a JSON object that matches this JSON schema "
+                     f"(no markdown, no extra text):\n{json.dumps(schema)}")
     modes = [
-        (_SYSTEM_PROMPT, {"type": "json_schema",
-                          "json_schema": {"name": "cfd_analysis", "schema": ANALYSIS_SCHEMA, "strict": True}}),
+        (system, {"type": "json_schema",
+                  "json_schema": {"name": "response", "schema": schema, "strict": True}}),
         (schema_prompt, {"type": "json_object"}),
         (schema_prompt, None),
     ]
     timeout = timeout or COMPAT_TIMEOUT
     last_error: Exception | None = None
     timed_out = False
-    for system, fmt in modes:
+    for mode_system, fmt in modes:
         for _attempt in range(2):                          # one retry on invalid JSON / timeout
             try:
-                return _extract_json(_compat_chat(backend, url, model, key, system,
+                return _extract_json(_compat_chat(backend, url, model, key, mode_system,
                                                   user_description, fmt, timeout))
             except json.JSONDecodeError as exc:
                 last_error = exc
@@ -483,6 +487,21 @@ def _analyze_compat(user_description: str, backend: str, model: str | None, api_
 # ─────────────────────────────────────────────────────────────────────────────
 
 BACKENDS = ("claude", "ollama", *OPENAI_COMPATIBLE_PROVIDERS)
+
+
+def ask_json(system: str, user: str, schema: dict, backend: str = "claude", model: str | None = None,
+             api_key: str | None = None, base_url: str | None = None,
+             timeout: int | None = None) -> dict:
+    """Ask any backend for a JSON object matching *schema* (used by the repair agent)."""
+    if backend == "claude":
+        return _analyze_claude(user, model or DEFAULT_CLAUDE_MODEL, api_key, system=system, schema=schema)
+    if backend == "ollama":
+        return _ollama_parse_with_retry(user, model or DEFAULT_OLLAMA_MODEL, _OLLAMA_BASE_URL,
+                                        timeout=timeout or 600, system=system, schema=schema)
+    if backend in OPENAI_COMPATIBLE_PROVIDERS:
+        return _analyze_compat(user, backend, model, api_key, base_url, timeout,
+                               system=system, schema=schema)
+    raise ValueError(f"Unknown backend {backend!r}. Choose one of: {', '.join(BACKENDS)}.")
 
 
 def analyze_cfd_problem(
