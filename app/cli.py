@@ -9,6 +9,10 @@ Command-line interface.
     # From an analysis JSON (no LLM needed) — e.g. one of examples/*.json
     python -m app.cli generate examples/cylinder_vortex_shedding.json -o cylinder/ --run
 
+    # Run and repair automatically if it fails (rules, plus an LLM for harder failures)
+    python -m app.cli generate examples/dam_break.json -o dambreak/ --fix gemini
+    python -m app.cli fix my_case/ --backend gemini
+
     # Physics checks only
     python -m app.cli check examples/backstep_turbulent.json
 
@@ -52,7 +56,22 @@ def _print_checks(analysis: dict) -> int:
     return worst
 
 
-def _generate(analysis: dict, out: Path, run: bool, force: bool) -> int:
+def _repair(case_dir: Path, fix: str, model: str | None) -> int:
+    """Run the case with the repair agent ('rules' = rule-based fixes only, else an LLM backend)."""
+    from app.agent import repair
+    if not shutil.which("blockMesh"):
+        print("error: OpenFOAM not found — source its etc/bashrc first", file=sys.stderr)
+        return 2
+    backend = None if fix == "rules" else fix
+    print(f"Running with the repair agent ({'rules only' if backend is None else 'rules + ' + backend}) …",
+          flush=True)
+    result = repair(case_dir, backend=backend, model=model, log=lambda s: print("  " + s, flush=True))
+    print(f"{'Done' if result.success else 'Not repaired'} — see {case_dir}/agent_report.md and log.*")
+    return 0 if result.success else 1
+
+
+def _generate(analysis: dict, out: Path, run: bool, force: bool,
+              fix: str | None = None, fix_model: str | None = None) -> int:
     if out.exists() and any(out.iterdir()):
         if not force:
             print(f"error: {out} exists and is not empty (use --force to overwrite)", file=sys.stderr)
@@ -63,6 +82,8 @@ def _generate(analysis: dict, out: Path, run: bool, force: bool) -> int:
     n_files = sum(1 for p in out.rglob("*") if p.is_file())
     print(f"Generated {solver} case ({analysis['geometry_type']}, {analysis['turb_model']}) "
           f"in {out}/ — {n_files} files")
+    if fix:
+        return _repair(out, fix, fix_model)
     if not run:
         print(f"Run it with:  cd {out} && ./Allrun")
         return 0
@@ -98,9 +119,24 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("-o", "--output", required=True, help="case directory to create")
         p.add_argument("--run", action="store_true", help="run ./Allrun after generating")
         p.add_argument("--force", action="store_true", help="overwrite a non-empty output directory")
+        p.add_argument("--fix", nargs="?", const="rules", metavar="BACKEND",
+                       help="run with the repair agent: rule-based fixes, plus an LLM backend if given "
+                            "(e.g. --fix gemini)")
+        p.add_argument("--fix-model", help="model for the repair agent's LLM")
     c = sub.add_parser("check", help="print the physics checks for an analysis JSON")
     c.add_argument("input")
+    f = sub.add_parser("fix", help="run an existing case and repair it if it fails")
+    f.add_argument("case_dir")
+    f.add_argument("--backend", help="LLM for fixes the rules cannot make (default: rules only)")
+    f.add_argument("--model", help="model id for --backend")
     args = ap.parse_args(argv)
+
+    if args.cmd == "fix":
+        case = Path(args.case_dir)
+        if not (case / "system" / "controlDict").exists():
+            print(f"error: {case} is not an OpenFOAM case (no system/controlDict)", file=sys.stderr)
+            return 2
+        return _repair(case, args.backend or "rules", args.model)
 
     try:
         if args.cmd == "describe":
@@ -127,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if worst >= 2 else 0
     if args.cmd == "describe" and args.save_analysis:
         Path(args.save_analysis).write_text(json.dumps(analysis, indent=2))
-    return _generate(analysis, Path(args.output), args.run, args.force)
+    return _generate(analysis, Path(args.output), args.run, args.force, args.fix, args.fix_model)
 
 
 if __name__ == "__main__":
