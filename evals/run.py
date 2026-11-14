@@ -127,6 +127,11 @@ def collect(backend: str, model: str, delay: float, retry_errors: bool, only: li
         try:
             answer = {"analysis": analyze_cfd_problem(case["description"], backend=backend, model=model)}
         except Exception as exc:                       # record failures; they score as wrong
+            msg = str(exc)
+            if "No API key" in msg or "rejected the API key" in msg or "Cannot reach" in msg:
+                # A setup problem, not a wrong answer: stop without caching anything
+                print(f"\nStopped: {msg}", file=sys.stderr)
+                raise SystemExit(2) from exc
             answer = {"error": f"{type(exc).__name__}: {exc}"[:500]}
         answer["seconds"] = round(time.time() - t0, 1)
         data["answers"][cid] = answer
