@@ -303,7 +303,7 @@ OPENAI_COMPATIBLE_PROVIDERS: dict[str, dict] = {
         "label": "Google Gemini (free tier)",
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
         "key_env": "GEMINI_API_KEY",
-        "model": os.environ.get("GEMINI_MODEL", "gemini-3.8-flash"),   # 2.5-flash retired for new users (2026-11)
+        "model": os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite"),   # often less busy than 3.8-flash; 100 % in evals/ (2026-11)
         "key_url": "https://aistudio.google.com/apikey",
     },
     "groq": {
