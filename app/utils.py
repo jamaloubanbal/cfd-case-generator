@@ -6,6 +6,7 @@ import io
 import os
 import zipfile
 from pathlib import Path
+from app.naming import is_inlet_name
 
 
 def write_file(path: Path, content: str) -> None:
@@ -86,7 +87,7 @@ def get_inlet_velocity(boundary_conditions: list) -> str:
     """Extract the inlet velocity vector from BCs; default to (1 0 0)."""
     for bc in boundary_conditions:
         name = bc.get("patch_name", "").lower()
-        if "inlet" in name:
+        if is_inlet_name(name):
             val = bc.get("values", {}).get("U")
             if val is not None:
                 if isinstance(val, list):
@@ -99,7 +100,7 @@ def get_inlet_speed(boundary_conditions: list) -> float:
     """Return the magnitude of the inlet velocity (first component if vector)."""
     for bc in boundary_conditions:
         name = bc.get("patch_name", "").lower()
-        if "inlet" in name:
+        if is_inlet_name(name):
             val = bc.get("values", {}).get("U")
             if isinstance(val, list):
                 import math

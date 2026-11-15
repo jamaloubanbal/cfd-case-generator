@@ -10,6 +10,7 @@ import math
 from pathlib import Path
 
 from .base import BaseCaseGenerator
+from app.naming import is_inlet_name
 
 
 class InterFoamGenerator(BaseCaseGenerator):
@@ -91,7 +92,7 @@ class InterFoamGenerator(BaseCaseGenerator):
         # Default: pure water inlet (dam-break starts with water in place)
         alpha_water_inlet = 1.0
         for bc in analysis.get("boundary_conditions", []):
-            if "inlet" in bc.get("patch_name", "").lower():
+            if is_inlet_name(bc.get("patch_name", "")):
                 a = bc.get("values", {}).get("alpha.water")
                 if a is not None:
                     try:

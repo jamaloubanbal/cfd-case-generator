@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 
 from .base import BaseCaseGenerator
+from app.naming import is_inlet_name
 
 
 class BuoyantSimpleFoamGenerator(BaseCaseGenerator):
@@ -150,7 +151,7 @@ class BuoyantSimpleFoamGenerator(BaseCaseGenerator):
                 T_hot = T_val
             elif "cold" in name or "right" in name:
                 T_cold = T_val
-            elif "inlet" in name:
+            elif is_inlet_name(name):
                 T_cold = T_val  # treat inlet temperature as cold reference
 
         T_initial = 0.5 * (T_hot + T_cold)

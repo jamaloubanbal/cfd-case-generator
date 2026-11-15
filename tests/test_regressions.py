@@ -238,3 +238,20 @@ def test_rhosimplefoam_limits_pressure(tmp_path):
     RhoSimpleFoamGenerator().generate(RHO_SIMPLE_FOAM_ANALYSIS, tmp_path)
     fv = _read(tmp_path, "system/fvSolution")
     assert "pMinFactor      0.5;" in fv and "pMaxFactor      2.0;" in fv
+
+
+@pytest.mark.parametrize("name, expected", [
+    ("inlet", True), ("inlet2", True), ("entree", True), ("Entrée", True), ("inflow", True),
+    ("duct_in", True), ("in", True), ("outlet", False), ("paroi", False), ("pin_wall", False),
+])
+def test_inlet_names_are_recognised(name, expected):
+    from app.naming import is_inlet_name
+    assert is_inlet_name(name) is expected
+
+
+def test_inlet_speed_found_under_french_name():
+    """Gemini named the inlet condition 'entree' (the SALOME group): the 2 m/s was ignored and the
+    case ran at the 1 m/s default."""
+    from app.generators.base import BaseCaseGenerator
+    bcs = [{"patch_name": "entree", "type": "fixedValue", "values": {"U": [2.0, 0.0, 0.0]}}]
+    assert BaseCaseGenerator._get_inlet_speed(bcs) == pytest.approx(2.0)

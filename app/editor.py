@@ -9,6 +9,7 @@ values without mutating the original.
 
 import copy
 import math
+from app.naming import is_inlet_name
 
 
 def apply_overrides(analysis: dict, overrides: dict) -> dict:
@@ -53,7 +54,7 @@ def apply_overrides(analysis: dict, overrides: dict) -> dict:
         bcs = a.setdefault("boundary_conditions", [])
         _patched = False
         for bc in bcs:
-            if "inlet" in (bc.get("patch_name") or "").lower():
+            if is_inlet_name(bc.get("patch_name")):
                 val = (bc.get("values") or {}).get("U")
                 if isinstance(val, list) and val:
                     mag = math.sqrt(sum(float(v) ** 2 for v in val)) or 1.0
@@ -156,7 +157,7 @@ def mesh_summary(analysis: dict) -> dict:
 def _get_inlet_speed(bcs: list) -> float:
     """Extract scalar inlet speed from a boundary conditions list."""
     for bc in bcs:
-        if "inlet" in (bc.get("patch_name") or "").lower():
+        if is_inlet_name(bc.get("patch_name")):
             val = (bc.get("values") or {}).get("U")
             if isinstance(val, list):
                 return math.sqrt(sum(float(v) ** 2 for v in val))

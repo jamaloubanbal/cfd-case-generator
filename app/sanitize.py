@@ -19,6 +19,7 @@ import re
 from typing import Any
 
 from app.schema import GEOMETRIES, GEOMETRY_PARAM_KEYS, SOLVERS, TURB_MODELS
+from app.naming import is_inlet_name
 
 
 class AnalysisError(ValueError):
@@ -275,7 +276,7 @@ def _consistent_mach(a: dict, solver: str, description: str | None, notes: list[
     if ma_user and speed > 0 and abs(speed / a_sound / ma_user - 1) > _RE_TOLERANCE:
         scale = ma_user * a_sound / speed
         for bc in a["boundary_conditions"]:
-            if "inlet" in bc["patch_name"].lower() and bc["values"].get("U"):
+            if is_inlet_name(bc["patch_name"]) and bc["values"].get("U"):
                 bc["values"]["U"] = [c * scale for c in bc["values"]["U"]]
         notes.append(f"The description asks for Mach {ma_user:g} but the inlet speed {speed:.4g} m/s is "
                      f"Mach {speed / a_sound:.3g} at {T:g} K — inlet speed set to {ma_user * a_sound:.4g} m/s.")
@@ -323,7 +324,7 @@ def _fix_inlet_directions(a: dict, notes: list[str]) -> None:
         return
     for bc in a["boundary_conditions"]:
         name, U = bc["patch_name"], bc["values"].get("U")
-        if "inlet" not in name.lower() or not U:
+        if not is_inlet_name(name) or not U:
             continue
         speed = math.sqrt(sum(c * c for c in U))
         if speed == 0:
@@ -363,7 +364,7 @@ def _consistent_reynolds(a: dict, solver: str, char_len: float, nu: float,
         if solver in _INCOMPRESSIBLE:
             scale = re_user / re_flow
             for bc in a["boundary_conditions"]:
-                if "inlet" in bc["patch_name"].lower() and bc["values"].get("U"):
+                if is_inlet_name(bc["patch_name"]) and bc["values"].get("U"):
                     bc["values"]["U"] = [c * scale for c in bc["values"]["U"]]
             a["characteristic_velocity"] = speed * scale
             notes.append(
@@ -385,7 +386,7 @@ def _consistent_reynolds(a: dict, solver: str, char_len: float, nu: float,
 def _has_inflow(a: dict) -> bool:
     """True if any inlet patch has a non-zero numeric velocity (raw, before sanitising)."""
     for bc in a.get("boundary_conditions") or []:
-        if not isinstance(bc, dict) or "inlet" not in str(bc.get("patch_name", "")).lower():
+        if not isinstance(bc, dict) or not is_inlet_name(bc.get("patch_name")):
             continue
         U = (bc.get("values") or {}).get("U")
         if isinstance(U, (list, tuple)):
@@ -397,7 +398,7 @@ def _has_inflow(a: dict) -> bool:
 
 def _first_inlet_speed(bcs: list) -> float:
     for bc in bcs:
-        if "inlet" in bc.get("patch_name", "").lower() and "U" in bc["values"]:
+        if is_inlet_name(bc.get("patch_name", "")) and "U" in bc["values"]:
             return math.sqrt(sum(c * c for c in bc["values"]["U"]))
     return 0.0
 

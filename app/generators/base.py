@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
+from app.naming import is_inlet_name
 
 
 # ---------------------------------------------------------------------------
@@ -1106,7 +1107,7 @@ class BaseCaseGenerator(ABC):
     @staticmethod
     def _get_inlet_velocity(bcs: list) -> str:
         for bc in bcs:
-            if "inlet" in bc.get("patch_name", "").lower():
+            if is_inlet_name(bc.get("patch_name", "")):
                 val = bc.get("values", {}).get("U")
                 if isinstance(val, list):
                     v = (list(val) + [0, 0, 0])[:3]
@@ -1119,7 +1120,7 @@ class BaseCaseGenerator(ABC):
     def _get_inlet_speed(bcs: list) -> float:
         import math
         for bc in bcs:
-            if "inlet" in bc.get("patch_name", "").lower():
+            if is_inlet_name(bc.get("patch_name", "")):
                 val = bc.get("values", {}).get("U")
                 if isinstance(val, list):
                     return math.sqrt(sum(v**2 for v in val))

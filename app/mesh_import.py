@@ -32,8 +32,9 @@ def mesh_hint(mesh: "ImportedMesh") -> str:
             f"extent {x1 - x0:.4g} × {y1 - y0:.4g} × {z1 - z0:.4g} m. Boundary groups: {groups}. "
             "Choose the solver, fluid, flow model and inlet speed. Use as characteristic_length the "
             "hydraulic diameter of the inlet for internal flow (≈ square root of the inlet area for a "
-            "square duct) or the body size for external flow, not the domain length. Set geometry_type "
-            "to 'channel' (the geometry comes from the mesh).]")
+            "square duct) or the body size for external flow, not the domain length. Name the inlet "
+            "boundary condition 'inlet' and the outlet 'outlet'. Set geometry_type to 'channel' (the "
+            "geometry comes from the mesh).]")
 
 
 ROLES = ("inlet", "outlet", "wall", "symmetry", "empty", "hot_wall", "cold_wall")

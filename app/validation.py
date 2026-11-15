@@ -13,6 +13,7 @@ All checks are purely computational — no file I/O, no network calls.
 """
 
 import math
+from app.naming import is_inlet_name
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Physical constants
@@ -366,7 +367,7 @@ def _r(level: str, title: str, detail: str) -> dict:
 def _get_inlet_speed(bcs: list) -> float:
     """Extract the scalar inlet speed from the boundary conditions list."""
     for bc in bcs:
-        if "inlet" in (bc.get("patch_name") or "").lower():
+        if is_inlet_name(bc.get("patch_name")):
             val = (bc.get("values") or {}).get("U")
             if isinstance(val, list):
                 return math.sqrt(sum(float(v) ** 2 for v in val))

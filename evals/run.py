@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 
 from app.sanitize import AnalysisError, sanitize_analysis
+from app.naming import is_inlet_name
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
@@ -45,7 +46,7 @@ def _inlet_speed(a: dict) -> float:
         if not isinstance(bc, dict):
             continue
         U = (bc.get("values") or {}).get("U")
-        if "inlet" in str(bc.get("patch_name", "")).lower() and isinstance(U, list):
+        if is_inlet_name(bc.get("patch_name")) and isinstance(U, list):
             try:
                 return math.sqrt(sum(float(c) ** 2 for c in U))
             except (TypeError, ValueError):
