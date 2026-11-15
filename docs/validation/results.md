@@ -16,6 +16,7 @@ with its own `Allrun`, and post-processed in Python (`app/postprocess`).
 | Natural convection in a square cavity, Ra = 10⁵ | Max u on vertical centreline · L/α | 34.84 | 34.73 | +0.33 % | ±5 % | ✅ |
 | Natural convection in a square cavity, Ra = 10⁵ | Max v on horizontal centreline · L/α | 68.57 | 68.59 | -0.03 % | ±5 % | ✅ |
 | Vortex shedding behind a circular cylinder, Re = 100 | Strouhal number St = fD/U (7 periods) | 0.167 | 0.1647 | +1.42 % | ±5 % | ✅ |
+| Turbulent backward-facing step (Driver & Seegmiller) | Reattachment length x_r / H (k-ω SST) | 5.961 | 6.26 | -4.78 % | ±10 % | ✅ |
 
 ## Plane Poiseuille flow (laminar channel)
 
@@ -54,3 +55,13 @@ with its own `Allrun`, and post-processed in Python (`app/postprocess`).
 - **Notes:** Symmetry planes 10 D above and below the cylinder (5 % blockage) raise St slightly compared with an unbounded flow. The period is measured from zero crossings of u_y at a probe 2 D behind the cylinder.
 
 ![Vortex shedding behind a circular cylinder, Re = 100](cylinder_re100.png)
+
+## Turbulent backward-facing step (Driver & Seegmiller)
+
+> Air at 44.2 m/s flows over a backward-facing step 1.27 cm high; the channel is 8 step heights high upstream and 9 downstream. Steady, turbulent (k-omega SST).
+
+- **Solver:** `simpleFoam` · **cells:** 23,600 · **run time:** 34 s · converged in 767 iterations
+- **Reference:** Driver & Seegmiller, AIAA J. 23 (1985) 163–171: x_r / H = 6.26 ± 0.10
+- **Notes:** RANS models predict reattachment less precisely than laminar flows (k-ε typically under-predicts it by 15–20 %), hence the ±10 % tolerance. Uniform inflow developed over ≈ 80 H of channel; wall functions on wall-graded cells. Mesh sensitivity: 23 600 → 42 100 cells changes x_r / H by 1.3 % (5.96 → 6.04), so the deviation comes from the turbulence model, not the mesh.
+
+![Turbulent backward-facing step (Driver & Seegmiller)](backstep_driver.png)

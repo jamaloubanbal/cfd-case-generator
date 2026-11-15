@@ -228,15 +228,18 @@ crash with an `IOstream "sha1"` error in the v1912 Debian build.
 | Hagen–Poiseuille pipe (axisymmetric), Re = 100 | centreline velocity, pressure gradient, profile | analytical | ≤ 0.18 % |
 | Natural convection cavity, Ra = 10⁵ | Nusselt number, u_max, v_max | de Vahl Davis (1983) | ≤ 0.33 % |
 | Vortex shedding behind a cylinder, Re = 100 | Strouhal number | Williamson (1996) | +1.4 % |
+| Turbulent backward-facing step, Re_H = 37 400 (k-ω SST) | reattachment length x_r / H | Driver & Seegmiller (1985) experiment | −4.8 % |
 
 The cylinder's St is expected to be slightly high: symmetry planes 10 D from the cylinder
-(5 % blockage) speed up the shedding compared with the unbounded reference. All four results
+(5 % blockage) speed up the shedding compared with the unbounded reference. The step's 5.96 vs. the measured 6.26 is typical of RANS models, which predict
+separation less precisely; refining the mesh from 23 600 to 42 100 cells changes it by only
+1.3 %, so the deviation comes from the turbulence model, not the mesh. All four results
 are identical on a laptop (6 cores) and on GitHub's CI runners (2 cores). Full report with
 plots: [`docs/validation/results.md`](validation/results.md).
 
 ```bash
 source /usr/share/openfoam/etc/bashrc
-python -m validation.run          # ≈ 12 min on 6 cores; writes docs/validation/
+python -m validation.run          # ≈ 13 min on 6 cores; writes docs/validation/
 ```
 
 ---
@@ -355,8 +358,8 @@ tests_extended/             # extended tests, run manually
   wall functions; no LES/DES and no low-Re wall resolution. Only the cylinder mesh sizes its
   wall cells for the wall-function target; at very high Re the other geometries' first cell
   can exceed y⁺ ≈ 300 (the y⁺ check reports this; increase the mesh refinement).
-- **Validation coverage.** Laminar steady and unsteady flow and natural convection. Turbulent
-  (RANS) benchmarks, e.g. backward-facing step reattachment, are not included yet.
+- **Validation coverage.** Laminar steady and unsteady flow, natural convection and one
+  turbulent (RANS) separated flow. No compressible or free-surface benchmark yet.
 - **Boundary conditions.** Uniform inflow, zero-gradient / fixed-pressure outlets and no-slip
   walls. Turbulent inflow profiles and mapped BCs are not generated.
 - **Airfoil geometry.** A rectangular-section body of the requested chord and thickness on a

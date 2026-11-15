@@ -136,5 +136,26 @@
         "source": "Williamson (1996)"
       }
     ]
+  },
+  "backstep_driver": {
+    "title": "Turbulent backward-facing step (Driver & Seegmiller)",
+    "description": "Air at 44.2 m/s flows over a backward-facing step 1.27 cm high; the channel is 8 step heights high upstream and 9 downstream. Steady, turbulent (k-omega SST).",
+    "reference": "Driver & Seegmiller, AIAA J. 23 (1985) 163\u2013171: x_r / H = 6.26 \u00b1 0.10",
+    "solver": "simpleFoam",
+    "cells": 23600,
+    "elapsed_s": 34.0,
+    "converged_iterations": 767,
+    "notes": "RANS models predict reattachment less precisely than laminar flows (k-\u03b5 typically under-predicts it by 15\u201320 %), hence the \u00b110 % tolerance. Uniform inflow developed over \u2248 80 H of channel; wall functions on wall-graded cells. Mesh sensitivity: 23 600 \u2192 42 100 cells changes x_r / H by 1.3 % (5.96 \u2192 6.04), so the deviation comes from the turbulence model, not the mesh.",
+    "metrics": [
+      {
+        "name": "Reattachment length x_r / H (k-\u03c9 SST)",
+        "value": 5.960602856719706,
+        "reference": 6.26,
+        "error": -0.04782701969333773,
+        "tolerance": 0.1,
+        "passed": true,
+        "source": "Driver & Seegmiller (1985)"
+      }
+    ]
   }
 }

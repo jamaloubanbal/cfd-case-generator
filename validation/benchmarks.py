@@ -469,7 +469,96 @@ CYLINDER_SHEDDING = Benchmark(
 )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. Turbulent backward-facing step — Driver & Seegmiller (1985)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_BS = {"H": 0.0127, "U": 44.2, "nu": 1.5e-5}
+_BS.update(xs=1.0,                      # ≈ 80 H of inlet channel: δ ≈ 1.5 H at the step, as measured
+           height=9 * _BS["H"],         # expansion ratio 9/8 (inlet channel 8 H high)
+           L=1.0 + 30 * _BS["H"])       # 30 H downstream of the step
+_XR_REF = 6.26                          # measured reattachment length x_r / H (± 0.10)
+
+
+def _floor_ux(case: FoamCase, b: dict) -> tuple[np.ndarray, np.ndarray]:
+    """u_x in the wall-adjacent cell row on the floor downstream of the step."""
+    cc = case.cell_centres
+    U = case.field("U", case.latest_time())
+    down = cc[:, 0] > b["xs"]
+    y_first = cc[down, 1].min()
+    row = np.where(down & np.isclose(cc[:, 1], y_first, rtol=0, atol=1e-9))[0]
+    order = np.argsort(cc[row, 0])
+    return cc[row, 0][order], U[row, 0][order]
+
+
+def _reattachment(x: np.ndarray, ux: np.ndarray, b: dict) -> float:
+    """First x behind the recirculation where the floor velocity turns positive, as x_r / H."""
+    neg = np.where(ux < 0)[0]
+    if not len(neg):
+        return 0.0
+    i = neg[-1]                         # last backward-flowing cell; the next one flows forward
+    if i + 1 >= len(x):
+        return float("nan")
+    x0 = x[i] - ux[i] * (x[i + 1] - x[i]) / (ux[i + 1] - ux[i])
+    return (x0 - b["xs"]) / b["H"]
+
+
+def _backstep_eval(case: FoamCase, b: dict) -> list[Metric]:
+    x, ux = _floor_ux(case, b)
+    return [Metric("Reattachment length x_r / H (k-ω SST)", _reattachment(x, ux, b), _XR_REF, 0.10,
+                   "", "Driver & Seegmiller (1985)")]
+
+
+def _backstep_plot(case: FoamCase, b: dict, metrics: list[Metric], out: str) -> None:
+    plt, fig, (a1, a2) = _fig(1, 2, (15, 4.2))
+    U = case.field("U", case.latest_time())
+    plot_cells(a1, case, U[:, 0] / b["U"], cmap="RdBu_r", vmin=-1.1, vmax=1.1, label="u_x / U")
+    cc = case.cell_centres
+    a1.tricontour(cc[:, 0], cc[:, 1], U[:, 0], levels=[0.0], colors="k", linewidths=0.8)
+    a1.set(xlim=(b["xs"] - 2 * b["H"], b["xs"] + 12 * b["H"]), ylim=(0, 3 * b["H"]),
+           title="Streamwise velocity behind the step (black: u_x = 0)", xlabel="x [m]", ylabel="y [m]")
+    x, ux = _floor_ux(case, b)
+    xr = metrics[0].value
+    a2.plot((x - b["xs"]) / b["H"], ux / b["U"], "-", color="C0", label="generated case (wall cell)")
+    a2.axhline(0, color="0.5", lw=0.8)
+    a2.axvspan(_XR_REF - 0.10, _XR_REF + 0.10, color="0.8", label="Driver & Seegmiller: 6.26 ± 0.10")
+    a2.axvline(xr, color="C3", ls="--", label=f"generated case: {xr:.2f}")
+    a2.set(xlim=(0, 15), xlabel="(x − x_step) / H", ylabel="u_x / U next to the floor",
+           title="Reattachment length")
+    a2.legend(loc="lower right")
+    fig.suptitle("Turbulent backward-facing step, Re_H = 37 400 (simpleFoam, k-ω SST)")
+    fig.tight_layout()
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+
+
+BACKWARD_FACING_STEP = Benchmark(
+    key="backstep_driver",
+    title="Turbulent backward-facing step (Driver & Seegmiller)",
+    description="Air at 44.2 m/s flows over a backward-facing step 1.27 cm high; the channel is 8 step "
+                "heights high upstream and 9 downstream. Steady, turbulent (k-omega SST).",
+    reference="Driver & Seegmiller, AIAA J. 23 (1985) 163–171: x_r / H = 6.26 ± 0.10",
+    solver="simpleFoam",
+    analysis=_analysis(
+        "simpleFoam", "backstep", nu=_BS["nu"], U=_BS["U"], L=_BS["H"], turb="kOmegaSST",
+        geometry_params={"channel_length": _BS["L"], "channel_height": _BS["height"],
+                         "step_height": _BS["H"], "step_x": _BS["xs"]},
+        mesh={"refinement": 3.0},
+    ),
+    end_time=4000,
+    max_cores=6,
+    evaluate=lambda c, _a: _backstep_eval(c, _BS),
+    plot=lambda c, _a, m, out: _backstep_plot(c, _BS, m, out),
+    notes="RANS models predict reattachment less precisely than laminar flows (k-ε typically "
+          "under-predicts it by 15–20 %), hence the ±10 % tolerance. Uniform inflow developed over "
+          "≈ 80 H of channel; wall functions on wall-graded cells. Mesh sensitivity: 23 600 → 42 100 "
+          "cells changes x_r / H by 1.3 % (5.96 → 6.04), so the deviation comes from the turbulence "
+          "model, not the mesh.",
+    meta=_BS,
+)
+
+
 BENCHMARKS: dict[str, Benchmark] = {
     b.key: b for b in (POISEUILLE_CHANNEL, POISEUILLE_PIPE, NATURAL_CONVECTION_CAVITY,
-                       CYLINDER_SHEDDING)
+                       CYLINDER_SHEDDING, BACKWARD_FACING_STEP)
 }
