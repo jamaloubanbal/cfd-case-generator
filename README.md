@@ -20,7 +20,7 @@ reference data and repaired automatically when they fail**.
 | **Accuracy of the generated cases** | 5 benchmarks against analytical solutions and experiments: laminar flow, heat transfer and vortex shedding within **1.5 %**, turbulent separation (backward-facing step) within **5 %** — [report](docs/validation/results.md) |
 | **LLM understanding, unseen descriptions** | free Gemini model: **100 %** fully correct setups; local 7B model: 40 % raw → **80 %** with the sanitiser — [evaluation](docs/evaluation/results.md) |
 | **Run-and-fix agent** | 10 injected faults: rules alone repair **6**, rules + Gemini repair **10** — [benchmark](docs/evaluation/agent_results.md) |
-| **Tested in OpenFOAM** | 37 generated cases (5 solvers × 9 geometries × 4 flow models) meshed and run in CI on every push |
+| **Tested in OpenFOAM** | 38 generated cases (5 solvers × 9 geometries × 4 flow models, plus an imported SALOME mesh) meshed and run in CI on every push |
 
 ## What it does
 
@@ -31,6 +31,9 @@ reference data and repaired automatically when they fail**.
 - **Generates complete OpenFOAM cases:** 5 solvers (steady/transient incompressible,
   compressible, natural convection, free surface), 9 meshed geometries plus STL import,
   laminar or RANS, wall-graded meshes, serial or parallel runs.
+- **Uses your own geometry:** import a mesh made in **SALOME** (.unv). Its boundary groups,
+  even with names like *Entrée* or *Paroi*, are mapped to inlet/outlet/wall roles by the LLM.
+  You can correct the mapping, and inlet velocities follow each inlet's actual orientation.
 - **Checks the physics before running:** Reynolds and Mach regime, y⁺, Courant number, mesh
   resolution.
 - **Runs and repairs:** a run-and-fix agent diagnoses failures from the OpenFOAM logs and

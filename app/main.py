@@ -27,6 +27,7 @@ from app.ui.convergence import render_convergence_monitor  # noqa: E402
 from app.ui.parameter_editor import render_parameter_editor  # noqa: E402
 from app.ui.physics_checks import render_physics_checks  # noqa: E402
 from app.ui.problem_input import render_problem_input, render_stl_upload  # noqa: E402
+from app.ui.mesh_upload import render_mesh_upload, render_role_editor  # noqa: E402
 from app.ui.sidebar import render_sidebar  # noqa: E402
 
 render_sidebar()
@@ -38,11 +39,13 @@ st.markdown("Describe your CFD problem in natural language and receive a complet
             "ready-to-run **OpenFOAM** case folder.")
 
 render_stl_upload()
+render_mesh_upload()
 render_problem_input()
 
 analysis = st.session_state.get("analysis")
 if analysis:
     render_analysis_summary(analysis, st.session_state.get("analysis_notes", []))
+    render_role_editor(analysis)
     working = render_parameter_editor(analysis)
     render_physics_checks(working)
     render_case_output(working)

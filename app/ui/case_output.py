@@ -20,6 +20,15 @@ def generate_case_dir(working: dict, case_dir: Path, stl: dict | None = None) ->
     if generator_cls is None:
         raise ValueError(f"No generator for solver {solver!r}. Supported: {list(GENERATORS)}")
     analysis = dict(working)
+    if analysis.get("geometry_type") == "imported_mesh":
+        from app.mesh_import import apply_roles, attach, check_roles
+        mesh, roles = st.session_state.get("imported_mesh"), st.session_state.get("mesh_roles")
+        if mesh is None or roles is None:
+            raise ValueError("The imported mesh is no longer loaded: upload it again and re-run the analysis.")
+        problems = check_roles(roles, analysis.get("solver", ""))
+        if problems:
+            raise ValueError("Boundary roles: " + "; ".join(problems) + ". Fix them in the role table.")
+        analysis = attach(analysis, mesh, apply_roles(mesh, roles))
     if analysis.get("geometry_type") == "stl_import" and stl:
         analysis.update(_stl_bytes=stl.get("bytes"), _stl_name=stl.get("name", "geometry"),
                         _stl_bbox=stl.get("bbox"))

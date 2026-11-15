@@ -26,7 +26,9 @@ else
 {% endif %}
 fi
 
+{% if geometry_type != "imported_mesh" -%}
 runApplication blockMesh
+{% endif -%}
 {% if geometry_type == "stl_import" -%}
 runApplication surfaceFeatureExtract
 runApplication snappyHexMesh -overwrite

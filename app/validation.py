@@ -79,6 +79,16 @@ def run_checks(analysis: dict) -> list[dict]:
     ):
         checks.append(_check_mach(inlet_speed, solver))
 
+    # Imported meshes: the user built the mesh, so the generator's mesh estimates do not apply
+    if geometry == "imported_mesh":
+        if is_transient:
+            checks.append(_r("info", "Courant number (imported mesh)",
+                             "The time step adapts to maxCo; check the Courant number in the log."))
+        checks.append(_r("info", f"Imported mesh ({int(analysis.get('_mesh_cells') or 0):,} cells)",
+                         "Mesh made in SALOME: y⁺ and resolution are not estimated here; "
+                         "checkMesh verifies its quality when the case runs."))
+        return checks
+
     # ── 3. Wall y⁺ estimate (skip two-phase, buoyancy-driven, zero-speed) ───
     if (
         Re is not None

@@ -5,6 +5,7 @@ The [README](../README.md) gives the overview. This guide covers everything in d
 - [Supported cases](#supported-cases)
 - [How it works](#how-it-works)
 - [LLM backends](#llm-backends)
+- [Your own geometry: SALOME mesh import](#your-own-geometry-salome-mesh-import)
 - [Running a generated case](#running-a-generated-case)
 - [Run-and-fix agent](#run-and-fix-agent)
 - [Validation](#validation)
@@ -130,6 +131,54 @@ cfdgen describe "Laminar flow past a cylinder at Re = 100" -o cylinder/ --backen
 - Free tiers may use prompts to improve the provider's models.
 - Small local models make more mistakes (see the [evaluation](#llm-evaluation)); the
   sanitiser catches many, but review the analysis before running.
+
+---
+
+## Your own geometry: SALOME mesh import
+
+Mesh any geometry in [SALOME](https://www.salome-platform.org) and use it instead of a built-in
+geometry ([`app/mesh_import.py`](../app/mesh_import.py)).
+
+**In SALOME:**
+1. Build the geometry and a **3-D volume mesh** (e.g. NETGEN, with viscous layers if needed).
+2. Create a **group of faces for every boundary** (Mesh → Create Group, type *Face*) and name
+   it: `inlet`, `outlet`, `walls`, `entree`, `paroi`, `farfield`, … Faces in no group end up
+   in a `defaultFaces` patch.
+3. For a 2-D case, mesh a slab one cell thick and put its two flat sides in a group such as
+   `frontAndBack` (role *empty*).
+4. Export: *File → Export → UNV*.
+
+**In the app:**
+- **Web app:** open *🧩 Import a SALOME mesh*, upload the `.unv`, describe the flow and click
+  *Analyse*. A table shows the role chosen for each group; change any wrong role before
+  generating.
+- **Command line:**
+  ```bash
+  cfdgen describe "Air at 5 m/s through this duct" --mesh duct.unv -o duct/ --backend gemini --run
+  cfdgen generate analysis.json --mesh duct.unv --role Inflow=inlet -o duct/   # no LLM: names decide
+  ```
+
+**What happens:**
+1. **Conversion.** OpenFOAM's `ideasUnvToFoam` converts the mesh, and each group becomes a
+   patch.
+2. **Role mapping.** The LLM maps each patch to a role from its name, size and orientation and
+   from your description: `inlet`, `outlet`, `wall`, `symmetry`, `empty`, `hot_wall` or
+   `cold_wall`. Without an LLM, a keyword heuristic (English and French) decides. Every
+   difference between the two is reported.
+3. **Patch types.** These are set from the roles (`wall`, `symmetryPlane`, `empty`).
+4. **Inlet direction.** Each inlet blows along its inward normal, so ducts need not point
+   along x.
+5. **Case and checks.** The case uses the imported mesh (`Allrun` skips `blockMesh`). Mesh
+   quality is checked by `checkMesh` when the case runs, not estimated beforehand.
+
+**Example:** [`examples/meshes/l_duct.unv`](../examples/meshes/l_duct.unv) is an L-shaped duct
+(4 608 cells) with groups `Entree`, `Sortie` and `Parois`. It is written by
+[`scripts/make_sample_unv.py`](../scripts/make_sample_unv.py) in the format SALOME exports. It
+runs in CI as part of the core OpenFOAM suite. In a k-ω SST run, the outflow matches the inflow
+to 0.1 %.
+
+**Not supported yet:** free-surface (interFoam) cases on imported meshes, and SALOME's MED
+format (export UNV instead).
 
 ---
 
@@ -294,14 +343,14 @@ The default suite is kept small: the OpenFOAM runs plus one fast regression test
 ```bash
 pip install -r requirements-dev.txt
 source /usr/share/openfoam/etc/bashrc
-pytest                                  # core: 37 OpenFOAM cases + regression tests (~2 min)
+pytest                                  # core: 38 OpenFOAM cases + regression tests (~2 min)
 pytest -m benchmark -v                  # validation against reference data (~12 min)
 pytest tests_extended                   # generators, LLM, sanitiser, UI, CLI, agent, … (~25 s)
 ```
 
 | Suite | What it covers |
 |---|---|
-| `tests/test_openfoam_integration.py` | 37 generated cases meshed and run in OpenFOAM (skipped without OpenFOAM) |
+| `tests/test_openfoam_integration.py` | 38 generated cases (incl. one on an imported SALOME mesh) meshed and run in OpenFOAM (skipped without OpenFOAM) |
 | `tests/test_regressions.py` | One test per bug found by the OpenFOAM runs; no OpenFOAM needed |
 | `tests/test_benchmarks.py` | Validation benchmarks within tolerance (opt-in) |
 | `tests_extended/` | Template rendering, grading maths, sanitiser, LLM requests (mocked), headless Streamlit UI, CLI, post-processing reader, agent diagnosis and safety rails, evaluation scoring |
@@ -325,6 +374,7 @@ app/
 ├── schema.py               # JSON schema the LLM must follow
 ├── sanitize.py             # unit / range / regime / compatibility repair of the analysis
 ├── agent.py                # run-and-fix agent
+├── mesh_import.py          # SALOME (.unv) mesh import and boundary-role mapping
 ├── editor.py               # parameter-editor overrides → analysis
 ├── validation.py           # physics checks (Re, Ma, y+, CFL, resolution)
 ├── generators/             # one generator per solver + shared base (meshing maths)
@@ -341,6 +391,7 @@ validation/                 # benchmark definitions + runner (python -m validati
 evals/                      # LLM evaluation (run.py) and agent fault benchmark (faults.py)
 examples/                   # problem descriptions with their analyses
 scripts/make_gallery.py     # runs the examples and renders docs/gallery/
+scripts/make_sample_unv.py  # writes the sample SALOME mesh examples/meshes/l_duct.unv
 docs/                       # this guide, gallery, screenshots, validation and evaluation reports
 tests/                      # core tests (fixtures.py: shared analyses)
 tests_extended/             # extended tests, run manually
@@ -363,7 +414,10 @@ tests_extended/             # extended tests, run manually
 - **Boundary conditions.** Uniform inflow, zero-gradient / fixed-pressure outlets and no-slip
   walls. Turbulent inflow profiles and mapped BCs are not generated.
 - **Airfoil geometry.** A rectangular-section body of the requested chord and thickness on a
-  coarse far-field mesh, not a true NACA profile. Upload an STL for an exact shape.
+  coarse far-field mesh, not a true NACA profile. Import a SALOME mesh or an STL for an exact
+  shape.
+- **Imported meshes.** UNV only (not MED), no free-surface cases, and no automatic y⁺/resolution
+  estimate (checkMesh runs instead).
 - **Radiation** is off in `buoyantSimpleFoam` (`radiationProperties` → `none`).
 - **Local LLMs** misread some descriptions (free-surface flows especially); use a cloud model
   or review the analysis.

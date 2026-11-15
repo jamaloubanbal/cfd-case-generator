@@ -49,7 +49,7 @@ class SimpleFoamGenerator(BaseCaseGenerator):
         self.write(output_dir, "system/controlDict",   self.render("system/controlDict",   ctx))
         self.write(output_dir, "system/fvSchemes",     self.render("system/fvSchemes",     ctx))
         self.write(output_dir, "system/fvSolution",    self.render("system/fvSolution",    ctx))
-        self.write(output_dir, "system/blockMeshDict", self.render_geometry_block_mesh(ctx["geometry_type"], ctx))
+        self.write_mesh(output_dir, ctx, analysis)
 
         # --- constant/ ---
         self.write(output_dir, "constant/transportProperties",  self.render("constant/transportProperties",  ctx))

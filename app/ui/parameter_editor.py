@@ -61,7 +61,10 @@ def render_parameter_editor(analysis: dict) -> dict:
             else:
                 st.markdown("*interFoam uses a laminar model.*")
 
-        if is_stl:
+        if analysis.get("geometry_type") == "imported_mesh":
+            st.markdown("**Mesh**")
+            st.caption("Mesh imported from SALOME: change it in SALOME and import it again.")
+        elif is_stl:
             _snappy_inputs(defs)
         else:
             _mesh_inputs(defs)

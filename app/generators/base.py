@@ -272,6 +272,8 @@ GEOMETRY_PATCHES: dict[str, list[dict]] = {
         {"name": "frontAndBack", "of_type": "empty",    "role": "frontAndBack"},
     ],
     # Arbitrary STL geometry — background mesh only; STL wall patch added dynamically
+    # Mesh imported from SALOME (.unv): patches come from the mesh (analysis["_mesh_patches"])
+    "imported_mesh": [],
     "stl_import": [
         {"name": "inlet",  "of_type": "patch",    "role": "inlet"},
         {"name": "outlet", "of_type": "patch",    "role": "outlet"},
@@ -355,6 +357,19 @@ class BaseCaseGenerator(ABC):
         dest = output_dir / relative_path
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(content, encoding="utf-8")
+
+    def write_mesh(self, output_dir: Path, ctx: dict, analysis: dict) -> None:
+        """Write system/blockMeshDict, or copy an imported mesh into constant/polyMesh."""
+        if ctx["geometry_type"] == "imported_mesh":
+            src = analysis.get("_mesh_dir")
+            if not src or not Path(src).is_dir():
+                raise ValueError("imported_mesh needs analysis['_mesh_dir'] (a converted polyMesh)")
+            import shutil
+            dest = output_dir / "constant" / "polyMesh"
+            shutil.rmtree(dest, ignore_errors=True)
+            shutil.copytree(src, dest)
+            return
+        self.write(output_dir, "system/blockMeshDict", self.render_geometry_block_mesh(ctx["geometry_type"], ctx))
 
     def render_geometry_block_mesh(self, geometry_type: str, ctx: dict) -> str:
         """Render blockMeshDict from the shared geometry template library."""
@@ -504,9 +519,12 @@ class BaseCaseGenerator(ABC):
         if _raw_geo not in GEOMETRY_PATCHES:
             _raw_geo = self.default_geometry_type
         geometry_type = _raw_geo
-        patches = self._patches_with_inlet_velocities(
-            GEOMETRY_PATCHES[geometry_type], bcs, inlet_speed
-        )
+        if geometry_type == "imported_mesh":
+            patches = self._imported_patches(analysis.get("_mesh_patches") or [], inlet_speed)
+        else:
+            patches = self._patches_with_inlet_velocities(
+                GEOMETRY_PATCHES[geometry_type], bcs, inlet_speed
+            )
 
         turb_model = analysis.get("turb_model") or "kEpsilon"
 
@@ -579,7 +597,7 @@ class BaseCaseGenerator(ABC):
         except (TypeError, ValueError):
             refine = 1.0
         refine = min(max(refine, MIN_REFINEMENT), MAX_REFINEMENT)
-        if geometry_type == "stl_import":
+        if geometry_type in ("stl_import", "imported_mesh"):
             refine = 1.0
         ctx["_refine"] = refine
         if refine != 1.0:
@@ -951,6 +969,14 @@ class BaseCaseGenerator(ABC):
                 af_grad_lower=af_grad_lower,
             )
 
+        elif geometry_type == "imported_mesh":
+            # Sizes from the mesh bounding box (used by sampling dictionaries and checks)
+            x0, x1, y0, y1, z0, z1 = analysis.get("_mesh_bbox") or (0, 1, 0, 1, 0, 1)
+            n_cells = int(analysis.get("_mesh_cells") or 1000)
+            side = max(2, round(n_cells ** (1 / 3)))
+            ctx.update(domain_x=round(x1 - x0, 6), domain_y=round(y1 - y0, 6), domain_z=round(z1 - z0, 6),
+                       nx=side, ny=side, nz=side, _y1_actual=None)
+
         elif geometry_type == "stl_import":
             # ----------------------------------------------------------------
             # Background mesh bounds from uploaded STL bounding box.
@@ -1062,6 +1088,18 @@ class BaseCaseGenerator(ABC):
                 elif p["name"] in cls._INLET_DIRECTION:
                     d = cls._INLET_DIRECTION[p["name"]]
                     p["U"] = f"({d[0] * inlet_speed:g} {d[1] * inlet_speed:g} {d[2] * inlet_speed:g})"
+            out.append(p)
+        return out
+
+    @staticmethod
+    def _imported_patches(mesh_patches: list, inlet_speed: float) -> list:
+        """Patches of an imported mesh; inlets blow along their inward normal at *inlet_speed*."""
+        out = []
+        for p in mesh_patches:
+            p = dict(p)
+            n = p.get("normal")
+            if p["role"] == "inlet" and n and any(abs(c) > 1e-9 for c in n):
+                p["U"] = "(" + " ".join(f"{-c * inlet_speed:.6g}" for c in n) + ")"
             out.append(p)
         return out
 

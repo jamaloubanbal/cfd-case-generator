@@ -13,6 +13,10 @@ Command-line interface.
     python -m app.cli generate examples/dam_break.json -o dambreak/ --fix gemini
     python -m app.cli fix my_case/ --backend gemini
 
+    # Your own geometry: a mesh made in SALOME (groups become patches, mapped to roles)
+    python -m app.cli describe "Air at 5 m/s through this duct" --mesh duct.unv -o duct/ --backend gemini --run
+    python -m app.cli generate analysis.json --mesh duct.unv --role Inflow=inlet -o duct/
+
     # Physics checks only
     python -m app.cli check examples/backstep_turbulent.json
 
@@ -34,6 +38,30 @@ from app.sanitize import AnalysisError, sanitize_analysis
 from app.validation import run_checks
 
 _ICONS = {"ok": "✔", "info": "ℹ", "warning": "⚠", "error": "✖"}
+
+
+def _with_mesh(analysis: dict, args, description: str | None) -> dict:
+    """Import the SALOME mesh, map its groups to boundary roles and attach it to the analysis."""
+    from app.mesh_import import ROLES, apply_roles, attach, check_roles, import_unv, map_roles
+    mesh = import_unv(args.mesh, Path(args.mesh).stem)
+    backend = getattr(args, "backend", None) if args.cmd == "describe" else None
+    roles, notes = map_roles(mesh.patches, description or "", backend=backend,
+                             model=getattr(args, "model", None))
+    for item in args.role:
+        name, _, role = item.partition("=")
+        if name not in roles or role not in ROLES:
+            raise ValueError(f"--role {item}: groups are {', '.join(roles)}; roles are {', '.join(ROLES)}")
+        roles[name] = role
+    print(f"Mesh {args.mesh}: {mesh.n_cells:,} cells. Boundary groups → roles"
+          + (" (LLM)" if backend else " (from the names)") + ":")
+    for p in mesh.patches:
+        print(f"  {p.name:20s} {roles[p.name]:10s} {p.n_faces:>7,} faces")
+    for n in mesh.notes + notes:
+        print(f"  note: {n}")
+    problems = check_roles(roles, analysis["solver"])
+    if problems:
+        raise ValueError("boundary roles: " + "; ".join(problems) + " — fix them with --role GROUP=ROLE")
+    return attach(analysis, mesh, apply_roles(mesh, roles))
 
 
 def _load(path: str) -> tuple[dict, str | None]:
@@ -123,6 +151,11 @@ def main(argv: list[str] | None = None) -> int:
                        help="run with the repair agent: rule-based fixes, plus an LLM backend if given "
                             "(e.g. --fix gemini)")
         p.add_argument("--fix-model", help="model for the repair agent's LLM")
+        p.add_argument("--mesh", metavar="FILE.unv",
+                       help="use a mesh made in SALOME (I-DEAS .unv) instead of a built-in geometry")
+        p.add_argument("--role", action="append", default=[], metavar="GROUP=ROLE",
+                       help="set a mesh group's boundary role (inlet, outlet, wall, symmetry, empty, "
+                            "hot_wall, cold_wall); repeatable")
     c = sub.add_parser("check", help="print the physics checks for an analysis JSON")
     c.add_argument("input")
     f = sub.add_parser("fix", help="run an existing case and repair it if it fails")
@@ -142,7 +175,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "describe":
             from app.llm import analyze_cfd_problem
             print(f"Analysing with {args.backend} …", flush=True)
-            raw = analyze_cfd_problem(args.description, backend=args.backend, model=args.model,
+            from app.mesh_import import MESH_HINT
+            prompt = args.description + (MESH_HINT if args.mesh else "")
+            raw = analyze_cfd_problem(prompt, backend=args.backend, model=args.model,
                                       base_url=args.base_url,   # keys come from the environment
                                       timeout=args.timeout)
             description = args.description
@@ -156,6 +191,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    if getattr(args, "mesh", None):
+        try:
+            analysis = _with_mesh(analysis, args, description)
+        except (RuntimeError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
     print(f"Solver: {analysis['solver']} — {analysis.get('solver_justification', '')}")
     print("Physics checks:")
     worst = _print_checks(analysis)

@@ -70,8 +70,9 @@ def clean(case_dir: Path) -> None:
         if (p.is_dir() and (is_time or name.startswith("processor") or name == "postProcessing")) or \
                 (p.is_file() and name.startswith("log.")):
             shutil.rmtree(p) if p.is_dir() else p.unlink()
+    # Remove the mesh only when the case rebuilds it (blockMesh); an imported mesh must stay
     poly = case_dir / "constant" / "polyMesh"
-    if poly.exists():
+    if poly.exists() and (case_dir / "system" / "blockMeshDict").exists():
         shutil.rmtree(poly)
 
 

@@ -211,6 +211,7 @@ GEOMETRY_LABELS: dict[str, str] = {
     "pipe":                 "Axisymmetric Pipe (Wedge)",
     "airfoil":              "2-D Airfoil (C/H-grid)",
     "stl_import":           "Custom STL (snappyHexMesh)",
+    "imported_mesh":        "Imported SALOME Mesh",
 }
 
 
@@ -225,3 +226,13 @@ def get_sketch(geometry_type: str) -> tuple[str, str]:
 def get_label(geometry_type: str) -> str:
     """Return a human-readable label for *geometry_type*."""
     return GEOMETRY_LABELS.get(geometry_type, geometry_type.replace("_", " ").title())
+
+GEOMETRY_SKETCHES["imported_mesh"] = (
+    """\
+   your geometry, meshed in SALOME
+   ┌──────────────────────────┐
+   │  boundary groups → roles │
+   │  inlet · outlet · wall … │
+   └──────────────────────────┘""",
+    "Mesh imported from SALOME (.unv); boundary groups mapped to roles",
+)

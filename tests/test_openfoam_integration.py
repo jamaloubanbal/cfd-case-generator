@@ -115,6 +115,13 @@ def _case_matrix() -> list[tuple[str, str, dict]]:
         a["n_cores"] = 2
         cases.append(("simpleFoam-channel-parallel", "simpleFoam", a))
 
+    # Mesh imported from SALOME (.unv) → ideasUnvToFoam, groups mapped to roles by name
+    a = copy.deepcopy(SIMPLE_FOAM_ANALYSIS)
+    a.update(turb_model="kOmegaSST", characteristic_length=0.2,
+             boundary_conditions=[{"patch_name": "inlet", "type": "fixedValue", "values": {"U": [5.0, 0, 0]}}],
+             _unv=str(Path(__file__).resolve().parent.parent / "examples" / "meshes" / "l_duct.unv"))
+    cases.append(("simpleFoam-imported_mesh-kOmegaSST", "simpleFoam", a))
+
     # STL import → surfaceFeatureExtract → snappyHexMesh
     cases.append(("simpleFoam-stl_import-kOmegaSST", "simpleFoam", copy.deepcopy(_STL_ANALYSIS_BASE)))
     return cases
@@ -147,6 +154,10 @@ def _log(case_dir: Path, app: str) -> str:
 )
 def test_case_runs_in_openfoam(solver: str, analysis: dict, tmp_path: Path) -> None:
     case_dir = tmp_path / "case"
+    if analysis.get("_unv"):
+        from app.mesh_import import apply_roles, attach, import_unv, map_roles
+        mesh = import_unv(analysis["_unv"])
+        analysis = attach(analysis, mesh, apply_roles(mesh, map_roles(mesh.patches)[0]))
     GENERATORS[solver]().generate(analysis, case_dir)
     _shorten_run(case_dir)
 

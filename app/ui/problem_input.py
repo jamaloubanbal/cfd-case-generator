@@ -98,12 +98,14 @@ def render_problem_input() -> None:
 
 
 def _run_analysis(description: str) -> None:
-    has_stl = bool(st.session_state.get("stl_bytes"))
+    from app.mesh_import import MESH_HINT, map_roles
+    mesh = st.session_state.get("imported_mesh")
+    has_stl = bool(st.session_state.get("stl_bytes")) and mesh is None   # an imported mesh wins
     error = None
     with st.spinner("Analysing your CFD problem..."):
         try:
             raw = analyze_cfd_problem(
-                description + (_STL_HINT if has_stl else ""),
+                description + (MESH_HINT if mesh else _STL_HINT if has_stl else ""),
                 backend=st.session_state.get("backend", "claude"),
                 model=st.session_state.get("model"),
                 api_key=st.session_state.get("api_key"),
@@ -125,6 +127,17 @@ def _run_analysis(description: str) -> None:
 
     if has_stl:
         analysis["geometry_type"] = "stl_import"
+    if mesh is not None:
+        if analysis["solver"] == "interFoam":
+            st.error("Free-surface (interFoam) cases are not supported on imported meshes yet.")
+            st.stop()
+        analysis.update(geometry_type="imported_mesh", _mesh_cells=mesh.n_cells)
+        with st.spinner("Mapping the mesh groups to boundary roles…"):
+            roles, role_notes = map_roles(
+                mesh.patches, description, backend=st.session_state.get("backend"),
+                model=st.session_state.get("model"), api_key=st.session_state.get("api_key") or None,
+                base_url=st.session_state.get("base_url"))
+        st.session_state.update(mesh_roles=roles, mesh_role_notes=role_notes)
 
     st.session_state["analysis"] = analysis
     st.session_state["analysis_notes"] = notes

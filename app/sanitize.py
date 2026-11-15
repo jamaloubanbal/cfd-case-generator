@@ -89,7 +89,7 @@ def sanitize_analysis(analysis: Any, description: str | None = None) -> tuple[di
     # is the stronger signal and the solver is fixed to match (the LLM evaluation showed
     # models picking the right geometry with the wrong solver more often than the reverse).
     geometry = a.get("geometry_type")
-    if geometry != "stl_import":
+    if geometry not in ("stl_import", "imported_mesh"):          # user-supplied meshes keep their geometry
         geometry_solver = {g: s for s, g in _SOLVER_ONLY_GEOMETRY.items()}.get(geometry)
         # (a cavity with an inlet velocity is forced flow: keep the solver, see below)
         if geometry_solver and solver != geometry_solver and not (
