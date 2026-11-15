@@ -171,6 +171,12 @@ geometry ([`app/mesh_import.py`](../app/mesh_import.py)).
 5. **Case and checks.** The case uses the imported mesh (`Allrun` skips `blockMesh`). Mesh
    quality is checked by `checkMesh` when the case runs, not estimated beforehand.
 
+**Real SALOME export:** [`examples/meshes/box_duct_salome.unv`](../examples/meshes/box_duct_salome.unv)
+was produced by SALOME 9.16 itself: a NETGEN tetrahedral mesh of a box duct with groups
+`entree`, `sortie` and `parois`, scripted without the GUI by
+[`scripts/salome_box_duct.py`](../scripts/salome_box_duct.py). It imports, passes `checkMesh`,
+converges in 181 iterations and conserves mass to 0.3 %.
+
 **Example:** [`examples/meshes/l_duct.unv`](../examples/meshes/l_duct.unv) is an L-shaped duct
 (4 608 cells) with groups `Entree`, `Sortie` and `Parois`. It is written by
 [`scripts/make_sample_unv.py`](../scripts/make_sample_unv.py) in the format SALOME exports. It
@@ -343,14 +349,14 @@ The default suite is kept small: the OpenFOAM runs plus one fast regression test
 ```bash
 pip install -r requirements-dev.txt
 source /usr/share/openfoam/etc/bashrc
-pytest                                  # core: 38 OpenFOAM cases + regression tests (~2 min)
+pytest                                  # core: 39 OpenFOAM cases + regression tests (~2 min)
 pytest -m benchmark -v                  # validation against reference data (~12 min)
 pytest tests_extended                   # generators, LLM, sanitiser, UI, CLI, agent, … (~25 s)
 ```
 
 | Suite | What it covers |
 |---|---|
-| `tests/test_openfoam_integration.py` | 38 generated cases (incl. one on an imported SALOME mesh) meshed and run in OpenFOAM (skipped without OpenFOAM) |
+| `tests/test_openfoam_integration.py` | 39 generated cases (incl. two on imported meshes, one a real SALOME export) meshed and run in OpenFOAM (skipped without OpenFOAM) |
 | `tests/test_regressions.py` | One test per bug found by the OpenFOAM runs; no OpenFOAM needed |
 | `tests/test_benchmarks.py` | Validation benchmarks within tolerance (opt-in) |
 | `tests_extended/` | Template rendering, grading maths, sanitiser, LLM requests (mocked), headless Streamlit UI, CLI, post-processing reader, agent diagnosis and safety rails, evaluation scoring |
@@ -391,7 +397,8 @@ validation/                 # benchmark definitions + runner (python -m validati
 evals/                      # LLM evaluation (run.py) and agent fault benchmark (faults.py)
 examples/                   # problem descriptions with their analyses
 scripts/make_gallery.py     # runs the examples and renders docs/gallery/
-scripts/make_sample_unv.py  # writes the sample SALOME mesh examples/meshes/l_duct.unv
+scripts/make_sample_unv.py  # writes the sample mesh examples/meshes/l_duct.unv
+scripts/salome_box_duct.py  # SALOME script that produced examples/meshes/box_duct_salome.unv
 docs/                       # this guide, gallery, screenshots, validation and evaluation reports
 tests/                      # core tests (fixtures.py: shared analyses)
 tests_extended/             # extended tests, run manually

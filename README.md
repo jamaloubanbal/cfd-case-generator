@@ -20,7 +20,7 @@ reference data and repaired automatically when they fail**.
 | **Accuracy of the generated cases** | 5 benchmarks against analytical solutions and experiments: laminar flow, heat transfer and vortex shedding within **1.5 %**, turbulent separation (backward-facing step) within **5 %** — [report](docs/validation/results.md) |
 | **LLM understanding, unseen descriptions** | free Gemini model: **100 %** fully correct setups; local 7B model: 40 % raw → **80 %** with the sanitiser — [evaluation](docs/evaluation/results.md) |
 | **Run-and-fix agent** | 10 injected faults: rules alone repair **6**, rules + Gemini repair **10** — [benchmark](docs/evaluation/agent_results.md) |
-| **Tested in OpenFOAM** | 38 generated cases (5 solvers × 9 geometries × 4 flow models, plus an imported SALOME mesh) meshed and run in CI on every push |
+| **Tested in OpenFOAM** | 39 generated cases (5 solvers × 9 geometries × 4 flow models, plus imported meshes including a real SALOME export) meshed and run in CI on every push |
 
 ## What it does
 

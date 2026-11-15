@@ -121,6 +121,10 @@ def _case_matrix() -> list[tuple[str, str, dict]]:
              boundary_conditions=[{"patch_name": "inlet", "type": "fixedValue", "values": {"U": [5.0, 0, 0]}}],
              _unv=str(Path(__file__).resolve().parent.parent / "examples" / "meshes" / "l_duct.unv"))
     cases.append(("simpleFoam-imported_mesh-kOmegaSST", "simpleFoam", a))
+    # A real SALOME 9.16 export (NETGEN tetrahedra), see scripts/salome_box_duct.py
+    b = copy.deepcopy(a)
+    b["_unv"] = str(Path(a["_unv"]).with_name("box_duct_salome.unv"))
+    cases.append(("simpleFoam-salome_tetra_mesh-kOmegaSST", "simpleFoam", b))
 
     # STL import → surfaceFeatureExtract → snappyHexMesh
     cases.append(("simpleFoam-stl_import-kOmegaSST", "simpleFoam", copy.deepcopy(_STL_ANALYSIS_BASE)))
