@@ -1,6 +1,7 @@
 anthropic>=2.8.0      # structured outputs + server-side refusal fallbacks
-streamlit>=1.40.0
+streamlit>=1.50.0
 jinja2>=3.1.0
 requests>=2.31.0
 pandas>=2.0.0         # convergence monitor
 altair>=5.0.0         # convergence monitor
+matplotlib>=3.7          # flow-field pictures in the web app

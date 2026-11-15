@@ -23,7 +23,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from app.agent import diagnose, repair, run
+from app.agent import diagnose, repair, run, shorten_run
 from app.generators import GENERATORS
 from app.sanitize import sanitize_analysis
 
@@ -103,24 +103,12 @@ FAULTS = {
 }
 
 
-def _shorten(case_dir: Path) -> None:
-    cd = case_dir / "system" / "controlDict"
-    t = cd.read_text()
-    dt = float(re.search(r"^deltaT\s+([^;]+);", t, re.M).group(1))
-    transient = re.search(r"^application\s+(pimpleFoam|interFoam);", t, re.M)
-    end = (TRANSIENT_STEPS if transient else STEADY_ITERS) * dt
-    t = re.sub(r"^endTime\s+[^;]+;", f"endTime         {end:g};", t, flags=re.M)
-    t = re.sub(r"^writeControl\s+[^;]+;", "writeControl    runTime;", t, flags=re.M)
-    t = re.sub(r"^writeInterval\s+[^;]+;", f"writeInterval   {end:g};", t, flags=re.M)
-    cd.write_text(t)
-
-
 def build(name: str, work: Path) -> Path:
     make_analysis, inject, _ = FAULTS[name]
     analysis = make_analysis()
     case = work / name
     GENERATORS[analysis["solver"]]().generate(analysis, case)
-    _shorten(case)
+    shorten_run(case, STEADY_ITERS, TRANSIENT_STEPS)
     inject(case)
     return case
 

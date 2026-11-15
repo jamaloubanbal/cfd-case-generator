@@ -10,22 +10,28 @@ import streamlit as st
 from app.generators import GENERATORS
 from app.llm import explain_case
 from app.utils import zip_directory
+from app.ui.run_panel import render_run_panel
+
+
+def generate_case_dir(working: dict, case_dir: Path, stl: dict | None = None) -> None:
+    """Generate the case for *working* into *case_dir*."""
+    solver = working.get("solver", "")
+    generator_cls = GENERATORS.get(solver)
+    if generator_cls is None:
+        raise ValueError(f"No generator for solver {solver!r}. Supported: {list(GENERATORS)}")
+    analysis = dict(working)
+    if analysis.get("geometry_type") == "stl_import" and stl:
+        analysis.update(_stl_bytes=stl.get("bytes"), _stl_name=stl.get("name", "geometry"),
+                        _stl_bbox=stl.get("bbox"))
+    generator_cls().generate(analysis, case_dir)
 
 
 def generate_case_zip(working: dict, stl: dict | None = None) -> tuple[bytes, str]:
     """Generate the case for *working* in a temp dir and return ``(zip_bytes, file_name)``."""
     solver = working.get("solver", "")
-    generator_cls = GENERATORS.get(solver)
-    if generator_cls is None:
-        raise ValueError(f"No generator for solver {solver!r}. Supported: {list(GENERATORS)}")
-
-    analysis = dict(working)
-    if analysis.get("geometry_type") == "stl_import" and stl:
-        analysis.update(_stl_bytes=stl.get("bytes"), _stl_name=stl.get("name", "geometry"),
-                        _stl_bbox=stl.get("bbox"))
     with tempfile.TemporaryDirectory() as tmpdir:
         case_dir = Path(tmpdir) / solver
-        generator_cls().generate(analysis, case_dir)
+        generate_case_dir(working, case_dir, stl)
         return zip_directory(case_dir), f"{solver}_case.zip"
 
 
@@ -57,6 +63,7 @@ def render_case_output(working: dict) -> None:
         mime="application/zip",
         key="btn_download",
     )
+    render_run_panel(working)
     _render_explanation(working)
     _render_next_steps(working)
 

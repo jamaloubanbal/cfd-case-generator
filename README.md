@@ -34,7 +34,9 @@ reference data and repaired automatically when they fail**.
 - **Checks the physics before running:** Reynolds and Mach regime, y⁺, Courant number, mesh
   resolution.
 - **Runs and repairs:** a run-and-fix agent diagnoses failures from the OpenFOAM logs and
-  repairs them, with rule-based fixes first and an LLM for the rest. Strict safety rails
+  repairs them, with rule-based fixes first and an LLM for the rest. It works from the command
+  line, or from the web app's *Run in OpenFOAM* panel, which shows each step live with the
+  residuals and the flow field. Strict safety rails
   apply: no code execution and no edits to run scripts.
 - **Proves the results:** validation benchmarks, an LLM evaluation with a held-out set, and a
   fault-injection benchmark, all reproducible from the repo.

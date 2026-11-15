@@ -56,7 +56,7 @@ def _render_residuals(text: str) -> None:
         .properties(height=320)
         .interactive()
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
 
     if is_converged(parsed["residuals"]):
         st.success("All final residuals < 1 × 10⁻⁴ — case appears converged.", icon="✅")

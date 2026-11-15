@@ -49,6 +49,19 @@ class Diagnosis:
     log_tail: str = ""
 
 
+def shorten_run(case_dir: Path, steady_iterations: int = 60, transient_steps: int = 15) -> None:
+    """Limit a case to a quick check: a few iterations (steady) or time steps (transient)."""
+    cd = case_dir / "system" / "controlDict"
+    t = cd.read_text()
+    dt = float(re.search(r"^deltaT\s+([^;]+);", t, re.M).group(1))
+    transient = re.search(r"^application\s+(pimpleFoam|interFoam);", t, re.M)
+    end = (transient_steps if transient else steady_iterations) * dt
+    t = re.sub(r"^endTime\s+[^;]+;", f"endTime         {end:g};", t, flags=re.M)
+    t = re.sub(r"^writeControl\s+[^;]+;", "writeControl    runTime;", t, flags=re.M)
+    t = re.sub(r"^writeInterval\s+[^;]+;", f"writeInterval   {end:g};", t, flags=re.M)
+    cd.write_text(t)
+
+
 def clean(case_dir: Path) -> None:
     """Remove results and logs from a previous run (keeps 0/, constant/, system/)."""
     for p in case_dir.iterdir():

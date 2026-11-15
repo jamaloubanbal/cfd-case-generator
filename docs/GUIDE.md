@@ -176,6 +176,14 @@ code-execution directives (`#codeStream`, `#calc`, `coded…` conditions, `syste
 rejected, because OpenFOAM can compile and run C++ written in a dictionary. A "fix" that
 changes `endTime` is rejected too. Every attempt is logged with a diff in `agent_report.md`.
 
+**In the web app:** after *Generate Case Folder*, open **▶ Run in OpenFOAM**. Choose a quick
+check (about 60 iterations or 15 time steps) or a full run, and whether the LLM selected in the
+sidebar may fix what the rules cannot. The agent's steps appear live; afterwards the panel
+shows the agent report with diffs, the residuals, the velocity field and a download of the
+case as run. The panel needs the app to be started from a terminal where OpenFOAM is sourced.
+
+**From the command line:**
+
 ```bash
 cfdgen generate examples/dam_break.json -o dambreak/ --fix gemini   # run, repair if needed
 cfdgen fix my_case/ --backend gemini                                # repair an existing case
