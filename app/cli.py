@@ -17,6 +17,9 @@ Command-line interface.
     python -m app.cli describe "Air at 5 m/s through this duct" --mesh duct.unv -o duct/ --backend gemini --run
     python -m app.cli generate analysis.json --mesh duct.unv --role Inflow=inlet -o duct/
 
+    # Judge a case that has run (checks, plus an LLM explanation with --backend)
+    python -m app.cli review cylinder/ --backend gemini
+
     # Physics checks only
     python -m app.cli check examples/backstep_turbulent.json
 
@@ -98,8 +101,28 @@ def _repair(case_dir: Path, fix: str, model: str | None) -> int:
     return 0 if result.success else 1
 
 
+def _review(case_dir: Path, backend: str | None = None, model: str | None = None):
+    """Judge the results of a case that has run (and explain them with *backend*, if given)."""
+    from app.review import explain, print_review, review, write_report
+    try:
+        rev = review(case_dir)
+        if backend and backend != "rules":
+            try:
+                explain(rev, backend, model)
+            except Exception as exc:                    # the checks still stand without the LLM
+                print(f"  (no LLM explanation: {exc})")
+    except Exception as exc:
+        print(f"Result review failed: {exc}")
+        return None
+    print_review(rev)
+    print(f"  Report: {write_report(rev)}")
+    return rev
+
+
 def _generate(analysis: dict, out: Path, run: bool, force: bool,
-              fix: str | None = None, fix_model: str | None = None) -> int:
+              fix: str | None = None, fix_model: str | None = None,
+              description: str | None = None, backend: str | None = None,
+              model: str | None = None) -> int:
     if out.exists() and any(out.iterdir()):
         if not force:
             print(f"error: {out} exists and is not empty (use --force to overwrite)", file=sys.stderr)
@@ -107,11 +130,16 @@ def _generate(analysis: dict, out: Path, run: bool, force: bool,
         shutil.rmtree(out)
     solver = analysis["solver"]
     GENERATORS[solver]().generate(analysis, out)
+    from app.review import save_request
+    save_request(out, analysis, description)          # lets `cfdgen review` compare with the request
     n_files = sum(1 for p in out.rglob("*") if p.is_file())
     print(f"Generated {solver} case ({analysis['geometry_type']}, {analysis['turb_model']}) "
           f"in {out}/ — {n_files} files")
     if fix:
-        return _repair(out, fix, fix_model)
+        rc = _repair(out, fix, fix_model)
+        if rc == 0:
+            _review(out, backend or (fix if fix != "rules" else None), model or fix_model)
+        return rc
     if not run:
         print(f"Run it with:  cd {out} && ./Allrun")
         return 0
@@ -121,6 +149,8 @@ def _generate(analysis: dict, out: Path, run: bool, force: bool,
     print("Running ./Allrun …", flush=True)
     proc = subprocess.run(["./Allrun"], cwd=out)
     print("Done — logs are in log.*" if proc.returncode == 0 else "Allrun failed — see log.* files")
+    if proc.returncode == 0:
+        _review(out, backend, model)
     return proc.returncode
 
 
@@ -162,7 +192,20 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("case_dir")
     f.add_argument("--backend", help="LLM for fixes the rules cannot make (default: rules only)")
     f.add_argument("--model", help="model id for --backend")
+    rv = sub.add_parser("review", help="judge the results of a case that has run")
+    rv.add_argument("case_dir")
+    rv.add_argument("--backend", help="LLM that explains the result and suggests improvements "
+                                      "(default: checks only)")
+    rv.add_argument("--model", help="model id for --backend")
     args = ap.parse_args(argv)
+
+    if args.cmd == "review":
+        case = Path(args.case_dir)
+        if not (case / "system" / "controlDict").exists():
+            print(f"error: {case} is not an OpenFOAM case (no system/controlDict)", file=sys.stderr)
+            return 2
+        rev = _review(case, args.backend, args.model)
+        return 0 if rev is not None and rev.verdict != "unreliable" else 1
 
     if args.cmd == "fix":
         case = Path(args.case_dir)
@@ -206,7 +249,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if worst >= 2 else 0
     if args.cmd == "describe" and args.save_analysis:
         Path(args.save_analysis).write_text(json.dumps(analysis, indent=2))
-    return _generate(analysis, Path(args.output), args.run, args.force, args.fix, args.fix_model)
+    llm = args.backend if args.cmd == "describe" else None
+    return _generate(analysis, Path(args.output), args.run, args.force, args.fix, args.fix_model,
+                     description, llm, getattr(args, "model", None))
 
 
 if __name__ == "__main__":

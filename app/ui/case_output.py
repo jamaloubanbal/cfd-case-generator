@@ -33,6 +33,8 @@ def generate_case_dir(working: dict, case_dir: Path, stl: dict | None = None) ->
         analysis.update(_stl_bytes=stl.get("bytes"), _stl_name=stl.get("name", "geometry"),
                         _stl_bbox=stl.get("bbox"))
     generator_cls().generate(analysis, case_dir)
+    from app.review import save_request
+    save_request(case_dir, analysis, st.session_state.get("user_description"))
 
 
 def generate_case_zip(working: dict, stl: dict | None = None) -> tuple[bytes, str]:

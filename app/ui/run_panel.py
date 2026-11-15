@@ -73,6 +73,7 @@ def _run(working: dict, quick: bool, backend: str | None) -> None:
                       state="complete" if r.success else "error", expanded=False)
     st.session_state["run_result"] = {"dir": str(work), "case": str(case_dir), "success": r.success,
                                       "attempts": len(r.attempts), "log": lines, "quick": quick}
+    st.session_state.pop("run_review", None)
 
 
 def _show_result(res: dict) -> None:
@@ -93,6 +94,9 @@ def _show_result(res: dict) -> None:
         with st.expander("Agent report (diagnoses and diffs)", expanded=not res["success"]):
             st.markdown(report.read_text())
 
+    if res["success"]:
+        _show_review(case_dir, res["quick"])
+
     solver_log = next((p for p in sorted(case_dir.glob("log.*"))
                        if p.name.endswith("Foam") and p.name != "log.blockMesh"), None)
     if res["success"]:
@@ -104,6 +108,41 @@ def _show_result(res: dict) -> None:
 
     st.download_button("Download the case as run (zip)", data=zip_directory(case_dir),
                        file_name=f"{case_dir.name}_run.zip", mime="application/zip", key="btn_download_run")
+
+
+_REVIEW_ICON = {"pass": "✅", "info": "ℹ️", "warn": "⚠️", "fail": "❌"}
+
+
+def _show_review(case_dir: Path, quick: bool) -> None:
+    """The result reviewer: checks computed from the results, plus an optional LLM explanation."""
+    from app.review import explain, review, write_report
+
+    rev = st.session_state.get("run_review")
+    if rev is None or rev.case_dir != case_dir:
+        try:
+            rev = st.session_state["run_review"] = review(case_dir)
+        except Exception as exc:
+            st.caption(f"Result review not available ({type(exc).__name__}: {exc}).")
+            return
+    st.markdown(f"**Result review: {rev.verdict}**"
+                + (" — quick check only: the run was shortened, so convergence is not expected."
+                   if quick else ""))
+    st.table([{"": _REVIEW_ICON[c.status], "Check": c.name, "Result": c.message} for c in rev.checks])
+    backend = st.session_state.get("backend")
+    if rev.explanation is None and st.button("Explain the result and suggest improvements (LLM)",
+                                             key="btn_review_explain"):
+        with st.spinner("Asking the LLM to judge the result…"):
+            try:
+                explain(rev, backend, model=st.session_state.get("model"),
+                        api_key=st.session_state.get("api_key") or None,
+                        base_url=st.session_state.get("base_url"))
+            except Exception as exc:
+                st.error(f"The LLM explanation failed: {exc}")
+        write_report(rev)
+    if rev.explanation:
+        st.info(rev.explanation["summary"])
+        for s in rev.explanation["suggestions"]:
+            st.markdown(f"- {s}")
 
 
 def _show_field(case_dir: Path) -> None:

@@ -270,6 +270,40 @@ python -m evals.faults --mode both --backend gemini --model gemini-3.1-flash-lit
 
 ---
 
+## Result review
+
+A run that finishes without errors can still be wrong. [`app/review.py`](../app/review.py)
+judges a case after it has run, from its results and the request saved with it
+(`cfdgen_analysis.json`, written into every generated case):
+
+| Check | How |
+|---|---|
+| Request | Inlet speed read from `0/U`, Re and Mach computed from it, against the speed, Re or Mach stated in the description |
+| Convergence | Steady: residual control met, or final residuals; transient: final Courant number |
+| Mass balance | Net `phi` through the open boundaries, as a fraction of the inflow |
+| Wall y⁺ | From the wall-adjacent cells (u_τ from k, or from the wall shear), against the model's range |
+| Fields | NaN, velocities over 10× the inflow, negative k, alpha outside [0, 1] |
+
+The verdict is *trustworthy* (all pass), *questionable* (a warning) or *unreliable* (a
+failure). With `--backend`, an LLM receives the checks and key numbers and returns a verdict
+(which can only be stricter), a plain-language explanation and up to 4 suggestions. The
+report is saved to `review.md`.
+
+```bash
+cfdgen review my_case/                       # checks only
+cfdgen review my_case/ --backend gemini      # plus the LLM's explanation and suggestions
+```
+
+`--run` and `--fix` review the case automatically after it runs (`describe` uses its LLM for
+the explanation). In the web app, the review appears in the *Run in OpenFOAM* panel, with a
+button for the LLM's explanation.
+
+Example of what it catches: it flagged that `examples/compressible_obstacle.json` runs to
+`endTime` without converging (pressure residual stuck at 0.4), which the "it runs" tests had
+never detected.
+
+---
+
 ## Validation
 
 [`validation/`](../validation) generates each benchmark through the same code path as the app,
@@ -380,6 +414,7 @@ app/
 ├── schema.py               # JSON schema the LLM must follow
 ├── sanitize.py             # unit / range / regime / compatibility repair of the analysis
 ├── agent.py                # run-and-fix agent
+├── review.py               # result reviewer (checks + LLM verdict)
 ├── mesh_import.py          # SALOME (.unv) mesh import and boundary-role mapping
 ├── editor.py               # parameter-editor overrides → analysis
 ├── validation.py           # physics checks (Re, Ma, y+, CFL, resolution)

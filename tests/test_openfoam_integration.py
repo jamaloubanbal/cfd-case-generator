@@ -193,3 +193,10 @@ def test_case_runs_in_openfoam(solver: str, analysis: dict, tmp_path: Path) -> N
     assert not re.search(r"\bnan\b", solver_log, re.I), f"{solver} produced NaN:\n{solver_log[-3000:]}"
     for value in re.findall(r"Initial residual = (\S+),", solver_log):
         assert math.isfinite(float(value))
+
+    # The result reviewer reads every kind of case; the short runs are not converged,
+    # but the fields must be sane and the reviewer must not crash.
+    from app.review import review
+    rev = review(case_dir)
+    by_name = {c.name: c for c in rev.checks}
+    assert "Fields" in by_name and by_name["Fields"].status != "fail", rev.checks

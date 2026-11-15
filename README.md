@@ -41,6 +41,10 @@ reference data and repaired automatically when they fail**.
   line, or from the web app's *Run in OpenFOAM* panel, which shows each step live with the
   residuals and the flow field. Strict safety rails
   apply: no code execution and no edits to run scripts.
+- **Judges the result:** after a run, a result reviewer checks that the simulation matches the
+  request (speed, Re, Mach), converged, conserves mass, has a suitable wall y⁺ and sane fields,
+  and gives a verdict (trustworthy, questionable or unreliable). An LLM can explain the
+  verdict and suggest improvements. `cfdgen review case/ --backend gemini`
 - **Proves the results:** validation benchmarks, an LLM evaluation with a held-out set, and a
   fault-injection benchmark, all reproducible from the repo.
 
@@ -98,6 +102,7 @@ flowchart LR
     C --> D[Parameter editor<br/>+ physics checks]
     D --> E[Case generator<br/>Jinja2 templates]
     E --> F[Run<br/>+ repair agent]
+    F --> G[Result review<br/>checks + LLM verdict]
 ```
 
 ## Documentation
