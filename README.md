@@ -56,7 +56,7 @@ cell by cell from the results ([inputs](examples), [script](scripts/make_gallery
 | | |
 |:-:|:-:|
 | <img src="docs/gallery/dam_break.gif" width="420"><br>**Dam break**, interFoam (VOF)<br><sub>"A column of water 0.36 m wide and 0.3 m high collapses under gravity into a dry tank…"</sub> | <img src="docs/gallery/backward_facing_step.png" width="420"><br>**Backward-facing step**, simpleFoam + k-ω SST<br><sub>"Turbulent air flow at 10 m/s over a backward-facing step 10 cm high…"; black line: edge of the recirculation zone</sub> |
-| <img src="docs/gallery/compressible_obstacle.png" width="420"><br>**Mach 0.5 flow past a block**, rhoSimpleFoam<br><sub>"Compressible air flow at 170 m/s (Mach 0.5)… past a 5 cm square block"; the flow reaches Ma ≈ 0.85 beside the block</sub> | <img src="docs/gallery/t_junction_mixing.png" width="420"><br>**T-junction**, simpleFoam + k-ε<br><sub>"Water at 0.5 m/s… meets a side branch"; the merged stream doubles in speed</sub> |
+| <img src="docs/gallery/compressible_backstep.png" width="420"><br>**Mach 0.5 flow over a step**, rhoSimpleFoam + k-ω SST<br><sub>"Compressible air flow at 170 m/s (Mach 0.5)… over a backward-facing step"; converged, judged trustworthy by the result reviewer</sub> | <img src="docs/gallery/t_junction_mixing.png" width="420"><br>**T-junction**, simpleFoam + k-ε<br><sub>"Water at 0.5 m/s… meets a side branch"; the merged stream doubles in speed</sub> |
 
 <p align="center"><img src="docs/validation/cylinder_re100.png" alt="Vortex shedding frequency compared with Williamson (1996)" width="900"><br>
 <sub>Validation: vortex-shedding frequency of a generated cylinder case vs. Williamson's experimental correlation (+1.4 %)</sub></p>

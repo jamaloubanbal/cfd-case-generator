@@ -757,6 +757,10 @@ class BaseCaseGenerator(ABC):
             nx_outlet = max(round(40 * f), round((L - xs) / L * 60 * f))
             ny_top    = max(round(15 * f), round((H - Hs) / H * 30 * f))
             ny_bot    = max(round(10 * f), round(Hs        / H * 30 * f))
+            # At high Re the fixed counts cannot reach the y⁺ target at the capped growth
+            # rate (Mach 0.5 gave y⁺ ≈ 550): add cells, as for the cylinder.
+            ny_top = 2 * _cells_to_reach((H - Hs) / 2, y1, base=(ny_top + 1) // 2, cap=40)
+            ny_bot = _cells_to_reach(Hs, y1, base=ny_bot, cap=60)
             ctx.update(
                 domain_x=L, domain_y=H, domain_z=dz,
                 xs=xs, Hs=Hs,

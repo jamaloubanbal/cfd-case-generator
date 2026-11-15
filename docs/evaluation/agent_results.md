@@ -9,7 +9,7 @@ A working case is generated, one realistic fault is injected (most are bugs this
 | interFoam scheme missing in v1912 (original bug: OpenFOAM.org syntax) | ✅ rules | ✅ rules | ✅ rules |
 | convection scheme for k deleted | ✅ rules | ✅ rules | ✅ rules |
 | buoyantSimpleFoam with SIMPLEC and weak relaxation: negative temperature (original bug) | ✅ rules | ✅ rules | ✅ rules |
-| Mach 0.5 rhoSimpleFoam, aggressive relaxation and no pressure limits | ✅ rules | ✅ rules | ✅ rules |
+| Mach 0.5 rhoSimpleFoam, aggressive relaxation, no pressure or temperature limits | ✅ rules | ✅ rules | ✅ rules |
 | field patch type does not match the mesh patch (original STL bug) | ❌ | ✅ LLM | ✅ LLM |
 | fixedValue outlet pressure without a value | ❌ | ❌ | ✅ LLM |
 | unclosed brace in fvSchemes (hand-editing mistake) | ❌ | ❌ | ✅ LLM |

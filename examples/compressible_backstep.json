@@ -1,5 +1,5 @@
 {
-  "description": "Compressible air flow at 170 m/s (Mach 0.5), 300 K and 1 atm, past a 5 cm square block in a channel 1 m long and 0.25 m high. Steady state.",
+  "description": "Compressible air flow at 170 m/s (Mach 0.5), 300 K and 1 atm, over a backward-facing step 10 cm high in a 20 cm channel that is 2 m long, with the step 0.4 m downstream of the inlet. Steady RANS.",
   "note": "Hand-written analysis in the format the LLM returns (app/schema.py). `cfdgen describe \"<description>\"` produces the equivalent object with Claude or Ollama.",
   "analysis": {
     "solver": "rhoSimpleFoam",
@@ -33,36 +33,6 @@
           "T": null,
           "alpha.water": null
         }
-      },
-      {
-        "patch_name": "obstacle",
-        "type": "noSlip",
-        "values": {
-          "U": null,
-          "p": null,
-          "T": null,
-          "alpha.water": null
-        }
-      },
-      {
-        "patch_name": "top",
-        "type": "noSlip",
-        "values": {
-          "U": null,
-          "p": null,
-          "T": null,
-          "alpha.water": null
-        }
-      },
-      {
-        "patch_name": "bottom",
-        "type": "noSlip",
-        "values": {
-          "U": null,
-          "p": null,
-          "T": null,
-          "alpha.water": null
-        }
       }
     ],
     "numerical_schemes": {
@@ -74,29 +44,29 @@
       "snGradSchemes": "corrected",
       "justification": "Template defaults."
     },
-    "Re": 566666.6666666666,
+    "Re": 1133333.3333333333,
     "is_transient": false,
     "suggested_mesh": {
       "type": "blockMesh",
       "approximate_cell_count": 6000,
-      "domain_description": "1 m x 0.25 m channel, square block"
+      "domain_description": "2 m long channel, 10 cm step"
     },
-    "characteristic_length": 0.05,
+    "characteristic_length": 0.1,
     "characteristic_velocity": 170.0,
     "Ma": 0.5,
     "T_ref": 300.0,
     "p_ref": 101325.0,
     "turb_model": "kOmegaSST",
-    "geometry_type": "rectangular_obstacle",
+    "geometry_type": "backstep",
     "geometry_params": {
-      "channel_length": 1.0,
-      "channel_height": 0.25,
+      "channel_length": 2.0,
+      "channel_height": 0.2,
       "branch_width": null,
       "branch_height": null,
-      "obstacle_width": 0.05,
-      "obstacle_height": 0.05,
-      "step_height": null,
-      "step_x": null,
+      "obstacle_width": null,
+      "obstacle_height": null,
+      "step_height": 0.1,
+      "step_x": 0.4,
       "cylinder_radius": null,
       "cx": null,
       "cy": null,

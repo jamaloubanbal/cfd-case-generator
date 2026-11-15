@@ -47,6 +47,7 @@ class RhoSimpleFoamGenerator(BaseCaseGenerator):
                    self.render("constant/thermophysicalProperties", ctx))
         self.write(output_dir, "constant/turbulenceProperties",
                    self.render("constant/turbulenceProperties", ctx))
+        self.write(output_dir, "constant/fvOptions", self.render("constant/fvOptions", ctx))
 
         # --- run scripts + README ---
         self.write_run_scripts(output_dir, ctx)

@@ -56,9 +56,9 @@ GALLERY: dict[str, dict] = {
         end_time=3000, refine=2.0, quantity="U_mag", cmap="viridis", label="|U| [m/s]",
         view=(0.2, 0.8, 0.0, 0.25), mesh_zoom=(0.4, 0.6, 0.0, 0.1),
     ),
-    "compressible_obstacle": dict(
+    "compressible_backstep": dict(
         end_time=3000, refine=1.5, quantity="Ma", cmap="magma", label="Mach number",
-        view=(0.1, 1.0, 0.0, 0.25), mesh_zoom=(0.25, 0.45, 0.05, 0.2),
+        view=(0.2, 1.6, 0.0, 0.2), mesh_zoom=(0.3, 0.6, 0.0, 0.2),
     ),
 }
 

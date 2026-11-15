@@ -233,7 +233,26 @@ def rule_fix(case_dir: Path, d: Diagnosis) -> list[str]:
             if new != sol:
                 fv.write_text(new)
                 changes.append("system/fvSolution: relaxation factors × 0.6 (and pressure limits if compressible)")
+            if "temperature" in d.message.lower():
+                changes += _limit_temperature(case_dir)
     return changes
+
+
+def _limit_temperature(case_dir: Path) -> list[str]:
+    """Clip T to physical bounds (limitTemperature fvOption) when the energy equation overshot."""
+    fo = case_dir / "constant" / "fvOptions"
+    text = fo.read_text() if fo.exists() else ""
+    if "limitTemperature" in text:
+        return []
+    m = re.search(r"internalField\s+uniform\s+([\d.eE+-]+)", (case_dir / "0" / "T").read_text()) \
+        if (case_dir / "0" / "T").exists() else None
+    T0 = float(m.group(1)) if m else 300.0
+    if not text:
+        text = ('FoamFile\n{\n    version     2.0;\n    format      ascii;\n    class       dictionary;\n'
+                '    object      fvOptions;\n}\n')
+    fo.write_text(text + f"\nlimitT\n{{\n    type            limitTemperature;\n    active          yes;\n"
+                  f"    selectionMode   all;\n    min             {0.5 * T0:g};\n    max             {3 * T0:g};\n}}\n")
+    return [f"constant/fvOptions: limitTemperature {0.5 * T0:g}–{3 * T0:g} K"]
 
 
 # ── LLM fix ──────────────────────────────────────────────────────────────────

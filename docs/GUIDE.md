@@ -298,9 +298,12 @@ cfdgen review my_case/ --backend gemini      # plus the LLM's explanation and su
 the explanation). In the web app, the review appears in the *Run in OpenFOAM* panel, with a
 button for the LLM's explanation.
 
-Example of what it catches: it flagged that `examples/compressible_obstacle.json` runs to
-`endTime` without converging (pressure residual stuck at 0.4), which the "it runs" tests had
-never detected.
+Example of what it catches: a former example, Mach 0.5 flow past a square block, ran to
+`endTime` without converging (pressure residual oscillating around 0.3), which the "it runs"
+tests had never detected. The cause was physical: the block's wake sheds vortices, so the
+flow has no steady solution. The example was replaced by Mach 0.5 flow over a backward-facing
+step. The physics checks now warn about steady solvers behind bluff bodies, and the reviewer
+names that cause when such a case does not converge.
 
 ---
 

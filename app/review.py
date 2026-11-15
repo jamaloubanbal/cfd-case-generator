@@ -132,6 +132,11 @@ def review(case_dir: str | Path) -> Review:
     transient = app in _TRANSIENT or bool(analysis.get("is_transient"))
 
     _check_convergence(r, log, transient, parse_foam_log(log))
+    conv = r.checks[-1]
+    if (not transient and conv.name == "Convergence" and conv.status in ("warn", "fail")
+            and analysis.get("geometry_type") in ("cylinder", "rectangular_obstacle")):
+        conv.message += (" Likely cause: the wake of the bluff body sheds vortices, so the flow has "
+                         "no steady solution; use a transient solver (pimpleFoam).")
     inlet_speed = _check_request(r, case, analysis, description, case_dir)
     _check_mass(r, case, t)
     _check_yplus(r, case, t, analysis, case_dir)

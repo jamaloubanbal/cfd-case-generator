@@ -1,0 +1,30 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  v1912
+    \\  /    A nd           | Website:  www.openfoam.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvOptions;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+
+// Keep the temperature physical during the start-up transient: without it the
+// energy equation overshot to negative T within 5 iterations (FOAM FATAL ERROR
+// "Negative initial temperature"). Inactive once the flow has settled.
+limitT
+{
+    type            limitTemperature;
+    active          yes;
+    selectionMode   all;
+    min             {{ (T_inlet | float * 0.5) | round(1) }};
+    max             {{ (T_inlet | float * 3.0) | round(1) }};
+}
+
+// ************************************************************************* //

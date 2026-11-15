@@ -106,24 +106,25 @@ relaxationFactors
 {
     fields
     {
-        p               0.1;
-        rho             0.05;
+        p               0.3;
+        rho             0.3;
     }
     equations
     {
-        // Lower than usual: with wall cells sized for y+ ~ 50 the compressible
-        // energy equation diverged within a few iterations at U 0.5 / h 0.3.
-        U               0.3;
-        h               0.2;
+        // With first-order upwind for U (fvSchemes) these converge Mach 0.5 cases
+        // to 1e-5. With linearUpwind, U 0.5 / h 0.3 diverged, and the very low
+        // values needed to stop that (p 0.1, rho 0.05, U 0.3, h 0.2) stalled at 1e-2.
+        U               0.7;
+        h               0.5;
 {% if turb_model in ('kEpsilon', 'kOmegaSST') %}
-        k               0.5;
+        k               0.7;
 {% endif %}
 {% if turb_model == 'kEpsilon' %}
-        epsilon         0.5;
+        epsilon         0.7;
 {% elif turb_model == 'kOmegaSST' %}
-        omega           0.5;
+        omega           0.7;
 {% elif turb_model == 'SpalartAllmaras' %}
-        nuTilda         0.5;
+        nuTilda         0.7;
 {% endif %}
     }
 }

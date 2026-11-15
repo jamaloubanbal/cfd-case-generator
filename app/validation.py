@@ -72,6 +72,16 @@ def run_checks(analysis: dict) -> list[dict]:
     # ── 1. Reynolds number / flow regime ────────────────────────────────────
     if Re is not None:
         checks.append(_check_reynolds(float(Re), solver, turb, geometry))
+        # Steady solver behind a bluff body: the wake sheds vortices above Re ≈ 50, so the
+        # residuals oscillate and never converge (a Mach 0.5 example past a block did that).
+        if (geometry in ("cylinder", "rectangular_obstacle") and float(Re) > 50
+                and solver in ("simpleFoam", "rhoSimpleFoam")):
+            alt = ("pimpleFoam (transient)" if solver == "simpleFoam" else
+                   "a geometry without a bluff-body wake, or a transient compressible solver")
+            checks.append(_r("warning", "Unsteady wake",
+                             f"Re = {float(Re):.3g}: the wake of a {geometry.replace('_', ' ')} sheds "
+                             f"vortices, so a steady solver ({solver}) will most likely not converge "
+                             f"and its result is a non-physical average. Use {alt}."))
 
     # ── 2. Mach number (gases only; skip buoyant and two-phase) ─────────────
     if (
