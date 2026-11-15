@@ -23,9 +23,18 @@ import numpy as np
 
 from app.postprocess import FoamCase
 
-MESH_HINT = ("\n\n[Note: the user supplies their own 3-D mesh (made in SALOME). Choose the solver, "
-             "fluid, flow model and inlet speed; set geometry_type to 'channel' (the geometry comes "
-             "from the mesh).]")
+def mesh_hint(mesh: "ImportedMesh") -> str:
+    """Analysis hint with the mesh's dimensions, so the LLM picks a sensible length scale."""
+    x0, x1, y0, y1, z0, z1 = mesh.bbox
+    groups = "; ".join(f"'{p.name}' area {p.area:.4g} m² facing ({p.normal[0]:.2f}, {p.normal[1]:.2f}, "
+                       f"{p.normal[2]:.2f})" for p in mesh.patches)
+    return (f"\n\n[Note: the user supplies their own 3-D mesh (made in SALOME), {mesh.n_cells} cells, "
+            f"extent {x1 - x0:.4g} × {y1 - y0:.4g} × {z1 - z0:.4g} m. Boundary groups: {groups}. "
+            "Choose the solver, fluid, flow model and inlet speed. Use as characteristic_length the "
+            "hydraulic diameter of the inlet for internal flow (≈ square root of the inlet area for a "
+            "square duct) or the body size for external flow, not the domain length. Set geometry_type "
+            "to 'channel' (the geometry comes from the mesh).]")
+
 
 ROLES = ("inlet", "outlet", "wall", "symmetry", "empty", "hot_wall", "cold_wall")
 _OF_TYPE = {"inlet": "patch", "outlet": "patch", "wall": "wall", "hot_wall": "wall",

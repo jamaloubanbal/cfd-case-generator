@@ -43,7 +43,7 @@ _ICONS = {"ok": "✔", "info": "ℹ", "warning": "⚠", "error": "✖"}
 def _with_mesh(analysis: dict, args, description: str | None) -> dict:
     """Import the SALOME mesh, map its groups to boundary roles and attach it to the analysis."""
     from app.mesh_import import ROLES, apply_roles, attach, check_roles, import_unv, map_roles
-    mesh = import_unv(args.mesh, Path(args.mesh).stem)
+    mesh = getattr(args, "imported", None) or import_unv(args.mesh, Path(args.mesh).stem)
     backend = getattr(args, "backend", None) if args.cmd == "describe" else None
     roles, notes = map_roles(mesh.patches, description or "", backend=backend,
                              model=getattr(args, "model", None))
@@ -175,8 +175,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "describe":
             from app.llm import analyze_cfd_problem
             print(f"Analysing with {args.backend} …", flush=True)
-            from app.mesh_import import MESH_HINT
-            prompt = args.description + (MESH_HINT if args.mesh else "")
+            from app.mesh_import import import_unv, mesh_hint
+            if args.mesh:      # import first so the LLM sees the mesh's dimensions
+                args.imported = import_unv(args.mesh, Path(args.mesh).stem)
+            prompt = args.description + (mesh_hint(args.imported) if args.mesh else "")
             raw = analyze_cfd_problem(prompt, backend=args.backend, model=args.model,
                                       base_url=args.base_url,   # keys come from the environment
                                       timeout=args.timeout)

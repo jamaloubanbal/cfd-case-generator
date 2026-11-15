@@ -1,0 +1,40 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1912                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      probesDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Usage:  postProcess -func probes -time latest
+//         Results written to postProcessing/probes/<time>/
+//
+// Three probe points along the centreline:
+//   near-inlet (10 % of domain length)
+//   domain centre (50 %)
+//   near-outlet (90 %)
+
+type        probes;
+libs        ( "libsampling.so" );
+
+probeLocations
+(
+
+    ( 0.1 0.1 0.1 )
+
+    ( 0.5 0.1 0.1 )
+
+    ( 0.9 0.1 0.1 )
+
+);
+
+fields          ( U p k epsilon );
+
+// ************************************************************************* //

@@ -98,14 +98,14 @@ def render_problem_input() -> None:
 
 
 def _run_analysis(description: str) -> None:
-    from app.mesh_import import MESH_HINT, map_roles
+    from app.mesh_import import map_roles, mesh_hint
     mesh = st.session_state.get("imported_mesh")
     has_stl = bool(st.session_state.get("stl_bytes")) and mesh is None   # an imported mesh wins
     error = None
     with st.spinner("Analysing your CFD problem..."):
         try:
             raw = analyze_cfd_problem(
-                description + (MESH_HINT if mesh else _STL_HINT if has_stl else ""),
+                description + (mesh_hint(mesh) if mesh else _STL_HINT if has_stl else ""),
                 backend=st.session_state.get("backend", "claude"),
                 model=st.session_state.get("model"),
                 api_key=st.session_state.get("api_key"),
