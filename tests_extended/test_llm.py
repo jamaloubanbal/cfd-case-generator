@@ -393,3 +393,20 @@ def test_provider_without_json_schema_falls_back_to_json_mode():
     assert second["response_format"] == {"type": "json_object"}
     assert '"additionalProperties"' in second["messages"][0]["content"]      # schema in the prompt
     assert result["solver"] == "simpleFoam"
+
+
+def test_busy_model_falls_back_to_next_model(monkeypatch):
+    """gemini-3.8-flash overloaded (503 on every retry) → the next model in the chain answers."""
+    from app.llm import analyze_cfd_problem
+    monkeypatch.delenv("GEMINI_FALLBACK_MODELS", raising=False)
+    busy, ok = _chat_response("", status=503), _chat_response(json.dumps(SAMPLE_ANALYSIS))
+    busy.headers = {}
+
+    def fake_post(url, json, headers, timeout):          # noqa: A002 — mirrors requests.post
+        return busy if json["model"] == "gemini-3.8-flash" else ok
+
+    with patch("app.llm.requests.post", side_effect=fake_post) as post, patch("app.llm.time.sleep"):
+        result = analyze_cfd_problem("air in a duct", backend="gemini", model="gemini-3.8-flash",
+                                     api_key="AIza-test")
+    assert result["_model_used"] == "gemini-3.1-flash-lite"
+    assert post.call_args.kwargs["json"]["model"] == "gemini-3.1-flash-lite"

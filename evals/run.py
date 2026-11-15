@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import sys
 import time
@@ -110,6 +111,9 @@ def _response_file(backend: str, model: str) -> Path:
 def collect(backend: str, model: str, delay: float, retry_errors: bool, only: list[str] | None,
             cases: list[dict]) -> None:
     from app.llm import analyze_cfd_problem
+
+    # Scores must belong to the model named on the command line: no automatic model fallback
+    os.environ[f"{backend.upper().replace('-', '_')}_FALLBACK_MODELS"] = ""
 
     path = _response_file(backend, model)
     data = json.loads(path.read_text()) if path.exists() else {

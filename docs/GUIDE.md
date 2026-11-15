@@ -119,6 +119,11 @@ cfdgen describe "Laminar flow past a cylinder at Re = 100" -o cylinder/ --backen
   back to JSON mode with the schema in the prompt.
 - Free tiers can be busy (HTTP 503) or rate-limited (429): requests are retried after
   5/15/30 s. A cloud request waits up to 300 s (`--timeout`, `CFD_LLM_TIMEOUT`).
+- If a model is still unavailable (or retired), the next model in the provider's fallback list
+  answers, and the app says so. Gemini: `gemini-3.1-flash-lite` → `gemini-3.8-flash` →
+  `gemini-3-flash-preview`; Groq: `llama-3.3-70b-versatile` → `llama-3.1-8b-instant`. Override
+  with `GEMINI_FALLBACK_MODELS` / `GROQ_FALLBACK_MODELS` (comma-separated; empty disables).
+  The evaluations disable fallback so that scores belong to the named model.
 - Providers rename free models often. If a model no longer exists, the error lists the text
   models the provider currently offers, newest first. Set `GEMINI_MODEL` / `GROQ_MODEL` /
   `OPENROUTER_MODEL` to change the default.

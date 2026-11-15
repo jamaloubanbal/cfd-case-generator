@@ -13,6 +13,9 @@ def render_analysis_summary(analysis: dict, notes: list[str]) -> None:
     st.divider()
     st.subheader("Analysis Summary")
 
+    if analysis.get("_model_used"):
+        st.caption(f"ℹ️ `{st.session_state.get('model', 'The selected model')}` was unavailable "
+                   f"(busy or retired), so `{analysis['_model_used']}` answered instead.")
     st.info(f"**Solver:** `{analysis.get('solver', 'unknown')}`  \n"
             f"{analysis.get('solver_justification', '')}")
 

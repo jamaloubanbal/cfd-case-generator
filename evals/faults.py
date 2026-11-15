@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import os
 import re
 import sys
 import tempfile
@@ -150,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.mode != "rules" and not args.backend and not args.check:
         ap.error("--backend is required for --mode llm/both")
 
+    if args.backend:   # results must belong to the named model: no automatic model fallback
+        os.environ[f"{args.backend.upper().replace('-', '_')}_FALLBACK_MODELS"] = ""
     results = json.loads(RESULTS.read_text()) if RESULTS.exists() else {}
     key = "rules" if args.mode == "rules" else f"{args.mode}:{args.backend}/{args.model or 'default'}"
     with tempfile.TemporaryDirectory() as tmp:

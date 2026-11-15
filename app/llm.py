@@ -305,6 +305,7 @@ OPENAI_COMPATIBLE_PROVIDERS: dict[str, dict] = {
         "key_env": "GEMINI_API_KEY",
         "model": os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite"),   # often less busy than 3.8-flash; 100 % in evals/ (2026-11)
         "key_url": "https://aistudio.google.com/apikey",
+        "fallbacks": ["gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3-flash-preview"],
     },
     "groq": {
         "label": "Groq (free tier)",
@@ -312,6 +313,7 @@ OPENAI_COMPATIBLE_PROVIDERS: dict[str, dict] = {
         "key_env": "GROQ_API_KEY",
         "model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
         "key_url": "https://console.groq.com/keys",
+        "fallbacks": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
     },
     "openrouter": {
         "label": "OpenRouter",
@@ -432,16 +434,54 @@ def _model_not_found(backend: str, model: str, key: str | None, url: str, label:
     return RuntimeError(msg + f". Choose one with --model, the sidebar, or the {var} variable.")
 
 
+class _ModelUnavailable(Exception):
+    """This model cannot answer now (busy after retries, or no longer offered)."""
+
+
+def _fallback_chain(backend: str, first: str) -> list[str]:
+    """*first*, then the provider's fallback models (env <BACKEND>_FALLBACK_MODELS overrides)."""
+    env = os.environ.get(f"{backend.upper().replace('-', '_')}_FALLBACK_MODELS")
+    fallbacks = ([m.strip() for m in env.split(",") if m.strip()] if env is not None
+                 else OPENAI_COMPATIBLE_PROVIDERS[backend].get("fallbacks", []))
+    return [first] + [m for m in fallbacks if m != first]
+
+
 def _analyze_compat(user_description: str, backend: str, model: str | None, api_key: str | None,
                     base_url: str | None, timeout: int | None = None,
                     system: str = _SYSTEM_PROMPT, schema: dict = ANALYSIS_SCHEMA) -> dict:
+    """Ask the chosen model; if it is unavailable, fall back to the provider's other models.
+
+    The answering model is reported as ``"_model_used"`` when a fallback answered.
+    """
+    url, first, key, label = _compat_settings(backend, model, api_key, base_url)
+    chain = _fallback_chain(backend, first)
+    problems = []
+    for i, m in enumerate(chain):
+        try:
+            result = _compat_json_once(user_description, backend, url, m, key, label, timeout,
+                                       system, schema)
+        except _ModelUnavailable as exc:
+            problems.append(str(exc))
+            if i + 1 < len(chain):
+                print(f"  {m} is unavailable — trying {chain[i + 1]} …", file=sys.stderr, flush=True)
+            continue
+        if m != first:
+            print(f"  answered by {m} (fallback for {first})", file=sys.stderr, flush=True)
+            result["_model_used"] = m
+        return result
+    if len(problems) == 1:
+        raise RuntimeError(problems[0])
+    raise RuntimeError(f"{label}: no model available right now. " + " | ".join(problems))
+
+
+def _compat_json_once(user_description: str, backend: str, url: str, model: str, key: str | None,
+                      label: str, timeout: int | None, system: str, schema: dict) -> dict:
     """Analyse via an OpenAI-compatible API.
 
     Providers differ in how much of structured output they support, so this tries, in
     order: a strict JSON schema; JSON mode with the schema in the prompt; plain text with
     the schema in the prompt.  A 400 response moves to the next mode.
     """
-    url, model, key, label = _compat_settings(backend, model, api_key, base_url)
     schema_prompt = (f"{system}\nReturn ONLY a JSON object that matches this JSON schema "
                      f"(no markdown, no extra text):\n{json.dumps(schema)}")
     modes = [
@@ -465,7 +505,9 @@ def _analyze_compat(user_description: str, backend: str, model: str | None, api_
                     last_error = exc
                     break                                  # mode not supported → next mode
                 if exc.response is not None and exc.response.status_code == 404:
-                    raise _model_not_found(backend, model, key, url, label) from exc
+                    raise _ModelUnavailable(str(_model_not_found(backend, model, key, url, label))) from exc
+                if exc.response is not None and exc.response.status_code in _BUSY_STATUSES:
+                    raise _ModelUnavailable(str(_compat_error(exc, f"{label} ({model})"))) from exc
                 raise _compat_error(exc, label) from exc
             except requests.exceptions.Timeout as exc:
                 if timed_out:                              # second timeout → give up
