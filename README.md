@@ -19,6 +19,7 @@ reference data and repaired automatically when they fail**.
 |---|---|
 | **Accuracy of the generated cases** | 5 benchmarks against analytical solutions and experiments: laminar flow, heat transfer and vortex shedding within **1.5 %**, turbulent separation (backward-facing step) within **5 %** — [report](docs/validation/results.md) |
 | **LLM understanding, unseen descriptions** | free Gemini model: **100 %** fully correct setups; local 7B model: 40 % raw → **80 %** with the sanitiser — [evaluation](docs/evaluation/results.md) |
+| **Description → judged result** | 30 descriptions run end to end with no human in the loop (Gemini answers, rule-based repairs, result reviewer): **24 trustworthy**, 8 of 10 on unseen descriptions — [benchmark](docs/evaluation/e2e_results.md) |
 | **Run-and-fix agent** | 10 injected faults: rules alone repair **6**, rules + Gemini repair **10** — [benchmark](docs/evaluation/agent_results.md) |
 | **Tested in OpenFOAM** | 39 generated cases (5 solvers × 9 geometries × 4 flow models, plus imported meshes including a real SALOME export) meshed and run in CI on every push |
 
@@ -111,6 +112,7 @@ flowchart LR
   cases, the agent and its safety rails, testing, project structure, known limitations
 - **[Validation report](docs/validation/results.md):** benchmarks with plots
 - **[LLM evaluation](docs/evaluation/results.md):** per-model and per-case results, dev and held-out sets
+- **[End-to-end benchmark](docs/evaluation/e2e_results.md):** every description generated, run and judged
 - **[Agent benchmark](docs/evaluation/agent_results.md):** fault-by-fault repair results
 
 ## License

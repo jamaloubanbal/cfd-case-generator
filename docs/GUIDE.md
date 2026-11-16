@@ -370,6 +370,26 @@ python -m evals.run --report                                 # re-score cached a
 
 ---
 
+## End-to-end benchmark
+
+[`evals/e2e.py`](../evals/e2e.py) goes one step further than the LLM evaluation: each of the
+30 descriptions is taken from the model's cached answer (no API call), sanitised, generated,
+run with the rule-based repair agent and judged by the [result reviewer](#result-review).
+
+```bash
+python -m evals.e2e --jobs 6            # ~25 min on 6 cores; results in docs/evaluation/e2e_results.md
+```
+
+With Gemini's answers, **24 of 30 give a trustworthy result** (8 of 10 held-out). The first
+run scored 12/30 and exposed problems no other test had found: free-surface and vortex-shedding
+runs taking over an hour, a stated Rayleigh number being ignored, too coarse wall cells at high
+Re, and false alarms in the reviewer. The remaining 6 are genuine: steady solvers chosen for
+flows behind bluff bodies (the reviewer names the cause), a transonic airfoil (outside the
+tool's scope), too coarse wall cells around the airfoil body, and a natural-convection room
+that needs more iterations.
+
+---
+
 ## Examples and gallery
 
 Each file in [`examples/`](../examples) holds a description and the matching analysis, written by

@@ -1,0 +1,609 @@
+{
+ "gemini__gemini-3.1-flash-lite": {
+  "cyl_re40": {
+   "id": "cyl_re40",
+   "set": "dev",
+   "description": "Steady flow past a circular cylinder at Re = 40, where two symmetric vortices form behind it.",
+   "solver": "simpleFoam",
+   "geometry": "cylinder",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 14,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 199,
+    "Re": 40.0,
+    "Ma": 0.000173,
+    "mass_imbalance": 0.0
+   }
+  },
+  "plates_laminar": {
+   "id": "plates_laminar",
+   "set": "dev",
+   "description": "Water flows at 1 cm/s between two parallel plates 2 mm apart.",
+   "solver": "simpleFoam",
+   "geometry": "channel",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 28,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 441,
+    "Re": 20.0,
+    "Ma": 2.88e-05,
+    "mass_imbalance": 3.02e-09
+   }
+  },
+  "duct_turbulent": {
+   "id": "duct_turbulent",
+   "set": "dev",
+   "description": "Steady air flow at 2 m/s through a 2-D duct 10 cm high and 1 m long.",
+   "solver": "simpleFoam",
+   "geometry": "channel",
+   "turb": "kEpsilon",
+   "fixes": [],
+   "seconds": 15,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 171,
+    "Re": 13330.0,
+    "Ma": 0.00576,
+    "mass_imbalance": 2.5e-10,
+    "y_plus": {
+     "mean": 21.8,
+     "p95": 24.22
+    }
+   }
+  },
+  "backstep": {
+   "id": "backstep",
+   "set": "dev",
+   "description": "Air at 15 m/s flows over a backward-facing step 2 cm high in a 4 cm high channel.",
+   "solver": "simpleFoam",
+   "geometry": "backstep",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 4,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 381,
+    "Re": 20000.0,
+    "Ma": 0.0432,
+    "mass_imbalance": 8.33e-10,
+    "y_plus": {
+     "mean": 17.02,
+     "p95": 84.56
+    }
+   }
+  },
+  "t_junction": {
+   "id": "t_junction",
+   "set": "dev",
+   "description": "Two water streams at 1 m/s meet at a T-junction of 5 cm wide channels and mix.",
+   "solver": "simpleFoam",
+   "geometry": "t_junction",
+   "turb": "kEpsilon",
+   "fixes": [],
+   "seconds": 2,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 251,
+    "Re": 50000.0,
+    "Ma": 0.00288,
+    "mass_imbalance": 8.2e-09,
+    "y_plus": {
+     "mean": 88.06,
+     "p95": 136.59
+    }
+   }
+  },
+  "building_wind": {
+   "id": "building_wind",
+   "set": "dev",
+   "description": "Wind at 10 m/s blowing around a square building 20 m wide (2-D cross-section).",
+   "solver": "simpleFoam",
+   "geometry": "rectangular_obstacle",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 14,
+   "outcome": "questionable",
+   "issues": [
+    "Convergence: Reached endTime without converging: Uy residual 0.069. Run longer or check the mesh and schemes. Likely cause: the wake of the bluff body sheds vortices, so the flow has no steady solution; use a transient solver (pimpleFoam).",
+    "Wall y\u207a: y\u207a mean 1.59e+04, 95th percentile 8.83e+04: above 300; refine near walls."
+   ],
+   "facts": {
+    "iterations": 1000,
+    "Re": 13330000.0,
+    "Ma": 0.0288,
+    "mass_imbalance": 1.86e-08,
+    "y_plus": {
+     "mean": 15900.14,
+     "p95": 88253.5
+    }
+   }
+  },
+  "channel_startup": {
+   "id": "channel_startup",
+   "set": "dev",
+   "description": "Time-accurate start-up of water flow at 0.1 m/s in a channel 5 cm high.",
+   "solver": "pimpleFoam",
+   "geometry": "channel",
+   "turb": "kEpsilon",
+   "fixes": [],
+   "seconds": 45,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 516,
+    "Re": 5000.0,
+    "Ma": 0.000288,
+    "mass_imbalance": 1.2e-09,
+    "y_plus": {
+     "mean": 13.69,
+     "p95": 15.1
+    }
+   }
+  },
+  "square_shedding": {
+   "id": "square_shedding",
+   "set": "dev",
+   "description": "Water at 1.5 cm/s flows past a square cylinder of side 1 cm; I want to see the vortex street.",
+   "solver": "pimpleFoam",
+   "geometry": "rectangular_obstacle",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 40,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 2873,
+    "Re": 150.0,
+    "Ma": 4.32e-05,
+    "mass_imbalance": 9.33e-10
+   }
+  },
+  "cyl_air_turbulent": {
+   "id": "cyl_air_turbulent",
+   "set": "dev",
+   "description": "Air at 20 m/s flows past a 2 cm diameter circular cylinder.",
+   "solver": "simpleFoam",
+   "geometry": "cylinder",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 93,
+   "outcome": "questionable",
+   "issues": [
+    "Convergence: Reached endTime without converging: Uy residual 0.05. Run longer or check the mesh and schemes. Likely cause: the wake of the bluff body sheds vortices, so the flow has no steady solution; use a transient solver (pimpleFoam)."
+   ],
+   "facts": {
+    "iterations": 1000,
+    "Re": 26670.0,
+    "Ma": 0.0576,
+    "mass_imbalance": 1.52e-07,
+    "y_plus": {
+     "mean": 21.15,
+     "p95": 28.17
+    }
+   }
+  },
+  "airfoil_transonic": {
+   "id": "airfoil_transonic",
+   "set": "dev",
+   "description": "Transonic flow over an airfoil at Mach 0.8, chord 1 m, 288 K and sea-level pressure.",
+   "solver": "rhoSimpleFoam",
+   "geometry": "airfoil",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 22,
+   "outcome": "unreliable",
+   "issues": [
+    "Convergence: Not converged: p residual 0.23 at the end.",
+    "Wall y\u207a: y\u207a mean 7.55e+03, 95th percentile 2.27e+04: above 300; refine near walls."
+   ],
+   "facts": {
+    "iterations": 2000,
+    "Re": 18130000.0,
+    "Ma": 0.8,
+    "mass_imbalance": 3.38e-06,
+    "y_plus": {
+     "mean": 7554.53,
+     "p95": 22705.31
+    }
+   }
+  },
+  "cavity_temperatures": {
+   "id": "cavity_temperatures",
+   "set": "dev",
+   "description": "Natural convection of air in a 10 cm square cavity with the left wall at 320 K and the right wall at 280 K.",
+   "solver": "buoyantSimpleFoam",
+   "geometry": "cavity",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 12,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 2000
+   }
+  },
+  "channel_compressible": {
+   "id": "channel_compressible",
+   "set": "dev",
+   "description": "Air at 250 m/s through a channel 10 cm high, 300 K, 1 atm.",
+   "solver": "rhoSimpleFoam",
+   "geometry": "channel",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 37,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 783,
+    "Re": 1667000.0,
+    "Ma": 0.72,
+    "mass_imbalance": 2.96e-09,
+    "y_plus": {
+     "mean": 27.07,
+     "p95": 31.31
+    }
+   }
+  },
+  "cavity_ra1e5": {
+   "id": "cavity_ra1e5",
+   "set": "dev",
+   "description": "Differentially heated square cavity filled with air at Ra = 1e5, steady laminar flow.",
+   "solver": "buoyantSimpleFoam",
+   "geometry": "cavity",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 13,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 2000
+   }
+  },
+  "pipe_turbulent": {
+   "id": "pipe_turbulent",
+   "set": "dev",
+   "description": "Water flows at 0.5 m/s through a straight pipe of 5 cm diameter and 2 m length. Steady, fully developed flow.",
+   "solver": "simpleFoam",
+   "geometry": "pipe",
+   "turb": "kEpsilon",
+   "fixes": [],
+   "seconds": 233,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 1000,
+    "Re": 25000.0,
+    "Ma": 0.00144,
+    "mass_imbalance": 2.2e-10,
+    "y_plus": {
+     "mean": 11.31,
+     "p95": 11.74
+    }
+   }
+  },
+  "pipe_oil_laminar": {
+   "id": "pipe_oil_laminar",
+   "set": "dev",
+   "description": "Oil with a kinematic viscosity of 1e-4 m\u00b2/s flows at 0.1 m/s through a pipe of 2 cm diameter, 1 m long.",
+   "solver": "simpleFoam",
+   "geometry": "pipe",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 242,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 1000,
+    "Re": 20.0,
+    "Ma": 0.000288,
+    "mass_imbalance": 2.98e-10
+   }
+  },
+  "heated_channel_forced": {
+   "id": "heated_channel_forced",
+   "set": "dev",
+   "description": "Air at 5 m/s flows through a heated channel 5 cm high; the walls are at 350 K and the inlet air at 300 K.",
+   "solver": "simpleFoam",
+   "geometry": "channel",
+   "turb": "kEpsilon",
+   "fixes": [],
+   "seconds": 14,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 172,
+    "Re": 16670.0,
+    "Ma": 0.0144,
+    "mass_imbalance": 1.68e-09,
+    "y_plus": {
+     "mean": 21.85,
+     "p95": 24.5
+    }
+   }
+  },
+  "h_glycerine_pipe": {
+   "id": "h_glycerine_pipe",
+   "set": "held-out",
+   "description": "Glycerine with a kinematic viscosity of 1.2e-3 m\u00b2/s is pumped at 0.2 m/s through a 3 cm diameter pipe.",
+   "solver": "simpleFoam",
+   "geometry": "pipe",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 31,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 1000,
+    "Re": 5.0,
+    "Ma": 0.000583,
+    "mass_imbalance": 4.95e-09
+   }
+  },
+  "wing_low_speed": {
+   "id": "wing_low_speed",
+   "set": "dev",
+   "description": "Air at 50 m/s over a wing section with a 0.5 m chord at 5\u00b0 angle of attack.",
+   "solver": "simpleFoam",
+   "geometry": "airfoil",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 231,
+   "outcome": "questionable",
+   "issues": [
+    "Wall y\u207a: y\u207a mean 414, 95th percentile 2.35e+03: above 300; refine near walls."
+   ],
+   "facts": {
+    "iterations": 1000,
+    "Re": 1667000.0,
+    "Ma": 0.146,
+    "mass_imbalance": 3.97e-09,
+    "y_plus": {
+     "mean": 414.18,
+     "p95": 2350.24
+    }
+   }
+  },
+  "h_fast_duct": {
+   "id": "h_fast_duct",
+   "set": "held-out",
+   "description": "Air at 200 m/s and 300 K flows through a straight 2-D duct 5 cm high.",
+   "solver": "rhoSimpleFoam",
+   "geometry": "channel",
+   "turb": "kEpsilon",
+   "fixes": [],
+   "seconds": 9,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 607,
+    "Re": 666700.0,
+    "Ma": 0.576,
+    "mass_imbalance": 1.44e-09,
+    "y_plus": {
+     "mean": 20.77,
+     "p95": 23.5
+    }
+   }
+  },
+  "h_microchannel": {
+   "id": "h_microchannel",
+   "set": "held-out",
+   "description": "Water creeps at 5 mm/s through a microchannel 0.5 mm high.",
+   "solver": "simpleFoam",
+   "geometry": "channel",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 55,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 1000,
+    "Re": 2.5,
+    "Ma": 1.44e-05,
+    "mass_imbalance": 1.64e-10
+   }
+  },
+  "h_room_convection": {
+   "id": "h_room_convection",
+   "set": "held-out",
+   "description": "Buoyancy-driven air circulation in a closed 2-D room 3 m square, with one wall at 30 \u00b0C and the opposite wall at 15 \u00b0C.",
+   "solver": "buoyantSimpleFoam",
+   "geometry": "cavity",
+   "turb": "kEpsilon",
+   "fixes": [],
+   "seconds": 16,
+   "outcome": "questionable",
+   "issues": [
+    "Convergence: Reached endTime without converging: p_rgh residual 0.076. Run longer or check the mesh and schemes."
+   ],
+   "facts": {
+    "iterations": 2000,
+    "y_plus": {
+     "mean": 19.67,
+     "p95": 36.67
+    }
+   }
+  },
+  "h_step_water": {
+   "id": "h_step_water",
+   "set": "held-out",
+   "description": "Water at 0.3 m/s passes over a backward-facing step 1 cm high in a channel 2 cm high.",
+   "solver": "simpleFoam",
+   "geometry": "backstep",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 5,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 451,
+    "Re": 3000.0,
+    "Ma": 0.000864,
+    "mass_imbalance": 3.17e-09,
+    "y_plus": {
+     "mean": 3.02,
+     "p95": 9.06
+    }
+   }
+  },
+  "h_wind_block": {
+   "id": "h_wind_block",
+   "set": "held-out",
+   "description": "Steady wind of 5 m/s past a rectangular block 2 m wide and 2 m high standing on open ground (2-D).",
+   "solver": "simpleFoam",
+   "geometry": "rectangular_obstacle",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 15,
+   "outcome": "unreliable",
+   "issues": [
+    "Convergence: Not converged: Uy residual 0.1 at the end. Likely cause: the wake of the bluff body sheds vortices, so the flow has no steady solution; use a transient solver (pimpleFoam).",
+    "Wall y\u207a: y\u207a mean 669, 95th percentile 3.77e+03: above 300; refine near walls."
+   ],
+   "facts": {
+    "iterations": 1000,
+    "Re": 666700.0,
+    "Ma": 0.0144,
+    "mass_imbalance": 1.64e-08,
+    "y_plus": {
+     "mean": 668.88,
+     "p95": 3774.8
+    }
+   }
+  },
+  "dam_break": {
+   "id": "dam_break",
+   "set": "dev",
+   "description": "A column of water 0.5 m high and 0.25 m wide collapses under gravity in a closed tank 1 m long.",
+   "solver": "interFoam",
+   "geometry": "dambreak",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 282,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 2779
+   }
+  },
+  "dam_sloshing": {
+   "id": "dam_sloshing",
+   "set": "dev",
+   "description": "Simulate the water sloshing after a dam collapses in a basin.",
+   "solver": "interFoam",
+   "geometry": "dambreak",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 284,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 2793
+   }
+  },
+  "h_slow_wing": {
+   "id": "h_slow_wing",
+   "set": "held-out",
+   "description": "A wing section with a 0.2 m chord in air at 15 m/s.",
+   "solver": "simpleFoam",
+   "geometry": "airfoil",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 69,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 494,
+    "Re": 200000.0,
+    "Ma": 0.0437,
+    "mass_imbalance": 2.28e-10,
+    "y_plus": {
+     "mean": 68.9,
+     "p95": 269.78
+    }
+   }
+  },
+  "h_wire_wake": {
+   "id": "h_wire_wake",
+   "set": "held-out",
+   "description": "Unsteady wake behind a 5 mm diameter wire placed across a water flow of 2 cm/s.",
+   "solver": "pimpleFoam",
+   "geometry": "cylinder",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 332,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 4415,
+    "Re": 100.0,
+    "Ma": 5.76e-05,
+    "mass_imbalance": 1.6e-09
+   }
+  },
+  "h_gate_release": {
+   "id": "h_gate_release",
+   "set": "held-out",
+   "description": "Water held behind a gate in a tank is suddenly released and floods the dry side of the tank under gravity.",
+   "solver": "interFoam",
+   "geometry": "dambreak",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 207,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 2793
+   }
+  },
+  "cyl_re100": {
+   "id": "cyl_re100",
+   "set": "dev",
+   "description": "Laminar flow past a 2-D circular cylinder at Re = 100.",
+   "solver": "pimpleFoam",
+   "geometry": "cylinder",
+   "turb": "laminar",
+   "fixes": [],
+   "seconds": 693,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 9090,
+    "Re": 100.0,
+    "Ma": 0.000432,
+    "mass_imbalance": 2.67e-10
+   }
+  },
+  "h_chimney_wind": {
+   "id": "h_chimney_wind",
+   "set": "held-out",
+   "description": "A 30 cm diameter chimney stands in a 2-D cross-wind of 8 m/s (air).",
+   "solver": "pimpleFoam",
+   "geometry": "cylinder",
+   "turb": "kOmegaSST",
+   "fixes": [],
+   "seconds": 1218,
+   "outcome": "trustworthy",
+   "issues": [],
+   "facts": {
+    "iterations": 18116,
+    "Re": 160000.0,
+    "Ma": 0.023,
+    "mass_imbalance": 2.22e-09,
+    "y_plus": {
+     "mean": 28.48,
+     "p95": 44.91
+    }
+   }
+  }
+ }
+}
