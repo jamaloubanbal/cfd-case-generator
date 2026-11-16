@@ -122,15 +122,15 @@
     "reference": "Williamson, Annu. Rev. Fluid Mech. 28 (1996): St = 0.2665 \u2212 1.018/\u221aRe",
     "solver": "pimpleFoam",
     "cells": 20588,
-    "elapsed_s": 407.8,
+    "elapsed_s": 163.4,
     "converged_iterations": null,
     "notes": "Symmetry planes 10 D above and below the cylinder (5 % blockage) raise St slightly compared with an unbounded flow. The period is measured from zero crossings of u_y at a probe 2 D behind the cylinder.",
     "metrics": [
       {
         "name": "Strouhal number St = fD/U (7 periods)",
-        "value": 0.16703553257209539,
+        "value": 0.16528143429753195,
         "reference": 0.1647,
-        "error": 0.014180525635066011,
+        "error": 0.003530262887261295,
         "tolerance": 0.05,
         "passed": true,
         "source": "Williamson (1996)"

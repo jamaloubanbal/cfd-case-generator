@@ -131,7 +131,7 @@ def review(case_dir: str | Path) -> Review:
     r.facts.update(solver=app, latest_time=float(t), cells=case.n_cells)
     transient = app in _TRANSIENT or bool(analysis.get("is_transient"))
 
-    _check_convergence(r, log, transient, parse_foam_log(log))
+    _check_convergence(r, log, transient, parse_foam_log(log), _idle_components(case, t))
     conv = r.checks[-1]
     if (not transient and conv.name == "Convergence" and conv.status in ("warn", "fail")
             and analysis.get("geometry_type") in ("cylinder", "rectangular_obstacle")):
@@ -140,13 +140,26 @@ def review(case_dir: str | Path) -> Review:
     inlet_speed = _check_request(r, case, analysis, description, case_dir)
     _check_mass(r, case, t)
     _check_yplus(r, case, t, analysis, case_dir)
-    _check_fields(r, case, t, inlet_speed or analysis.get("characteristic_velocity"))
+    u_ref = inlet_speed or _buoyant_velocity(case, t, analysis) or analysis.get("characteristic_velocity")
+    _check_fields(r, case, t, u_ref)
     return r
 
 
-def _check_convergence(r: Review, log: str, transient: bool, parsed: dict) -> None:
+def _idle_components(case, t: str) -> set[str]:
+    """Velocity components that are ~0 everywhere (e.g. Uz on a wedge): their normalised
+    residuals are noise and say nothing about convergence."""
+    try:
+        U = np.atleast_2d(case.field("U", t))
+    except Exception:
+        return set()
+    scale = float(np.abs(U).max()) or 1.0
+    return {f"U{c}" for i, c in enumerate("xyz") if float(np.abs(U[:, i]).max()) < 1e-3 * scale}
+
+
+def _check_convergence(r: Review, log: str, transient: bool, parsed: dict,
+                       idle: set[str] = frozenset()) -> None:
     finished = bool(re.search(r"^End\s*$", log, re.M))
-    final = {f: v[-1] for f, v in parsed["residuals"].items() if v}
+    final = {f: v[-1] for f, v in parsed["residuals"].items() if v and f not in idle}
     n_steps = len(parsed["times"]) or parsed["n_iters"]
     r.facts.update(iterations=n_steps,
                    final_residuals={f: float(f"{v:.3g}") for f, v in final.items()})
@@ -166,8 +179,11 @@ def _check_convergence(r: Review, log: str, transient: bool, parsed: dict) -> No
         else:
             r.add("Time step", "pass", f"Final Courant number {co:.2g}." if co is not None else
                   "Courant number not reported.")
-        r.add("Convergence", "pass" if worst < 1e-2 else "warn",
-              f"Transient run finished; largest final initial residual {worst_f} = {worst:.2g}.")
+        # Per-step initial residuals measure the change over a step (large in vortex shedding),
+        # not convergence; above ~0.1 they signal a time step that is too large.
+        r.add("Convergence", "pass" if worst < 0.1 else "warn",
+              f"Transient run finished; largest initial residual in the last step {worst_f} = {worst:.2g}"
+              + ("." if worst < 0.1 else ": the time step is probably too large (lower maxCo)."))
         return
     if re.search(r"solution converged in", log):
         r.add("Convergence", "pass", f"Steady solution converged in {n_steps} iterations "
@@ -245,14 +261,24 @@ def _patch_type(case_dir: Path, patch: str) -> str:
     return m.group(1) if m else ""
 
 
+def _buoyant_velocity(case, t: str, analysis: dict) -> float | None:
+    """Free-fall velocity sqrt(g·ΔT/T·L) for natural convection (no inflow to compare with)."""
+    if not (case.path / t / "T").exists():
+        return None
+    T = np.asarray(case.field("T", t), dtype=float)
+    L = float(analysis.get("characteristic_length") or 0) or float(np.ptp(case.points[:, 1]))
+    dT, Tm = float(np.ptp(T)), float(T.mean())
+    return math.sqrt(9.81 * dT / Tm * L) if dT > 0 and Tm > 0 else None
+
+
 def _check_mass(r: Review, case, t: str) -> None:
     open_patches = [p for p, b in case.boundary.items() if b["type"] == "patch" and b["nFaces"]]
     if not (case.path / t / "phi").exists() or not open_patches:
         return
     flux = {p: float(np.sum(case.patch_field("phi", t, p))) for p in open_patches}
     inflow = -sum(min(f, 0.0) for f in flux.values())
-    if inflow <= 0:
-        return
+    if inflow <= 0 or len(open_patches) < 2:
+        return             # no through-flow (e.g. a closed tank venting to the atmosphere)
     imbalance = abs(sum(flux.values())) / inflow
     r.facts["mass_imbalance"] = float(f"{imbalance:.3g}")
     msg = f"Net flux through the open boundaries is {imbalance:.2%} of the inflow."

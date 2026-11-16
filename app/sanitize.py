@@ -194,6 +194,8 @@ def sanitize_analysis(analysis: Any, description: str | None = None) -> tuple[di
 
     # ── Reynolds number: consistent with U·L/ν and with the user's request ───
     a["Re"] = _consistent_reynolds(a, solver, char_len, nu, description, notes)
+    if solver == "buoyantSimpleFoam":
+        _consistent_rayleigh(a, description, nu, notes)
 
     # ── Flow model must match the regime (only where Re leaves no doubt) ─────
     if a["solver"] in _INCOMPRESSIBLE + ("rhoSimpleFoam",) and a["Re"] is not None:
@@ -240,14 +242,16 @@ _TURBULENT_ABOVE = 10_000.0
 _INCOMPRESSIBLE = ("simpleFoam", "pimpleFoam")
 
 _SUPERSCRIPT = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹⁻", "0123456789-")
-_RE_PATTERN = re.compile(
-    r"\b(?:Re(?:_\w+)?|Reynolds(?:\s+number)?)\s*(?:=|≈|~|:|of|is|at)?\s*"
+_NUMBER_AFTER = (
+    r"\s*(?:=|≈|~|:|of|is|at)?\s*"
     r"(?P<num>\d[\d,]*(?:\.\d+)?)"
     r"(?:\s*[eE](?P<exp>[-+]?\d+))?"                                   # 1e6
     r"(?:\s*(?:\^|\*\*)\s*(?P<pow>[-+]?\d+)|(?P<sup>[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+))?"   # 10^5, 10⁵
     r"(?:\s*[x×*]\s*10\s*(?:(?:\^|\*\*)\s*(?P<pow10>[-+]?\d+)|(?P<sup10>[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+)))?"  # 2 × 10⁶
     r"(?:\s*(?P<word>million|thousand|billion|[kKM])\b)?"            # 2 million, 50k
 )
+_RE_PATTERN = re.compile(r"\b(?:Re(?:_\w+)?|Reynolds(?:\s+number)?)" + _NUMBER_AFTER)
+_RA_PATTERN = re.compile(r"\b(?:Ra|Rayleigh(?:\s+number)?)" + _NUMBER_AFTER)
 _WORDS = {"thousand": 1e3, "k": 1e3, "K": 1e3, "million": 1e6, "M": 1e6, "billion": 1e9}
 
 
@@ -296,9 +300,43 @@ def _consistent_mach(a: dict, solver: str, description: str | None, notes: list[
 def stated_reynolds(description: str | None) -> float | None:
     """Reynolds number written in the user's description, e.g. "Re = 100", "Reynolds number
     of 2,000", "Re = 2 million", "Re = 5e5", "Re = 10^5", "Re = 2 × 10⁶"."""
+    return _stated_number(_RE_PATTERN, description)
+
+
+def stated_rayleigh(description: str | None) -> float | None:
+    """Rayleigh number written in the description ("Ra = 1e5", "Rayleigh number of 10^6")."""
+    return _stated_number(_RA_PATTERN, description)
+
+
+def _consistent_rayleigh(a: dict, description: str | None, nu: float, notes: list[str]) -> None:
+    """Natural convection: a stated Ra sets the cavity size (the temperatures are kept).
+    Models picked e.g. a 1 m cavity with ΔT = 50 K for "Ra = 1e5", which is Ra ≈ 5e9."""
+    ra_user = stated_rayleigh(description)
+    if not ra_user:
+        return
+    from app.generators.buoyant_simple_foam import BuoyantSimpleFoamGenerator
+    T_hot, T_cold, T_mean = BuoyantSimpleFoamGenerator._extract_temperatures(a)
+    dT = abs(T_hot - T_cold)
+    if dT <= 0 or nu <= 0:
+        return
+    alpha = nu / 0.71                                   # thermal diffusivity of air, Pr = 0.71
+    L = _to_float(a.get("characteristic_length")) or 1.0
+    ra = 9.81 / T_mean * dT * L ** 3 / (nu * alpha)
+    if abs(ra / ra_user - 1) <= _RE_TOLERANCE:
+        return
+    L_new = (ra_user * nu * alpha * T_mean / (9.81 * dT)) ** (1.0 / 3.0)
+    notes.append(f"The description asks for Ra = {ra_user:g} but a {L:.3g} m cavity with ΔT = {dT:g} K "
+                 f"gives Ra = {ra:.3g} — cavity size set to {L_new:.4g} m.")
+    a["characteristic_length"] = round(L_new, 6)
+    for key in ("channel_length", "channel_height"):
+        if isinstance(a.get("geometry_params"), dict):
+            a["geometry_params"].pop(key, None)
+
+
+def _stated_number(pattern: re.Pattern, description: str | None) -> float | None:
     if not description:
         return None
-    m = _RE_PATTERN.search(description)
+    m = pattern.search(description)
     if not m:
         return None
     value = _to_float(m.group("num").replace(",", ""))

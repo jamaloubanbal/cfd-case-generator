@@ -28,7 +28,7 @@ deltaT          {{ delta_t }};
 
 adjustTimeStep  yes;
 
-maxCo           0.5;
+maxCo           0.8;
 
 writeControl    timeStep;
 

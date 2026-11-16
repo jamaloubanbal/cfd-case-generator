@@ -66,9 +66,11 @@ class InterFoamGenerator(BaseCaseGenerator):
         domain_y = round(max(char_len * 2.0, 0.4), 4)
         domain_z = round(0.05, 4)  # thin 2D slab
 
-        # Cell count aiming for ~dx ≈ domain_x/100
-        nx = max(100, int(domain_x / 0.01))
-        ny = max(40,  int(domain_y / 0.01))
+        # 1 cm cells, but at most 160 across the basin: fixed 1 cm cells gave 80 000
+        # cells for a 1 m column (4 m basin) and runs over an hour. The OpenFOAM
+        # damBreak tutorial uses ~2 300 cells (its finer variant ~9 000).
+        nx = min(160, max(100, int(domain_x / 0.01)))
+        ny = max(40, round(nx * domain_y / domain_x))
         nz = 1
         domain_x, domain_y, nx, ny = self._mesh_overrides(ctx, analysis, domain_x, domain_y, nx, ny)
 

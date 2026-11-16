@@ -15,7 +15,7 @@ with its own `Allrun`, and post-processed in Python (`app/postprocess`).
 | Natural convection in a square cavity, Ra = 10⁵ | Average Nusselt number (hot wall) | 4.506 | 4.519 | -0.30 % | ±3 % | ✅ |
 | Natural convection in a square cavity, Ra = 10⁵ | Max u on vertical centreline · L/α | 34.84 | 34.73 | +0.33 % | ±5 % | ✅ |
 | Natural convection in a square cavity, Ra = 10⁵ | Max v on horizontal centreline · L/α | 68.57 | 68.59 | -0.03 % | ±5 % | ✅ |
-| Vortex shedding behind a circular cylinder, Re = 100 | Strouhal number St = fD/U (7 periods) | 0.167 | 0.1647 | +1.42 % | ±5 % | ✅ |
+| Vortex shedding behind a circular cylinder, Re = 100 | Strouhal number St = fD/U (7 periods) | 0.1653 | 0.1647 | +0.35 % | ±5 % | ✅ |
 | Turbulent backward-facing step (Driver & Seegmiller) | Reattachment length x_r / H (k-ω SST) | 5.961 | 6.26 | -4.78 % | ±10 % | ✅ |
 
 ## Plane Poiseuille flow (laminar channel)
@@ -50,7 +50,7 @@ with its own `Allrun`, and post-processed in Python (`app/postprocess`).
 
 > Laminar flow past a 2-D circular cylinder at Re = 100 (D = 1 m, U = 1 m/s, ν = 0.01 m²/s), in a domain 30 D long and 20 D high with the cylinder 10 D from the inlet. Transient; measure the vortex-shedding frequency.
 
-- **Solver:** `pimpleFoam` · **cells:** 20,588 · **run time:** 408 s
+- **Solver:** `pimpleFoam` · **cells:** 20,588 · **run time:** 163 s
 - **Reference:** Williamson, Annu. Rev. Fluid Mech. 28 (1996): St = 0.2665 − 1.018/√Re
 - **Notes:** Symmetry planes 10 D above and below the cylinder (5 % blockage) raise St slightly compared with an unbounded flow. The period is measured from zero crossings of u_y at a probe 2 D behind the cylinder.
 

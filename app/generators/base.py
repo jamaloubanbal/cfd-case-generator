@@ -592,6 +592,7 @@ class BaseCaseGenerator(ABC):
             domain_y = _positive("domain_y", float, domain_y)
             nx = _positive("nx", int, nx)
             ny = _positive("ny", int, ny)
+            ctx["_ny_user"] = mesh.get("ny") is not None
 
         try:
             refine = float(mesh.get("refinement") or 1.0)
@@ -648,6 +649,14 @@ class BaseCaseGenerator(ABC):
         nx          = int(ctx.get("nx", 100))
 
         y1 = _wall_y1(Re, inlet_speed, nu, turb)
+        if ctx.get("geometry_type") == "channel" and not ctx.get("_ny_user"):
+            # …but never wall cells over 500× longer than high (checkMesh fails above 1000):
+            # at Re ~1e7 the y⁺ target gave aspect ratios of 6000.
+            y1 = max(y1, domain_x / max(nx, 1) / 500.0)
+            # Walls at both y ends: at high Re the default count cannot reach the y⁺
+            # target at the capped growth rate (a 200 m/s duct gave y⁺ ≈ 600).
+            ny = 2 * _cells_to_reach(domain_y / 2, y1, base=(ny + 1) // 2, cap=60)
+            ctx["ny"] = ny
 
         ctx["_y1_target"]      = y1
         ctx["grading_y_floor"] = _floor_grading_str(domain_y, ny, y1)

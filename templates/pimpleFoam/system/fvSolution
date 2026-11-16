@@ -94,7 +94,9 @@ solvers
 
 PIMPLE
 {
-    nOuterCorrectors    2;
+    // PISO mode (one outer pass), as in the OpenFOAM tutorials for vortex shedding:
+    // 2 outer passes doubled the cost per step without changing the Strouhal number.
+    nOuterCorrectors    1;
     nCorrectors         2;
     nNonOrthogonalCorrectors 1;
     pRefCell        0;
