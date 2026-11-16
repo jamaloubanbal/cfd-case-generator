@@ -211,7 +211,7 @@ def apply_roles(mesh: ImportedMesh, roles: dict[str, str]) -> list[dict]:
         text = re.sub(rf"(\n\s*{re.escape(p.name)}\s*\{{[^}}]*?\btype\s+)\w+;", rf"\g<1>{of_type};", text)
         text = re.sub(rf"(\n\s*{re.escape(p.name)}\s*\{{[^}}]*?)\n\s*inGroups[^;]*;", r"\1", text)
         out.append({"name": p.name, "of_type": of_type, "role": _MACRO_ROLE.get(role, role),
-                    "normal": list(p.normal)})
+                    "normal": list(p.normal), "area": p.area})
     boundary.write_text(text)
     return out
 

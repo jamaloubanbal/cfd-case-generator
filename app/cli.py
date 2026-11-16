@@ -64,7 +64,7 @@ def _with_mesh(analysis: dict, args, description: str | None) -> dict:
     problems = check_roles(roles, analysis["solver"])
     if problems:
         raise ValueError("boundary roles: " + "; ".join(problems) + " — fix them with --role GROUP=ROLE")
-    return attach(analysis, mesh, apply_roles(mesh, roles))
+    return attach(analysis, mesh, apply_roles(mesh, roles)) | {"_unv": str(args.mesh)}
 
 
 def _load(path: str) -> tuple[dict, str | None]:
@@ -117,6 +117,41 @@ def _review(case_dir: Path, backend: str | None = None, model: str | None = None
     print_review(rev)
     print(f"  Report: {write_report(rev)}")
     return rev
+
+
+def _generate_saturne(analysis: dict, out: Path, run: bool, force: bool, description: str | None,
+                      backend: str | None, model: str | None) -> int:
+    from app import saturne
+    from app.review import explain, print_review, write_report
+    if "_unv" not in analysis:
+        print("error: --code code_saturne needs a SALOME mesh (--mesh FILE.unv)", file=sys.stderr)
+        return 2
+    if out.exists() and any(out.iterdir()):
+        if not force:
+            print(f"error: {out} exists and is not empty (use --force to overwrite)", file=sys.stderr)
+            return 2
+        shutil.rmtree(out)
+    try:
+        case_dir = saturne.generate(analysis, analysis["_unv"], out, description)
+    except (RuntimeError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(f"Generated code_saturne study ({analysis['turb_model']}) in {out}/ — case {case_dir.name}, "
+          f"setup.xml written through code_saturne's model layer")
+    if not run:
+        print(f"Run it with:  cd {case_dir} && code_saturne run")
+        return 0
+    print("Running code_saturne …", flush=True)
+    saturne.run(case_dir)
+    rev = saturne.review(case_dir)
+    if backend and backend != "rules":
+        try:
+            explain(rev, backend, model)
+        except Exception as exc:
+            print(f"  (no LLM explanation: {exc})")
+    print_review(rev)
+    print(f"  Report: {write_report(rev)}")
+    return 0 if rev.verdict != "unreliable" else 1
 
 
 def _generate(analysis: dict, out: Path, run: bool, force: bool,
@@ -183,6 +218,9 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--fix-model", help="model for the repair agent's LLM")
         p.add_argument("--mesh", metavar="FILE.unv",
                        help="use a mesh made in SALOME (I-DEAS .unv) instead of a built-in geometry")
+        p.add_argument("--code", choices=["openfoam", "code_saturne"], default="openfoam",
+                       help="CFD code to generate the case for (code_saturne: SALOME meshes, "
+                            "steady incompressible flow; set CODE_SATURNE if it is not on PATH)")
         p.add_argument("--role", action="append", default=[], metavar="GROUP=ROLE",
                        help="set a mesh group's boundary role (inlet, outlet, wall, symmetry, empty, "
                             "hot_wall, cold_wall); repeatable")
@@ -250,6 +288,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "describe" and args.save_analysis:
         Path(args.save_analysis).write_text(json.dumps(analysis, indent=2))
     llm = args.backend if args.cmd == "describe" else None
+    if args.code == "code_saturne":
+        return _generate_saturne(analysis, Path(args.output), args.run, args.force, description,
+                                 llm, getattr(args, "model", None))
     return _generate(analysis, Path(args.output), args.run, args.force, args.fix, args.fix_model,
                      description, llm, getattr(args, "model", None))
 

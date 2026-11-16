@@ -42,6 +42,9 @@ reference data and repaired automatically when they fail**.
   line, or from the web app's *Run in OpenFOAM* panel, which shows each step live with the
   residuals and the flow field. Strict safety rails
   apply: no code execution and no edits to run scripts.
+- **Two CFD codes:** besides OpenFOAM, a SALOME mesh can be solved with EDF's
+  **code_saturne** (`--code code_saturne`): the same analysis becomes a code_saturne study,
+  whose `setup.xml` is written through code_saturne's own model layer, then run and judged.
 - **Judges the result:** after a run, a result reviewer checks that the simulation matches the
   request (speed, Re, Mach), converged, conserves mass, has a suitable wall y⁺ and sane fields,
   and gives a verdict (trustworthy, questionable or unreliable). An LLM can explain the

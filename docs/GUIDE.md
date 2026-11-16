@@ -188,6 +188,42 @@ format (export UNV instead).
 
 ---
 
+## code_saturne backend
+
+A SALOME mesh can also be solved with [code_saturne](https://www.code-saturne.org), EDF's
+open-source CFD code, which reads UNV meshes natively (groups become boundary zones):
+
+```bash
+export CODE_SATURNE=~/code_saturne/9.2-alpha/code_saturne-9.2-alpha/arch/Linux_x86_64/bin/code_saturne
+cfdgen describe "Air at 2 m/s through this duct" --mesh examples/meshes/box_duct_salome.unv \
+    --code code_saturne -o duct_cs/ --backend gemini --run
+```
+
+[`app/saturne.py`](../app/saturne.py) turns the same sanitised analysis and boundary roles
+into a code_saturne study (`MESH/`, `CASE/DATA/setup.xml`). The XML is written by
+code_saturne's own GUI model layer, run headless in code_saturne's Python, so it is valid for
+the installed version. The run is judged from code_saturne's outputs (residuals.csv, the
+boundary mass-flow table and field ranges) with the same verdicts as the OpenFOAM reviewer.
+
+**Scope (first step):** imported SALOME meshes, steady incompressible flow, laminar, k-ε,
+k-ω SST or Spalart-Allmaras. The mesh import still uses OpenFOAM's `ideasUnvToFoam` to read
+the groups.
+
+**Numerics, and what was checked:**
+
+- Steady SIMPLE with first-order upwind convection for velocity. On SALOME's tetrahedral
+  meshes, the default centred scheme and the second-order SOLU scheme oscillated without
+  converging; upwind converges (residuals < 1e-4 on the box duct).
+- On a 66 600-cell version of the box duct, the core velocity agrees with OpenFOAM within
+  **1 %**; the pressure drop is 35 % higher (0.38 vs 0.28 Pa/m) at y⁺ ≈ 20, where the two
+  codes' wall functions differ.
+- On very coarse tetrahedral meshes (~5 cells across), the last cell layer at the outlet
+  shows spurious backflow; the interior is unaffected. A hexahedral mesh does not show it.
+
+Tested by `tests/test_saturne.py` (skipped where code_saturne is not installed, as in CI).
+
+---
+
 ## Running a generated case
 
 ```bash
@@ -440,6 +476,7 @@ app/
 ├── sanitize.py             # unit / range / regime / compatibility repair of the analysis
 ├── agent.py                # run-and-fix agent
 ├── review.py               # result reviewer (checks + LLM verdict)
+├── saturne.py              # code_saturne backend (SALOME meshes)
 ├── mesh_import.py          # SALOME (.unv) mesh import and boundary-role mapping
 ├── editor.py               # parameter-editor overrides → analysis
 ├── validation.py           # physics checks (Re, Ma, y+, CFL, resolution)
