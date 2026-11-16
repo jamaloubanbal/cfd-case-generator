@@ -355,7 +355,7 @@ class TestAnalysisSchema:
         from app.generators.base import GEOMETRY_PATCHES
         from app.schema import GEOMETRIES, SOLVERS
         assert set(SOLVERS) == set(GENERATORS)
-        assert set(GEOMETRIES) == set(GEOMETRY_PATCHES) - {"stl_import"}
+        assert set(GEOMETRIES) == set(GEOMETRY_PATCHES) - {"stl_import", "imported_mesh"}  # set by the app, not the LLM
 
 
 # ─────────────────────────────────────────────────────────────────────────────
