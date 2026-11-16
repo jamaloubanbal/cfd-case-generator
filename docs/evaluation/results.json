@@ -1729,7 +1729,7 @@
      "sanitised": {
       "solver": false,
       "geometry": false,
-      "transient": false
+      "transient": true
      },
      "error": null,
      "seconds": 73.2

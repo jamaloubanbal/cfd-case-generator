@@ -106,24 +106,23 @@
    "id": "building_wind",
    "set": "dev",
    "description": "Wind at 10 m/s blowing around a square building 20 m wide (2-D cross-section).",
-   "solver": "simpleFoam",
+   "solver": "pimpleFoam",
    "geometry": "rectangular_obstacle",
    "turb": "kOmegaSST",
    "fixes": [],
-   "seconds": 14,
+   "seconds": 35,
    "outcome": "questionable",
    "issues": [
-    "Convergence: Reached endTime without converging: Uy residual 0.069. Run longer or check the mesh and schemes. Likely cause: the wake of the bluff body sheds vortices, so the flow has no steady solution; use a transient solver (pimpleFoam).",
-    "Wall y\u207a: y\u207a mean 1.59e+04, 95th percentile 8.83e+04: above 300; refine near walls."
+    "Wall y\u207a: y\u207a mean 1.54e+04, 95th percentile 8.83e+04: above 300; refine near walls."
    ],
    "facts": {
-    "iterations": 1000,
+    "iterations": 3204,
     "Re": 13330000.0,
     "Ma": 0.0288,
-    "mass_imbalance": 1.86e-08,
+    "mass_imbalance": 1e-10,
     "y_plus": {
-     "mean": 15900.14,
-     "p95": 88253.5
+     "mean": 15378.9,
+     "p95": 88255.53
     }
    }
   },
@@ -171,23 +170,21 @@
    "id": "cyl_air_turbulent",
    "set": "dev",
    "description": "Air at 20 m/s flows past a 2 cm diameter circular cylinder.",
-   "solver": "simpleFoam",
+   "solver": "pimpleFoam",
    "geometry": "cylinder",
    "turb": "kOmegaSST",
    "fixes": [],
-   "seconds": 93,
-   "outcome": "questionable",
-   "issues": [
-    "Convergence: Reached endTime without converging: Uy residual 0.05. Run longer or check the mesh and schemes. Likely cause: the wake of the bluff body sheds vortices, so the flow has no steady solution; use a transient solver (pimpleFoam)."
-   ],
+   "seconds": 820,
+   "outcome": "trustworthy",
+   "issues": [],
    "facts": {
-    "iterations": 1000,
+    "iterations": 14448,
     "Re": 26670.0,
     "Ma": 0.0576,
-    "mass_imbalance": 1.52e-07,
+    "mass_imbalance": 5e-10,
     "y_plus": {
-     "mean": 21.15,
-     "p95": 28.17
+     "mean": 27.16,
+     "p95": 45.38
     }
    }
   },
@@ -459,24 +456,23 @@
    "id": "h_wind_block",
    "set": "held-out",
    "description": "Steady wind of 5 m/s past a rectangular block 2 m wide and 2 m high standing on open ground (2-D).",
-   "solver": "simpleFoam",
+   "solver": "pimpleFoam",
    "geometry": "rectangular_obstacle",
    "turb": "kOmegaSST",
    "fixes": [],
-   "seconds": 15,
-   "outcome": "unreliable",
+   "seconds": 34,
+   "outcome": "questionable",
    "issues": [
-    "Convergence: Not converged: Uy residual 0.1 at the end. Likely cause: the wake of the bluff body sheds vortices, so the flow has no steady solution; use a transient solver (pimpleFoam).",
-    "Wall y\u207a: y\u207a mean 669, 95th percentile 3.77e+03: above 300; refine near walls."
+    "Wall y\u207a: y\u207a mean 608, 95th percentile 3.73e+03: above 300; refine near walls."
    ],
    "facts": {
-    "iterations": 1000,
+    "iterations": 3153,
     "Re": 666700.0,
     "Ma": 0.0144,
-    "mass_imbalance": 1.64e-08,
+    "mass_imbalance": 4e-09,
     "y_plus": {
-     "mean": 668.88,
-     "p95": 3774.8
+     "mean": 607.52,
+     "p95": 3734.72
     }
    }
   },

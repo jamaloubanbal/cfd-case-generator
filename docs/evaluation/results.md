@@ -43,7 +43,7 @@ Used to find weaknesses in the sanitiser ([`evals/cases.json`](../../evals/cases
 | `llama3.1:8b` (ollama) | 20 | 60 % | 80 % | 69 % | 62 % | 75 % | 100 % | **30 %** | 60 s |
 | ↳ after sanitiser | 20 | 75 % | 80 % | 100 % | 88 % | 94 % | 100 % | **60 %** |  |
 | `mistral` (ollama) | 20 | 80 % | 85 % | 75 % | 75 % | 56 % | 100 % | **45 %** | 73 s |
-| ↳ after sanitiser | 20 | 90 % | 85 % | 94 % | 88 % | 75 % | 100 % | **70 %** |  |
+| ↳ after sanitiser | 20 | 90 % | 85 % | 94 % | 100 % | 75 % | 100 % | **70 %** |  |
 | `qwen2.5:7b` (ollama) | 20 | 75 % | 85 % | 50 % | 62 % | 81 % | 100 % | **30 %** | 66 s |
 | ↳ after sanitiser | 20 | 95 % | 85 % | 100 % | 75 % | 100 % | 100 % | **80 %** |  |
 
@@ -68,7 +68,7 @@ Per case, after the sanitiser (✅ fully correct, ❌ wrong fields):
 | channel_compressible | ✅ | ✅ | ✅ | ✅ |
 | cavity_temperatures | ✅ | ✅ | ✅ | ✅ |
 | cavity_ra1e5 | ✅ | ✅ | ✅ | ✅ |
-| dam_break | ✅ | ❌ solver, geometry, transient | ❌ solver, geometry, transient | ❌ solver, geometry, transient |
+| dam_break | ✅ | ❌ solver, geometry, transient | ❌ solver, geometry | ❌ solver, geometry, transient |
 | dam_sloshing | ✅ | ✅ | ✅ | ❌ transient |
 | heated_channel_forced | ✅ | ✅ | ✅ | ✅ |
 

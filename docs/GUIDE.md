@@ -380,13 +380,15 @@ run with the rule-based repair agent and judged by the [result reviewer](#result
 python -m evals.e2e --jobs 6            # ~25 min on 6 cores; results in docs/evaluation/e2e_results.md
 ```
 
-With Gemini's answers, **24 of 30 give a trustworthy result** (8 of 10 held-out). The first
+With Gemini's answers, **25 of 30 give a trustworthy result** (8 of 10 held-out). The first
 run scored 12/30 and exposed problems no other test had found: free-surface and vortex-shedding
 runs taking over an hour, a stated Rayleigh number being ignored, too coarse wall cells at high
-Re, and false alarms in the reviewer. The remaining 6 are genuine: steady solvers chosen for
-flows behind bluff bodies (the reviewer names the cause), a transonic airfoil (outside the
-tool's scope), too coarse wall cells around the airfoil body, and a natural-convection room
-that needs more iterations.
+Re, steady solvers chosen for flows behind bluff bodies (now switched to unsteady RANS), and
+false alarms in the reviewer. The remaining 5 are genuine: wall cells too coarse around a
+building and a block at Re 10⁶–10⁷ (the obstacle mesh is not refined towards the obstacle;
+doing so at that Re needs ~mm cells and runs of hours), the same around the airfoil body, a
+transonic airfoil (outside the tool's scope), and a natural-convection room that needs more
+iterations.
 
 ---
 

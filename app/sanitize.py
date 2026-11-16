@@ -210,12 +210,16 @@ def sanitize_analysis(analysis: Any, description: str | None = None) -> tuple[di
 
     # ── Bluff body above the shedding threshold needs a transient solver ─────
     crit = _SHEDDING_RE.get(a.get("geometry_type"))
-    if (crit and a["solver"] == "simpleFoam" and a["turb_model"] == "laminar"
+    # Laminar and RANS alike: the wake of a bluff body sheds vortices at any Re above the
+    # threshold, and steady RANS of it oscillated without converging (3 of 30 benchmark
+    # descriptions); unsteady RANS resolves the shedding.
+    if (crit and a["solver"] == "simpleFoam"
             and a["Re"] is not None and a["Re"] > crit):
+        model = "" if a["turb_model"] == "laminar" else f" (unsteady RANS, {a['turb_model']})"
         notes.append(
             f"Re = {a['Re']:.3g} is above the vortex-shedding threshold (Re ≈ {crit:g}) for a "
-            f"{a['geometry_type'].replace('_', ' ')}: a steady solver cannot converge, so the "
-            "transient pimpleFoam is used instead of simpleFoam."
+            f"{a['geometry_type'].replace('_', ' ')}: the wake is unsteady and a steady solver "
+            f"cannot converge, so the transient pimpleFoam{model} is used instead of simpleFoam."
         )
         a["solver"] = "pimpleFoam"
         a["is_transient"] = True
