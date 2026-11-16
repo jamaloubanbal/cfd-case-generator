@@ -17,7 +17,7 @@ reference data and repaired automatically when they fail**.
 
 | | |
 |---|---|
-| **Accuracy of the generated cases** | 6 benchmarks against analytical solutions and experiments: laminar flow, heat transfer and vortex shedding within **1.5 %**, turbulent separation (backward-facing step) within **5 %** — [report](docs/validation/results.md) |
+| **Accuracy of the generated cases** | 6 benchmarks against analytical solutions and experiments: laminar flow, heat transfer and vortex shedding within **1.5 %**, the recirculation behind a cylinder at Re = 40 within **6.3 %** of the literature mean, turbulent separation (backward-facing step) within **5 %** — [report](docs/validation/results.md) |
 | **Two CFD codes** | the same benchmark generated for OpenFOAM and code_saturne: laminar channel flow agrees to **0.03 %** between the codes; behind a cylinder at Re = 40 code_saturne's recirculation is 8 % shorter (open) — [comparison](docs/validation/code_comparison.md) |
 | **LLM understanding, unseen descriptions** | free Gemini model: **100 %** fully correct setups; local 7B model: 40 % raw → **80 %** with the sanitiser — [evaluation](docs/evaluation/results.md) |
 | **Description → judged result** | 30 descriptions run end to end with no human in the loop (Gemini answers, rule-based repairs, result reviewer): **25 trustworthy**, 8 of 10 on unseen descriptions — [benchmark](docs/evaluation/e2e_results.md) |
