@@ -123,16 +123,13 @@ def _generate_saturne(analysis: dict, out: Path, run: bool, force: bool, descrip
                       backend: str | None, model: str | None) -> int:
     from app import saturne
     from app.review import explain, print_review, write_report
-    if "_unv" not in analysis:
-        print("error: --code code_saturne needs a SALOME mesh (--mesh FILE.unv)", file=sys.stderr)
-        return 2
     if out.exists() and any(out.iterdir()):
         if not force:
             print(f"error: {out} exists and is not empty (use --force to overwrite)", file=sys.stderr)
             return 2
         shutil.rmtree(out)
     try:
-        case_dir = saturne.generate(analysis, analysis["_unv"], out, description)
+        case_dir = saturne.generate(analysis, analysis.get("_unv"), out, description)
     except (RuntimeError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -219,8 +216,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--mesh", metavar="FILE.unv",
                        help="use a mesh made in SALOME (I-DEAS .unv) instead of a built-in geometry")
         p.add_argument("--code", choices=["openfoam", "code_saturne"], default="openfoam",
-                       help="CFD code to generate the case for (code_saturne: SALOME meshes, "
-                            "steady incompressible flow; set CODE_SATURNE if it is not on PATH)")
+                       help="CFD code to generate the case for (code_saturne: steady incompressible "
+                            "flow; set CODE_SATURNE if it is not on PATH)")
         p.add_argument("--role", action="append", default=[], metavar="GROUP=ROLE",
                        help="set a mesh group's boundary role (inlet, outlet, wall, symmetry, empty, "
                             "hot_wall, cold_wall); repeatable")

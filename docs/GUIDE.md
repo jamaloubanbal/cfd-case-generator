@@ -205,9 +205,23 @@ code_saturne's own GUI model layer, run headless in code_saturne's Python, so it
 the installed version. The run is judged from code_saturne's outputs (residuals.csv, the
 boundary mass-flow table and field ranges) with the same verdicts as the OpenFOAM reviewer.
 
-**Scope (first step):** imported SALOME meshes, steady incompressible flow, laminar, k-ε,
-k-ω SST or Spalart-Allmaras. The mesh import still uses OpenFOAM's `ideasUnvToFoam` to read
-the groups.
+**Scope:** steady incompressible flow (laminar, k-ε, k-ω SST, Spalart-Allmaras) on a SALOME
+mesh or on the built-in channel, T-junction, obstacle, backward-facing step, cylinder and
+airfoil geometries. A built-in geometry is meshed by the OpenFOAM generator and `blockMesh`,
+then written as UNV by [`app/foam_to_unv.py`](../app/foam_to_unv.py), which rebuilds each
+cell's vertex order from OpenFOAM's faces and turns every patch into a group (EnSight was
+tried first, but code_saturne drops its boundary parts). 2-D front/back planes become
+symmetry zones; groups named like code_saturne selection keywords (`cylinder`, `box`, …)
+are renamed. Reading meshes and meshing still need OpenFOAM installed.
+
+| Case (code_saturne) | Result |
+|---|---|
+| SALOME box duct, k-ε | trustworthy, 14 s |
+| 2-D channel, k-ε | trustworthy (2000 iterations, ~3 min) |
+| T-junction, two inlets, k-ε | trustworthy |
+| Cylinder, Re = 40, laminar | trustworthy |
+| Backward-facing step, k-ω SST | **not converged**: velocity residual stalls at ~0.02 with steady SIMPLE, pseudo-transient and lower relaxation; k-ε still converging after 1000 iterations. Open |
+| Axisymmetric pipe | not offered: no wedge equivalent; the run diverged |
 
 **Numerics, and what was checked:**
 

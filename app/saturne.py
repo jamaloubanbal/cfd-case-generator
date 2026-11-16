@@ -1,5 +1,5 @@
 """
-code_saturne backend (first step: imported SALOME meshes, steady incompressible flow).
+code_saturne backend: SALOME meshes and the built-in geometries, steady incompressible flow.
 
 The same sanitised analysis that drives the OpenFOAM generators becomes a code_saturne
 study:
@@ -35,12 +35,25 @@ from pathlib import Path
 
 CASE = "CASE"
 RUN_ID = "run"
-DEFAULT_ITERATIONS = 1000
+DEFAULT_ITERATIONS = 2000      # the 2-D channel needed ~1 500 to bring pressure below 1e-3
 TURBULENCE = {"laminar": "off", "kEpsilon": "k-epsilon", "kOmegaSST": "k-omega-SST",
               "SpalartAllmaras": "Spalart-Allmaras"}
 # Boundary roles of the mesh import → code_saturne zone natures
+# (2-D front/back planes and the pipe's wedge sides become symmetry, as usual in code_saturne)
 NATURE = {"inlet": "inlet", "outlet": "outlet", "wall": "wall", "symmetry": "symmetry",
-          "frontAndBack": "symmetry", "hot_wall": "wall", "cold_wall": "wall"}
+          "frontAndBack": "symmetry", "wedge": "symmetry", "obstacle": "wall",
+          "hot_wall": "wall", "cold_wall": "wall"}
+# Built-in geometries whose blockMesh is converted (steady forced flow). Not the pipe: its
+# 5° wedge has no counterpart in code_saturne (symmetry sides and the degenerate prisms at
+# the axis made the run diverge).
+GEOMETRIES = ("channel", "t_junction", "rectangular_obstacle", "backstep", "cylinder", "airfoil")
+# Words of code_saturne's selection syntax: a zone (group) cannot be named like them
+RESERVED = {"all", "and", "or", "not", "range", "normal", "plane", "box", "cylinder", "sphere",
+            "inside", "outside", "x", "y", "z", "group"}
+
+
+def zone_name(group: str) -> str:
+    return f"{group}_zone" if group.lower() in RESERVED else group
 
 
 # ── Installation ─────────────────────────────────────────────────────────────
@@ -110,15 +123,25 @@ case.xmlSaveDocument()
 '''
 
 
+def _patch_speed(analysis: dict, patch: str, default: float) -> float:
+    """Speed of the boundary condition named like *patch* (e.g. a T-junction's inlet2)."""
+    for bc in analysis.get("boundary_conditions") or []:
+        U = (bc.get("values") or {}).get("U")
+        if bc.get("patch_name") == patch and isinstance(U, list):
+            return float(math.sqrt(sum(float(c) ** 2 for c in U)))
+    return default
+
+
 def _inlet_speed(analysis: dict) -> float:
     from app.generators.base import BaseCaseGenerator
     return BaseCaseGenerator._get_inlet_speed(analysis.get("boundary_conditions") or [])
 
 
 def check_supported(analysis: dict) -> None:
-    if analysis.get("geometry_type") != "imported_mesh":
-        raise ValueError("code_saturne: only imported SALOME meshes (--mesh FILE.unv) for now; "
-                         "built-in geometries are generated for OpenFOAM.")
+    geo = analysis.get("geometry_type")
+    if geo != "imported_mesh" and geo not in GEOMETRIES:
+        raise ValueError(f"code_saturne: geometry {geo!r} is not supported "
+                         f"(supported: a SALOME mesh, {', '.join(GEOMETRIES)}).")
     if analysis.get("solver") != "simpleFoam":
         raise ValueError(f"code_saturne: only steady incompressible flow (simpleFoam) for now, "
                          f"not {analysis.get('solver')}.")
@@ -126,9 +149,33 @@ def check_supported(analysis: dict) -> None:
         raise ValueError(f"code_saturne: unsupported flow model {analysis.get('turb_model')}.")
 
 
-def generate(analysis: dict, unv: str | Path, out: Path, description: str | None = None,
+def _builtin_mesh(analysis: dict, unv: Path) -> list[dict]:
+    """Mesh a built-in geometry with the OpenFOAM generator and blockMesh, write it as UNV;
+    returns the patch descriptors (name, role) of the groups written."""
+    import tempfile
+
+    from app.foam_to_unv import polymesh_to_unv
+    from app.generators import GENERATORS
+    from app.generators.base import GEOMETRY_PATCHES
+    if not shutil.which("blockMesh"):
+        raise RuntimeError("built-in geometries are meshed with OpenFOAM's blockMesh: source "
+                           "OpenFOAM's etc/bashrc (or use a SALOME mesh with --mesh)")
+    with tempfile.TemporaryDirectory() as tmp:
+        foam = Path(tmp) / "mesh"
+        GENERATORS[analysis["solver"]]().generate(analysis, foam)
+        r = subprocess.run(["blockMesh"], cwd=foam, capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError("blockMesh failed:\n" + r.stdout[-1500:])
+        names = {p["name"]: zone_name(p["name"]) for p in GEOMETRY_PATCHES[analysis["geometry_type"]]}
+        written = polymesh_to_unv(foam, unv, rename=names)
+    return [dict(p, name=names[p["name"]], patch=p["name"])
+            for p in GEOMETRY_PATCHES[analysis["geometry_type"]] if names[p["name"]] in written]
+
+
+def generate(analysis: dict, unv: str | Path | None, out: Path, description: str | None = None,
              iterations: int = DEFAULT_ITERATIONS, exe: Path | None = None) -> Path:
-    """Write a code_saturne study in *out* for *analysis* on the SALOME mesh *unv*.
+    """Write a code_saturne study in *out* for *analysis*: on the SALOME mesh *unv*, or for a
+    built-in geometry (unv=None) on its blockMesh mesh converted to UNV.
     Returns the case directory."""
     check_supported(analysis)
     exe = exe or find_executable()
@@ -137,21 +184,29 @@ def generate(analysis: dict, unv: str | Path, out: Path, description: str | None
     out = Path(out)
     subprocess.run([str(exe), "create", "-s", str(out), "-c", CASE], check=True,
                    capture_output=True, text=True)
-    unv = Path(unv)
-    shutil.copy(unv, out / "MESH" / unv.name)
+    if analysis.get("geometry_type") == "imported_mesh":
+        unv = Path(unv)
+        shutil.copy(unv, out / "MESH" / unv.name)
+        patches = analysis.get("_mesh_patches") or []
+        bad = [p["name"] for p in patches if zone_name(p["name"]) != p["name"]]
+        if bad:
+            raise ValueError(f"mesh group(s) {', '.join(bad)}: reserved words in code_saturne; "
+                             "rename them in SALOME")
+    else:
+        unv = out / "MESH" / f"{analysis['geometry_type']}.unv"
+        patches = _builtin_mesh(analysis, unv)
 
     fluid = analysis.get("fluid") or {}
     rho = float(fluid.get("rho") or 1.2)
     nu = float(fluid.get("nu") or 1.5e-5)
     speed = _inlet_speed(analysis)
-    areas = {p.get("name"): p.get("area") for p in analysis.get("_mesh_patches") or []}
     zones = []
-    for p in analysis.get("_mesh_patches") or []:
+    for p in patches:
         z = {"label": p["name"], "nature": NATURE.get(p["role"], "wall")}
         if z["nature"] == "inlet":
-            area = areas.get(p["name"]) or 0.0
-            z.update(speed=speed, hydraulic_diameter=float(analysis.get("characteristic_length")
-                                                           or math.sqrt(area) or 0.1))
+            z.update(speed=_patch_speed(analysis, p.get("patch", p["name"]), speed),
+                     hydraulic_diameter=float(analysis.get("characteristic_length")
+                                              or math.sqrt(p.get("area") or 0.0) or 0.1))
         zones.append(z)
     case_dir = out / CASE
     spec = {"xml": str(case_dir / "DATA" / "setup.xml"), "mesh": unv.name, "zones": zones,
