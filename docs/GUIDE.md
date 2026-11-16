@@ -219,7 +219,7 @@ are renamed. Reading meshes and meshing still need OpenFOAM installed.
 | SALOME box duct, k-ε | trustworthy, 14 s |
 | 2-D channel, k-ε | trustworthy (2000 iterations, ~3 min) |
 | T-junction, two inlets, k-ε | trustworthy |
-| Cylinder, Re = 40, laminar | trustworthy |
+| Cylinder, Re = 40, laminar | converges; recirculation 8 % shorter than OpenFOAM's — see the [code comparison](validation/code_comparison.md) |
 | Backward-facing step, k-ω SST | **not converged**: velocity residual stalls at ~0.02 with steady SIMPLE, pseudo-transient and lower relaxation; k-ε still converging after 1000 iterations. Open |
 | Axisymmetric pipe | not offered: no wedge equivalent; the run diverged |
 
@@ -358,6 +358,11 @@ names that cause when such a case does not converge.
 ---
 
 ## Validation
+
+**Two codes:** `python -m validation.compare` solves the benchmarks the code_saturne backend
+supports (laminar channel, cylinder at Re = 40) with code_saturne and measures them with the
+same functions, reading its EnSight output through `app/postprocess/ensight.py`; results in
+[`docs/validation/code_comparison.md`](validation/code_comparison.md).
 
 [`validation/`](../validation) generates each benchmark through the same code path as the app,
 runs it in OpenFOAM to convergence and compares it with reference data. Post-processing is

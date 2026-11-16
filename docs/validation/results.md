@@ -17,6 +17,7 @@ with its own `Allrun`, and post-processed in Python (`app/postprocess`).
 | Natural convection in a square cavity, Ra = 10⁵ | Max v on horizontal centreline · L/α | 68.57 | 68.59 | -0.03 % | ±5 % | ✅ |
 | Vortex shedding behind a circular cylinder, Re = 100 | Strouhal number St = fD/U (7 periods) | 0.1653 | 0.1647 | +0.35 % | ±5 % | ✅ |
 | Turbulent backward-facing step (Driver & Seegmiller) | Reattachment length x_r / H (k-ω SST) | 5.961 | 6.26 | -4.78 % | ±10 % | ✅ |
+| Steady wake behind a circular cylinder, Re = 40 | Recirculation length L_w / D | 2.099 | 2.24 | -6.29 % | ±10 % | ✅ |
 
 ## Plane Poiseuille flow (laminar channel)
 
@@ -65,3 +66,13 @@ with its own `Allrun`, and post-processed in Python (`app/postprocess`).
 - **Notes:** RANS models predict reattachment less precisely than laminar flows (k-ε typically under-predicts it by 15–20 %), hence the ±10 % tolerance. Uniform inflow developed over ≈ 80 H of channel; wall functions on wall-graded cells. Mesh sensitivity: 23 600 → 42 100 cells changes x_r / H by 1.3 % (5.96 → 6.04), so the deviation comes from the turbulence model, not the mesh.
 
 ![Turbulent backward-facing step (Driver & Seegmiller)](backstep_driver.png)
+
+## Steady wake behind a circular cylinder, Re = 40
+
+> Steady laminar flow past a 2-D circular cylinder at Re = 40 (D = 1 m, U = 1 m/s, ν = 0.025 m²/s), in a domain 30 D long and 20 D high with the cylinder 10 D from the inlet. Measure the length of the recirculation bubble behind it.
+
+- **Solver:** `simpleFoam` · **cells:** 20,588 · **run time:** 13 s · converged in 351 iterations
+- **Reference:** Dennis & Chang, J. Fluid Mech. 42 (1970); Fornberg, J. Fluid Mech. 98 (1980); Coutanceau & Bouard, J. Fluid Mech. 79 (1977): L_w/D = 2.13–2.35
+- **Notes:** Below the shedding threshold (Re ≈ 47) the wake is steady. The literature spread (2.13–2.35) sets the ±10 % tolerance; symmetry planes 10 D away (5 % blockage). Also run with code_saturne (validation/compare.py).
+
+![Steady wake behind a circular cylinder, Re = 40](cylinder_re40.png)

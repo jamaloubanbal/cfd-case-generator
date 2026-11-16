@@ -558,7 +558,88 @@ BACKWARD_FACING_STEP = Benchmark(
 )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. Steady wake behind a circular cylinder, Re = 40 — recirculation length
+# ─────────────────────────────────────────────────────────────────────────────
+
+_C40 = {"D": 1.0, "U": 1.0, "nu": 0.025, "L": 30.0, "H": 20.0, "cx": 10.0, "Re": 40.0}
+# Wake (recirculation) length behind the cylinder, L_w/D at Re = 40: 2.35 (Dennis & Chang 1970),
+# 2.24 (Fornberg 1980), 2.13 (Coutanceau & Bouard 1977, experiment). Reference: their mean.
+_LW_REF = (2.35 + 2.24 + 2.13) / 3
+
+
+def _wake_length(case, b: dict) -> tuple[float, np.ndarray, np.ndarray]:
+    """L_w/D from u_x along the wake centreline: first sign change behind the cylinder."""
+    t = case.latest_time()
+    U = case.field("U", t)
+    cc = case.cell_centres
+    D, cx, cy = b["D"], b["cx"], b["H"] / 2
+    band = (np.abs(cc[:, 1] - cy) < 0.5 * D) & (cc[:, 0] > cx + D / 2) & (cc[:, 0] < cx + 8 * D)
+    x, y, ux = cc[band, 0], cc[band, 1], U[band, 0]
+    # at each streamwise position, average the two cells closest to the centreline
+    xs, us = [], []
+    for xv in np.unique(np.round(x, 4)):
+        m = np.where(np.isclose(x, xv, atol=1e-4))[0]
+        near = m[np.argsort(np.abs(y[m] - cy))[:2]]
+        xs.append(xv); us.append(ux[near].mean())
+    xs, us = np.array(xs), np.array(us)
+    if not np.any(us > 0):
+        return float("nan"), xs, us
+    # end of the backflow region: the crossing after the last negative u_x (cells right
+    # behind the cylinder, off the centreline in the O-grid, can show spurious positives)
+    neg = np.where(us < 0)[0]
+    if not len(neg) or neg[-1] == len(us) - 1:
+        return float("nan"), xs, us
+    i = int(neg[-1]) + 1
+    x0 = xs[i - 1] - us[i - 1] * (xs[i] - xs[i - 1]) / (us[i] - us[i - 1])
+    return (x0 - (cx + D / 2)) / D, xs, us
+
+
+def _c40_eval(case, b: dict) -> list[Metric]:
+    lw, _, _ = _wake_length(case, b)
+    return [Metric("Recirculation length L_w / D", lw, _LW_REF, 0.10, "",
+                   "Dennis & Chang 1970, Fornberg 1980, Coutanceau & Bouard 1977 (mean 2.24)")]
+
+
+def _c40_plot(case, b: dict, metrics: list[Metric], out: str) -> None:
+    plt, fig, ax = _fig(1, 1, (7, 3.5))
+    lw, xs, us = _wake_length(case, b)
+    D = b["D"]
+    ax.plot((xs - b["cx"] - D / 2) / D, us / b["U"], "o-", ms=3, label="generated case")
+    ax.axhline(0, color="k", lw=0.6)
+    ax.axvline(_LW_REF, color="tab:red", ls="--", label=f"reference L_w/D = {_LW_REF:.2f}")
+    ax.set_xlabel("distance behind the cylinder / D"); ax.set_ylabel("u_x / U on the centreline")
+    ax.set_title(f"Re = 40: L_w/D = {lw:.3f}"); ax.legend(fontsize=8)
+    fig.tight_layout(); fig.savefig(out, dpi=110); plt.close(fig)
+
+
+CYLINDER_RE40 = Benchmark(
+    key="cylinder_re40",
+    title="Steady wake behind a circular cylinder, Re = 40",
+    description="Steady laminar flow past a 2-D circular cylinder at Re = 40 (D = 1 m, U = 1 m/s, "
+                "ν = 0.025 m²/s), in a domain 30 D long and 20 D high with the cylinder 10 D from "
+                "the inlet. Measure the length of the recirculation bubble behind it.",
+    reference="Dennis & Chang, J. Fluid Mech. 42 (1970); Fornberg, J. Fluid Mech. 98 (1980); "
+              "Coutanceau & Bouard, J. Fluid Mech. 79 (1977): L_w/D = 2.13–2.35",
+    solver="simpleFoam",
+    analysis=_analysis(
+        "simpleFoam", "cylinder", nu=_C40["nu"], U=_C40["U"], L=_C40["D"],
+        bcs=[{"patch_name": "inlet", "type": "fixedValue", "values": {"U": [_C40["U"], 0.0, 0.0]}},
+             {"patch_name": "outlet", "type": "zeroGradient", "values": {}}],
+        geometry_params={"cylinder_radius": _C40["D"] / 2, "channel_length": _C40["L"],
+                         "channel_height": _C40["H"], "cx": _C40["cx"], "cy": _C40["H"] / 2},
+    ),
+    end_time=3000,
+    evaluate=lambda c, _a: _c40_eval(c, _C40),
+    plot=lambda c, _a, m, out: _c40_plot(c, _C40, m, out),
+    notes="Below the shedding threshold (Re ≈ 47) the wake is steady. The literature spread "
+          "(2.13–2.35) sets the ±10 % tolerance; symmetry planes 10 D away (5 % blockage). "
+          "Also run with code_saturne (validation/compare.py).",
+    meta=_C40,
+)
+
+
 BENCHMARKS: dict[str, Benchmark] = {
     b.key: b for b in (POISEUILLE_CHANNEL, POISEUILLE_PIPE, NATURAL_CONVECTION_CAVITY,
-                       CYLINDER_SHEDDING, BACKWARD_FACING_STEP)
+                       CYLINDER_SHEDDING, BACKWARD_FACING_STEP, CYLINDER_RE40)
 }

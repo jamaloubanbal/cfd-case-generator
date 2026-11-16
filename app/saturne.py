@@ -13,10 +13,11 @@ study:
 judges the result from code_saturne's outputs: residuals.csv, the boundary mass-flow table
 and the field ranges in run_solver.log.
 
-Numerics: steady SIMPLE with first-order upwind convection for velocity. On SALOME's
-tetrahedral meshes the centred and second-order (SOLU) schemes oscillated without
-converging, while upwind converged; on a 66 600-cell duct the core velocity agreed with
-OpenFOAM within 1 %.
+Numerics depend on the mesh. SALOME tetrahedra: steady SIMPLE with first-order upwind for
+velocity (centred and SOLU oscillated without converging; on a 66 600-cell duct the core
+velocity agreed with OpenFOAM within 1 %). Block-structured hexahedra: second-order SOLU
+with a local time step, because upwind's numerical diffusion halved the recirculation
+length behind the Re 40 cylinder.
 
 All code_saturne specifics live in this module: the installed 9.2 is a development
 version, and its Python model API can change between releases.
@@ -116,9 +117,17 @@ for z in spec["zones"]:
         if spec["turbulence"] != "off":
             b.setHydraulicDiameter(z["hydraulic_diameter"])
 ts = TimeStepModel(case)
-ts.setTimePassing(-1)                          # steady (SIMPLE)
+num = NumericalParamEquationModel(case)
+if spec["numerics"] == "upwind_steady":         # SALOME tetrahedra
+    ts.setTimePassing(-1)                       # steady (SIMPLE)
+    num.setBlendingFactor("velocity", 0.0)      # first-order upwind
+else:                                           # "solu_local": block-structured hexahedra
+    ts.setTimePassing(2)                        # local time step (pseudo-transient)
+    ts.setTimeStep(spec["dt"])
+    ts.setMaxCourant(2.0)
+    num.setScheme("velocity", "solu")           # second-order upwind
+    num.setBlendingFactor("velocity", 1.0)
 ts.setStopCriterion("iterations", spec["iterations"])
-NumericalParamEquationModel(case).setBlendingFactor("velocity", 0.0)   # first-order upwind
 case.xmlSaveDocument()
 '''
 
@@ -182,6 +191,7 @@ def generate(analysis: dict, unv: str | Path | None, out: Path, description: str
     if exe is None:
         raise RuntimeError("code_saturne not found: set CODE_SATURNE to its bin/code_saturne")
     out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)       # `code_saturne create` needs the parent
     subprocess.run([str(exe), "create", "-s", str(out), "-c", CASE], check=True,
                    capture_output=True, text=True)
     if analysis.get("geometry_type") == "imported_mesh":
@@ -208,10 +218,15 @@ def generate(analysis: dict, unv: str | Path | None, out: Path, description: str
                      hydraulic_diameter=float(analysis.get("characteristic_length")
                                               or math.sqrt(p.get("area") or 0.0) or 0.1))
         zones.append(z)
+    # Tetrahedra (SALOME): only first-order upwind in steady SIMPLE converged. Hexahedra
+    # (blockMesh): upwind's numerical diffusion halved the Re 40 cylinder's wake (L/D 1.07 vs
+    # 2.10); SOLU converged with the local time step (1.92), not in steady SIMPLE (stalled).
+    numerics = "upwind_steady" if analysis.get("geometry_type") == "imported_mesh" else "solu_local"
     case_dir = out / CASE
     spec = {"xml": str(case_dir / "DATA" / "setup.xml"), "mesh": unv.name, "zones": zones,
             "turbulence": TURBULENCE[analysis["turb_model"]], "rho": rho, "mu": rho * nu,
-            "iterations": int(iterations)}
+            "iterations": int(iterations), "numerics": numerics,
+            "dt": 0.1 * float(analysis.get("characteristic_length") or 1.0) / max(speed, 1e-9)}
     spec_file = case_dir / "DATA" / "cfdgen_spec.json"
     spec_file.write_text(json.dumps(spec, indent=1))
     builder = case_dir / "DATA" / "cfdgen_build_setup.py"

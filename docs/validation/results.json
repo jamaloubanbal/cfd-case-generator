@@ -157,5 +157,26 @@
         "source": "Driver & Seegmiller (1985)"
       }
     ]
+  },
+  "cylinder_re40": {
+    "title": "Steady wake behind a circular cylinder, Re = 40",
+    "description": "Steady laminar flow past a 2-D circular cylinder at Re = 40 (D = 1 m, U = 1 m/s, \u03bd = 0.025 m\u00b2/s), in a domain 30 D long and 20 D high with the cylinder 10 D from the inlet. Measure the length of the recirculation bubble behind it.",
+    "reference": "Dennis & Chang, J. Fluid Mech. 42 (1970); Fornberg, J. Fluid Mech. 98 (1980); Coutanceau & Bouard, J. Fluid Mech. 79 (1977): L_w/D = 2.13\u20132.35",
+    "solver": "simpleFoam",
+    "cells": 20588,
+    "elapsed_s": 13.2,
+    "converged_iterations": 351,
+    "notes": "Below the shedding threshold (Re \u2248 47) the wake is steady. The literature spread (2.13\u20132.35) sets the \u00b110 % tolerance; symmetry planes 10 D away (5 % blockage). Also run with code_saturne (validation/compare.py).",
+    "metrics": [
+      {
+        "name": "Recirculation length L_w / D",
+        "value": 2.0991318674560393,
+        "reference": 2.2399999999999998,
+        "error": -0.06288755917141092,
+        "tolerance": 0.1,
+        "passed": true,
+        "source": "Dennis & Chang 1970, Fornberg 1980, Coutanceau & Bouard 1977 (mean 2.24)"
+      }
+    ]
   }
 }

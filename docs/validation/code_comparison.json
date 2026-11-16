@@ -1,0 +1,62 @@
+{
+  "poiseuille_channel": {
+    "title": "Plane Poiseuille flow (laminar channel)",
+    "cells": 8000,
+    "elapsed_s": 166.0,
+    "verdict": "trustworthy",
+    "metrics": [
+      {
+        "name": "Centreline velocity u_max / U_mean",
+        "reference": 1.5,
+        "code_saturne": 1.4981242828071117,
+        "code_saturne_error": -0.0012504781285921733,
+        "openfoam": 1.4978411,
+        "openfoam_error": -0.0014392666666666425,
+        "gap": 0.0001890606467613312,
+        "tolerance": 0.01,
+        "passed": true
+      },
+      {
+        "name": "Pressure gradient dp/dx",
+        "reference": -0.00011999999999999999,
+        "code_saturne": -0.000119862296133415,
+        "code_saturne_error": -0.0011475322215415585,
+        "openfoam": -0.00011990066659634309,
+        "openfoam_error": -0.000827778363807469,
+        "gap": -0.0003200187623415684,
+        "tolerance": 0.02,
+        "passed": true
+      },
+      {
+        "name": "Profile: 1 + max deviation from exact / u_max",
+        "reference": 1.0,
+        "code_saturne": 1.0006254785756268,
+        "code_saturne_error": 0.0006254785756267811,
+        "openfoam": null,
+        "openfoam_error": null,
+        "gap": null,
+        "tolerance": 0.01,
+        "passed": true
+      }
+    ]
+  },
+  "cylinder_re40": {
+    "title": "Steady wake behind a circular cylinder, Re = 40",
+    "cells": 20588,
+    "elapsed_s": 818.5,
+    "verdict": "questionable",
+    "metrics": [
+      {
+        "name": "Recirculation length L_w / D",
+        "reference": 2.2399999999999998,
+        "code_saturne": 1.922998671735252,
+        "code_saturne_error": -0.14151845011819095,
+        "openfoam": 2.0991318674560393,
+        "openfoam_error": -0.06288755917141092,
+        "gap": -0.08390763746264543,
+        "tolerance": 0.1,
+        "passed": false
+      }
+    ]
+  }
+}
