@@ -199,6 +199,11 @@ cfdgen describe "Air at 2 m/s through this duct" --mesh examples/meshes/box_duct
     --code code_saturne -o duct_cs/ --backend gemini --run
 ```
 
+**In the web app**, choose *code_saturne* under **CFD code** in the sidebar (offered when
+code_saturne is found; start the app with `CODE_SATURNE` set and OpenFOAM sourced). *Generate*
+then produces a code_saturne study, and the *Run in code_saturne* panel runs it and shows the
+reviewer's verdict and the residuals.
+
 [`app/saturne.py`](../app/saturne.py) turns the same sanitised analysis and boundary roles
 into a code_saturne study (`MESH/`, `CASE/DATA/setup.xml`). The XML is written by
 code_saturne's own GUI model layer, run headless in code_saturne's Python, so it is valid for

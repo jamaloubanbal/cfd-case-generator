@@ -8,7 +8,7 @@ import streamlit as st
 
 from app.mesh_import import ROLES, check_roles, import_unv
 
-_KEYS = ("imported_mesh", "mesh_filename", "mesh_roles", "mesh_role_notes")
+_KEYS = ("imported_mesh", "mesh_filename", "mesh_roles", "mesh_role_notes", "unv_bytes")
 
 
 def render_mesh_upload() -> None:
@@ -25,13 +25,14 @@ def render_mesh_upload() -> None:
         if f is not None and st.session_state.get("mesh_filename") != f.name:
             with st.spinner("Converting the mesh with ideasUnvToFoam…"):
                 try:
-                    mesh = import_unv(f.read(), f.name.rsplit(".", 1)[0])
+                    data = f.read()
+                    mesh = import_unv(data, f.name.rsplit(".", 1)[0])
                 except (RuntimeError, ValueError) as exc:
                     st.error(f"Could not import the mesh: {exc}", icon="🚨")
                     return
             for k in _KEYS:
                 st.session_state.pop(k, None)
-            st.session_state.update(imported_mesh=mesh, mesh_filename=f.name)
+            st.session_state.update(imported_mesh=mesh, mesh_filename=f.name, unv_bytes=data)
 
         mesh = st.session_state.get("imported_mesh")
         if mesh is None:

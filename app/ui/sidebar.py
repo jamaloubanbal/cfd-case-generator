@@ -47,6 +47,8 @@ def render_sidebar() -> None:
         else:
             _compat_settings(backend)
 
+        _cfd_code_choice()
+
         analysis = st.session_state.get("analysis")
         if analysis:
             geo_type = analysis.get("geometry_type", "channel")
@@ -78,6 +80,23 @@ def render_sidebar() -> None:
 5. Download the `.zip` and run `./Allrun`.
             """
         )
+
+
+def _cfd_code_choice() -> None:
+    """OpenFOAM or code_saturne; code_saturne is offered only when it is installed."""
+    from app.saturne import find_executable
+    st.divider()
+    st.markdown("**CFD code**")
+    has_cs = find_executable() is not None
+    options = ["OpenFOAM"] + (["code_saturne"] if has_cs else [])
+    choice = st.radio("CFD code", options, key="cfd_code_choice", label_visibility="collapsed",
+                      horizontal=True)
+    st.session_state["cfd_code"] = "code_saturne" if choice == "code_saturne" else "openfoam"
+    if not has_cs:
+        st.caption("code_saturne not found: set CODE_SATURNE to its bin/code_saturne to offer it.")
+    elif choice == "code_saturne":
+        st.caption("Steady incompressible flow, on a SALOME mesh or the channel, T-junction, "
+                   "obstacle, backward-facing step, cylinder or airfoil geometries.")
 
 
 def _claude_settings() -> None:

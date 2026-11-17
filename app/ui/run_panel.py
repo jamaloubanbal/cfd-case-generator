@@ -18,6 +18,9 @@ def openfoam_available() -> bool:
 
 
 def render_run_panel(working: dict) -> None:
+    if st.session_state.get("cfd_code") == "code_saturne":
+        _render_saturne_panel(working)
+        return
     with st.expander("▶ Run in OpenFOAM (with the repair agent)", expanded=False):
         if not openfoam_available():
             st.info("OpenFOAM was not found. To run cases from the browser, start the app from a "
@@ -113,14 +116,62 @@ def _show_result(res: dict) -> None:
 _REVIEW_ICON = {"pass": "✅", "info": "ℹ️", "warn": "⚠️", "fail": "❌"}
 
 
-def _show_review(case_dir: Path, quick: bool) -> None:
+def _render_saturne_panel(working: dict) -> None:
+    from app import saturne
+    with st.expander("▶ Run in code_saturne", expanded=False):
+        if saturne.find_executable() is None:
+            st.info("code_saturne was not found: set CODE_SATURNE to its bin/code_saturne.", icon="ℹ️")
+            return
+        st.caption("Generates the code_saturne study, runs it and judges the result (convergence, "
+                   "mass balance, request vs simulation). Steady runs take one to a few minutes.")
+        if st.button("Run case", type="primary", key="btn_run_cs"):
+            from app.ui.case_output import generate_case_dir
+            old = st.session_state.pop("run_result", None)
+            if old:
+                shutil.rmtree(old["dir"], ignore_errors=True)
+            work = Path(tempfile.mkdtemp(prefix="cfdgen_cs_"))
+            study = work / "code_saturne"
+            with st.status("Running code_saturne…", expanded=True) as status:
+                try:
+                    status.write("Writing the study (mesh, setup.xml)…")
+                    generate_case_dir(working, study)
+                    status.write("Running code_saturne…")
+                    saturne.run(study / saturne.CASE)
+                    status.update(label="code_saturne finished", state="complete", expanded=False)
+                except Exception as exc:
+                    status.update(label="code_saturne could not run", state="error")
+                    st.error(str(exc))
+                    shutil.rmtree(work, ignore_errors=True)
+                    return
+            st.session_state["run_result"] = {"dir": str(work), "case": str(study / saturne.CASE),
+                                              "code": "code_saturne"}
+            st.session_state.pop("run_review", None)
+
+        res = st.session_state.get("run_result")
+        if res and res.get("code") == "code_saturne" and Path(res["case"]).exists():
+            case = Path(res["case"])
+            _show_review(case, False, review_fn=saturne.review)
+            csv = case / "RESU" / saturne.RUN_ID / "residuals.csv"
+            if csv.exists():
+                import numpy as np
+                import pandas as pd
+                df = pd.read_csv(csv, skipinitialspace=True).set_index("iteration")
+                df = df.drop(columns=[c for c in df.columns if c == "wall_distance"])
+                st.markdown("**Residuals** (`residuals.csv`, log scale)")
+                st.line_chart(np.log10(df.clip(lower=1e-12)))
+            st.download_button("Download the study as run (zip)", data=zip_directory(case.parent),
+                               file_name="code_saturne_run.zip", mime="application/zip",
+                               key="btn_download_cs_run")
+
+
+def _show_review(case_dir: Path, quick: bool, review_fn=None) -> None:
     """The result reviewer: checks computed from the results, plus an optional LLM explanation."""
     from app.review import explain, review, write_report
 
     rev = st.session_state.get("run_review")
     if rev is None or rev.case_dir != case_dir:
         try:
-            rev = st.session_state["run_review"] = review(case_dir)
+            rev = st.session_state["run_review"] = (review_fn or review)(case_dir)
         except Exception as exc:
             st.caption(f"Result review not available ({type(exc).__name__}: {exc}).")
             return
