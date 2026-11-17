@@ -2,36 +2,36 @@
   "poiseuille_channel": {
     "title": "Plane Poiseuille flow (laminar channel)",
     "cells": 8000,
-    "elapsed_s": 166.0,
+    "elapsed_s": 154.2,
     "verdict": "trustworthy",
     "metrics": [
       {
         "name": "Centreline velocity u_max / U_mean",
         "reference": 1.5,
-        "code_saturne": 1.4981242828071117,
-        "code_saturne_error": -0.0012504781285921733,
+        "code_saturne": 1.4981241896748543,
+        "code_saturne_error": -0.0012505402167638142,
         "openfoam": 1.4978411,
         "openfoam_error": -0.0014392666666666425,
-        "gap": 0.0001890606467613312,
+        "gap": 0.000188998469099454,
         "tolerance": 0.01,
         "passed": true
       },
       {
         "name": "Pressure gradient dp/dx",
         "reference": -0.00011999999999999999,
-        "code_saturne": -0.000119862296133415,
-        "code_saturne_error": -0.0011475322215415585,
+        "code_saturne": -0.00011986229584560058,
+        "code_saturne_error": -0.0011475346199950828,
         "openfoam": -0.00011990066659634309,
         "openfoam_error": -0.000827778363807469,
-        "gap": -0.0003200187623415684,
+        "gap": -0.0003200211627821253,
         "tolerance": 0.02,
         "passed": true
       },
       {
         "name": "Profile: 1 + max deviation from exact / u_max",
         "reference": 1.0,
-        "code_saturne": 1.0006254785756268,
-        "code_saturne_error": 0.0006254785756267811,
+        "code_saturne": 1.0006255406637985,
+        "code_saturne_error": 0.0006255406637984962,
         "openfoam": null,
         "openfoam_error": null,
         "gap": null,
@@ -43,19 +43,38 @@
   "cylinder_re40": {
     "title": "Steady wake behind a circular cylinder, Re = 40",
     "cells": 20588,
-    "elapsed_s": 818.5,
-    "verdict": "questionable",
+    "elapsed_s": 499.4,
+    "verdict": "trustworthy",
     "metrics": [
       {
         "name": "Recirculation length L_w / D",
         "reference": 2.2399999999999998,
-        "code_saturne": 1.922998671735252,
-        "code_saturne_error": -0.14151845011819095,
+        "code_saturne": 2.500013470549229,
+        "code_saturne_error": 0.11607744220947733,
         "openfoam": 2.0991318674560393,
         "openfoam_error": -0.06288755917141092,
-        "gap": -0.08390763746264543,
+        "gap": 0.19097494983915536,
         "tolerance": 0.1,
         "passed": false
+      }
+    ]
+  },
+  "cylinder_re100": {
+    "title": "Vortex shedding behind a circular cylinder, Re = 100",
+    "cells": 20588,
+    "elapsed_s": 691.6,
+    "verdict": "questionable",
+    "metrics": [
+      {
+        "name": "Strouhal number St = fD/U (7 periods)",
+        "reference": 0.1647,
+        "code_saturne": 0.1651892322231396,
+        "code_saturne_error": 0.002970444584939868,
+        "openfoam": 0.16528143429753195,
+        "openfoam_error": 0.003530262887261295,
+        "gap": -0.0005578489488804966,
+        "tolerance": 0.05,
+        "passed": true
       }
     ]
   }

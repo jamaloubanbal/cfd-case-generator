@@ -17,7 +17,10 @@ Numerics depend on the mesh. SALOME tetrahedra: steady SIMPLE with first-order u
 velocity (centred and SOLU oscillated without converging; on a 66 600-cell duct the core
 velocity agreed with OpenFOAM within 1 %). Block-structured hexahedra: second-order SOLU
 with a local time step, because upwind's numerical diffusion halved the recirculation
-length behind the Re 40 cylinder.
+length behind the Re 40 cylinder. The velocity slope test (on by default) is switched off on
+these meshes: it locally falls back to first-order upwind wherever the solution is
+non-monotonic, i.e. in a vortex street, and lowered the Re 100 Strouhal number by 12 %
+(0.1455 vs 0.1652 without it; OpenFOAM 0.1653).
 
 All code_saturne specifics live in this module: the installed 9.2 is a development
 version, and its Python model API can change between releases.
@@ -118,7 +121,18 @@ for z in spec["zones"]:
             b.setHydraulicDiameter(z["hydraulic_diameter"])
 ts = TimeStepModel(case)
 num = NumericalParamEquationModel(case)
-if spec["numerics"] == "upwind_steady":         # SALOME tetrahedra
+if spec["transient"]:                           # time-accurate, adaptive (Courant-limited) step
+    ts.setTimePassing(1)
+    ts.setTimeStep(spec["dt"])
+    ts.setMaxCourant(0.8)
+    if spec["numerics"] == "upwind_steady":
+        num.setBlendingFactor("velocity", 0.0)
+    else:
+        num.setScheme("velocity", "solu")
+        num.setBlendingFactor("velocity", 1.0)
+        num.setSlopeTest("velocity", "off")
+    ts.setStopCriterion("maximum_time", spec["end_time"])
+elif spec["numerics"] == "upwind_steady":       # SALOME tetrahedra
     ts.setTimePassing(-1)                       # steady (SIMPLE)
     num.setBlendingFactor("velocity", 0.0)      # first-order upwind
 else:                                           # "solu_local": block-structured hexahedra
@@ -127,7 +141,15 @@ else:                                           # "solu_local": block-structured
     ts.setMaxCourant(2.0)
     num.setScheme("velocity", "solu")           # second-order upwind
     num.setBlendingFactor("velocity", 1.0)
-ts.setStopCriterion("iterations", spec["iterations"])
+    num.setSlopeTest("velocity", "off")         # see the module docstring
+if not spec["transient"]:
+    ts.setStopCriterion("iterations", spec["iterations"])
+if spec["probes"]:
+    from code_saturne.model.OutputControlModel import OutputControlModel
+    out = OutputControlModel(case)
+    for x, y, z in spec["probes"]:
+        out.addMonitoringPoint(x, y, z)
+    out.setMonitoringPointFormat("CSV")
 case.xmlSaveDocument()
 '''
 
@@ -151,12 +173,12 @@ def check_supported(analysis: dict) -> None:
     if geo != "imported_mesh" and geo not in GEOMETRIES:
         raise ValueError(f"code_saturne: geometry {geo!r} is not supported "
                          f"(supported: a SALOME mesh, {', '.join(GEOMETRIES)}).")
-    if analysis.get("solver") != "simpleFoam":
-        kind = {"pimpleFoam": "a time-dependent flow", "rhoSimpleFoam": "a compressible flow",
+    if analysis.get("solver") not in ("simpleFoam", "pimpleFoam"):
+        kind = {"rhoSimpleFoam": "a compressible flow",
                 "buoyantSimpleFoam": "natural convection", "interFoam": "a free-surface flow"}
         raise ValueError(f"This problem is {kind.get(analysis.get('solver'), analysis.get('solver'))} "
-                         f"({analysis.get('solver')}); the code_saturne backend handles steady "
-                         "incompressible flow only for now.")
+                         f"({analysis.get('solver')}); the code_saturne backend handles "
+                         "incompressible flow (steady or time-dependent) only for now.")
     if analysis.get("turb_model") not in TURBULENCE:
         raise ValueError(f"code_saturne: unsupported flow model {analysis.get('turb_model')}.")
 
@@ -185,7 +207,9 @@ def _builtin_mesh(analysis: dict, unv: Path) -> list[dict]:
 
 
 def generate(analysis: dict, unv: str | Path | None, out: Path, description: str | None = None,
-             iterations: int = DEFAULT_ITERATIONS, exe: Path | None = None) -> Path:
+             iterations: int = DEFAULT_ITERATIONS, exe: Path | None = None,
+             probes: list[tuple[float, float, float]] | None = None,
+             end_time: float | None = None) -> Path:
     """Write a code_saturne study in *out* for *analysis*: on the SALOME mesh *unv*, or for a
     built-in geometry (unv=None) on its blockMesh mesh converted to UNV.
     Returns the case directory."""
@@ -229,7 +253,14 @@ def generate(analysis: dict, unv: str | Path | None, out: Path, description: str
     spec = {"xml": str(case_dir / "DATA" / "setup.xml"), "mesh": unv.name, "zones": zones,
             "turbulence": TURBULENCE[analysis["turb_model"]], "rho": rho, "mu": rho * nu,
             "iterations": int(iterations), "numerics": numerics,
-            "dt": 0.1 * float(analysis.get("characteristic_length") or 1.0) / max(speed, 1e-9)}
+            "dt": 0.1 * float(analysis.get("characteristic_length") or 1.0) / max(speed, 1e-9),
+            "transient": analysis["solver"] == "pimpleFoam", "probes": [list(p) for p in probes or []]}
+    if spec["transient"]:
+        # same physical duration and initial step as the OpenFOAM generator
+        from app.generators import GENERATORS
+        ctx = GENERATORS["pimpleFoam"]()._build_context(analysis)
+        spec["end_time"] = float(end_time or ctx["end_time"])
+        spec["dt"] = float(ctx["delta_t"])
     spec_file = case_dir / "DATA" / "cfdgen_spec.json"
     spec_file.write_text(json.dumps(spec, indent=1))
     builder = case_dir / "DATA" / "cfdgen_build_setup.py"
@@ -246,14 +277,14 @@ def generate(analysis: dict, unv: str | Path | None, out: Path, description: str
 
 # ── Run ──────────────────────────────────────────────────────────────────────
 
-def run(case_dir: Path, exe: Path | None = None, timeout: int = 3600) -> Path:
-    """Run the case; returns its result directory (RESU/run)."""
+def run(case_dir: Path, exe: Path | None = None, timeout: int = 3600, n_procs: int = 1) -> Path:
+    """Run the case (on *n_procs* MPI ranks); returns its result directory (RESU/run)."""
     exe = exe or find_executable()
     resu = Path(case_dir) / "RESU" / RUN_ID
     if resu.exists():
         shutil.rmtree(resu)
-    subprocess.run([str(exe), "run", "--id", RUN_ID], cwd=case_dir, capture_output=True,
-                   text=True, timeout=timeout)
+    cmd = [str(exe), "run", "--id", RUN_ID] + (["-n", str(n_procs)] if n_procs > 1 else [])
+    subprocess.run(cmd, cwd=case_dir, capture_output=True, text=True, timeout=timeout)
     return resu
 
 
@@ -264,7 +295,9 @@ def residuals(resu: Path) -> tuple[int, dict[str, float]]:
     lines = (resu / "residuals.csv").read_text().strip().splitlines()
     names = [n.strip() for n in lines[0].split(",")]
     last = [v.strip() for v in lines[-1].split(",")]
-    return int(last[0]), {n: float(v) for n, v in zip(names[1:], last[1:]) if n != "wall_distance"}
+    # first column: the iteration (steady) or the time (time-dependent); count the rows then
+    n = int(last[0]) if names[0] == "iteration" else len(lines) - 1
+    return n, {k: float(v) for k, v in zip(names[1:], last[1:]) if k != "wall_distance"}
 
 
 def mass_flows(log: str) -> dict[str, float]:
@@ -309,7 +342,16 @@ def review(case_dir: Path):
     r.facts.update(solver="code_saturne", iterations=it,
                    final_residuals={k: float(f"{v:.3g}") for k, v in res.items()})
     worst_f, worst = max(res.items(), key=lambda kv: kv[1])
-    if worst < 1e-3:
+    if analysis.get("solver") == "pimpleFoam":
+        # time-dependent: the residuals measure the change over a step, not convergence
+        m = re.findall(r"^ *INSTANT\s+([-+\d.eE]+)\s+TIME STEP NUMBER\s+(\d+)", log, re.M)
+        t_end = float(m[-1][0]) if m else float("nan")
+        it = int(m[-1][1]) if m else it
+        r.facts["final_time"] = t_end
+        r.add("Convergence", "pass" if worst < 0.1 else "warn",
+              f"Time-dependent run reached t = {t_end:.4g} s in {it} steps; largest residual in "
+              f"the last step {worst_f} = {worst:.2g}.")
+    elif worst < 1e-3:
         r.add("Convergence", "pass", f"{it} iterations; all residuals below 1e-3 (largest {worst_f} = {worst:.2g}).")
     elif worst < 1e-1:
         r.add("Convergence", "warn", f"{it} iterations; {worst_f} residual {worst:.2g}: not fully converged.")

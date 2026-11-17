@@ -103,6 +103,12 @@ class SaturneResult:
     def n_cells(self) -> int:
         return sum(len(c) for _, c in self._blocks)
 
+    def probe_series(self, name: str, probe: int = 1) -> tuple[np.ndarray, np.ndarray]:
+        """Time series of monitoring probe *probe* for *name* (e.g. "Velocity[Y]"), written
+        by code_saturne at every time step."""
+        data = np.loadtxt(self.path / "monitoring" / f"probes_{name}.csv", delimiter=",", skiprows=1)
+        return data[:, 0], data[:, probe]
+
     def field(self, name: str, time: str) -> np.ndarray:
         stem, ncomp = _NAMES.get(name, (name.lower(), 1))
         v = read_variable(self.post / f"results_fluid_domain.{stem}.{time}", self._blocks, ncomp)

@@ -27,15 +27,28 @@ from validation.benchmarks import BENCHMARKS
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "docs" / "validation"
 # Benchmarks the code_saturne backend can run today (steady incompressible, 2-D geometries)
-CODE_SATURNE_BENCHMARKS = ("poiseuille_channel", "cylinder_re40")
+CODE_SATURNE_BENCHMARKS = ("poiseuille_channel", "cylinder_re40", "cylinder_re100")
+
+
+def _probes(key: str) -> list[tuple[float, float, float]] | None:
+    """Monitoring probes the evaluation needs (the shedding benchmark: 2 D behind the cylinder)."""
+    if key != "cylinder_re100":
+        return None
+    from app.generators import GENERATORS
+    b = BENCHMARKS[key]
+    m = b.meta
+    dz = float(GENERATORS["pimpleFoam"]()._build_context(b.analysis)["domain_z"])
+    return [(m["cx"] + 2 * m["D"], m["H"] / 2, dz / 2)]
 
 
 def run_saturne(key: str, work: Path) -> dict:
     b = BENCHMARKS[key]
     t0 = time.time()
+    transient = b.solver == "pimpleFoam"
     case = saturne.generate(b.analysis, None, work / key, b.description,
-                            iterations=max(int(b.end_time), 8000))
-    saturne.run(case)
+                            iterations=max(int(b.end_time), 8000), probes=_probes(key),
+                            end_time=b.end_time if transient else None)
+    saturne.run(case, timeout=4 * 3600)
     rev = saturne.review(case)
     if any(c.name == "Run" for c in rev.checks):
         raise RuntimeError(f"{key}: code_saturne failed: {rev.checks[0].message}")
@@ -87,15 +100,17 @@ def write_report(cs: dict[str, dict]) -> None:
             for d in data.values()) + ".",
         "",
         "**Findings.** Laminar channel flow agrees between the codes to 0.03 % and with the exact "
-        "solution to 0.15 %. Behind the Re = 40 cylinder, code_saturne's recirculation is 8 % shorter "
-        "than OpenFOAM's on the identical mesh: with first-order upwind it was half as long (numerical "
-        "diffusion); second-order SOLU needs the local time step to converge, and its residuals "
-        "level off above 1e-3 (verdict *questionable*), so the remaining gap is attributed to "
-        "code_saturne's steady-state convergence on this O-grid, not settled yet.",
+        "solution to 0.15 %. Vortex shedding at Re = 100 agrees to 0.06 % (St 0.1652 vs 0.1653), "
+        "after switching off code_saturne's velocity slope test, which locally reverts to "
+        "first-order upwind in a vortex street and had lowered St by 12 %. The steady wake at "
+        "Re = 40 does not agree: code_saturne's recirculation is longer than OpenFOAM's and than "
+        "the literature (2.13–2.35). Refining the mesh 2× moves OpenFOAM into the literature range "
+        "(2.10 → 2.27) and code_saturne away from it (2.50 → 2.64); a time-accurate code_saturne "
+        "run gives 2.45, so neither resolution nor the steady formulation explains it. Open.",
         "",
         "Not yet compared: the turbulent backward-facing step (code_saturne does not converge yet "
-        "with k-ω SST), the pipe (no wedge equivalent), the heated cavity and vortex shedding "
-        "(natural convection and transient flow are not in the code_saturne backend yet).",
+        "with k-ω SST), the pipe (no wedge equivalent) and the heated cavity (natural convection "
+        "is not in the code_saturne backend yet).",
         "",
     ]
     (OUT / "code_comparison.md").write_text("\n".join(lines))

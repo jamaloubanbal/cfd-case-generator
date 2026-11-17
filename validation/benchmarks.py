@@ -389,7 +389,13 @@ _ST_REF = 0.2665 - 1.018 / math.sqrt(_CYL["Re"])
 
 
 def _wake_probe_series(case: FoamCase, b: dict) -> tuple[np.ndarray, np.ndarray]:
-    """Cross-stream velocity u_y at (cx + 2D, cy) for every saved time."""
+    """Cross-stream velocity u_y at (cx + 2D, cy) for every saved time. code_saturne results
+    come from its monitoring probe at that point (every time step), over the same last
+    50 D/U as the OpenFOAM samples."""
+    if hasattr(case, "probe_series"):
+        t, uy = case.probe_series("Velocity[Y]")
+        keep = t >= t.max() - 50.0 * b["D"] / b["U"]
+        return t[keep], uy[keep]
     cc = case.cell_centres
     target = np.array([b["cx"] + 2 * b["D"], b["H"] / 2])
     cell = int(np.argmin(np.hypot(cc[:, 0] - target[0], cc[:, 1] - target[1])))

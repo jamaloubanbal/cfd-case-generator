@@ -18,7 +18,7 @@ reference data and repaired automatically when they fail**.
 | | |
 |---|---|
 | **Accuracy of the generated cases** | 6 benchmarks against analytical solutions and experiments: laminar flow, heat transfer and vortex shedding within **1.5 %**, the recirculation behind a cylinder at Re = 40 within **6.3 %** of the literature mean, turbulent separation (backward-facing step) within **5 %** — [report](docs/validation/results.md) |
-| **Two CFD codes** | the same benchmark generated for OpenFOAM and code_saturne: laminar channel flow agrees to **0.03 %** between the codes; behind a cylinder at Re = 40 code_saturne's recirculation is 8 % shorter (open) — [comparison](docs/validation/code_comparison.md) |
+| **Two CFD codes** | the same benchmark generated for OpenFOAM and code_saturne: laminar channel flow agrees to **0.03 %** and the vortex-shedding frequency at Re = 100 to **0.06 %** between the codes; the steady wake at Re = 40 still differs (open) — [comparison](docs/validation/code_comparison.md) |
 | **LLM understanding, unseen descriptions** | free Gemini model: **100 %** fully correct setups; local 7B model: 40 % raw → **80 %** with the sanitiser — [evaluation](docs/evaluation/results.md) |
 | **Description → judged result** | 30 descriptions run end to end with no human in the loop (Gemini answers, rule-based repairs, result reviewer): **25 trustworthy**, 8 of 10 on unseen descriptions — [benchmark](docs/evaluation/e2e_results.md) |
 | **Run-and-fix agent** | 10 injected faults: rules alone repair **6**, rules + Gemini repair **10** — [benchmark](docs/evaluation/agent_results.md) |
@@ -44,7 +44,7 @@ reference data and repaired automatically when they fail**.
   residuals and the flow field. Strict safety rails
   apply: no code execution and no edits to run scripts.
 - **Two CFD codes:** besides OpenFOAM, a SALOME mesh can be solved with EDF's
-  **code_saturne** (`--code code_saturne`): the same analysis becomes a code_saturne study,
+  **code_saturne** (`--code code_saturne`, steady or time-dependent): the same analysis becomes a code_saturne study,
   whose `setup.xml` is written through code_saturne's own model layer, then run and judged.
 - **Judges the result:** after a run, a result reviewer checks that the simulation matches the
   request (speed, Re, Mach), converged, conserves mass, has a suitable wall y⁺ and sane fields,

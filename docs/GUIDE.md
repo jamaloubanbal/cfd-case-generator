@@ -210,7 +210,7 @@ code_saturne's own GUI model layer, run headless in code_saturne's Python, so it
 the installed version. The run is judged from code_saturne's outputs (residuals.csv, the
 boundary mass-flow table and field ranges) with the same verdicts as the OpenFOAM reviewer.
 
-**Scope:** steady incompressible flow (laminar, k-ε, k-ω SST, Spalart-Allmaras) on a SALOME
+**Scope:** incompressible flow, steady or time-dependent (laminar, k-ε, k-ω SST, Spalart-Allmaras) on a SALOME
 mesh or on the built-in channel, T-junction, obstacle, backward-facing step, cylinder and
 airfoil geometries. A built-in geometry is meshed by the OpenFOAM generator and `blockMesh`,
 then written as UNV by [`app/foam_to_unv.py`](../app/foam_to_unv.py), which rebuilds each
@@ -224,9 +224,15 @@ are renamed. Reading meshes and meshing still need OpenFOAM installed.
 | SALOME box duct, k-ε | trustworthy, 14 s |
 | 2-D channel, k-ε | trustworthy (2000 iterations, ~3 min) |
 | T-junction, two inlets, k-ε | trustworthy |
-| Cylinder, Re = 40, laminar | converges; recirculation 8 % shorter than OpenFOAM's — see the [code comparison](validation/code_comparison.md) |
+| Cylinder, Re = 40, laminar | converges; recirculation longer than OpenFOAM's and the literature (open) — see the [code comparison](validation/code_comparison.md) |
+| Cylinder, Re = 100, vortex shedding | Strouhal number 0.1652, OpenFOAM 0.1653 (0.06 %) |
 | Backward-facing step, k-ω SST | **not converged**: velocity residual stalls at ~0.02 with steady SIMPLE, pseudo-transient and lower relaxation; k-ε still converging after 1000 iterations. Open |
 | Axisymmetric pipe | not offered: no wedge equivalent; the run diverged |
+
+**Time-dependent flow** (pimpleFoam analyses) uses code_saturne's adaptive time step
+(Courant ≤ 0.8) up to the same end time as the OpenFOAM case, and monitoring probes give time
+series (e.g. the Strouhal number). Parallel runs (`saturne.run(..., n_procs=N)`) hung at
+start-up in the development environment (MPICH), so runs are serial by default.
 
 **Numerics, and what was checked:**
 
