@@ -152,8 +152,11 @@ def check_supported(analysis: dict) -> None:
         raise ValueError(f"code_saturne: geometry {geo!r} is not supported "
                          f"(supported: a SALOME mesh, {', '.join(GEOMETRIES)}).")
     if analysis.get("solver") != "simpleFoam":
-        raise ValueError(f"code_saturne: only steady incompressible flow (simpleFoam) for now, "
-                         f"not {analysis.get('solver')}.")
+        kind = {"pimpleFoam": "a time-dependent flow", "rhoSimpleFoam": "a compressible flow",
+                "buoyantSimpleFoam": "natural convection", "interFoam": "a free-surface flow"}
+        raise ValueError(f"This problem is {kind.get(analysis.get('solver'), analysis.get('solver'))} "
+                         f"({analysis.get('solver')}); the code_saturne backend handles steady "
+                         "incompressible flow only for now.")
     if analysis.get("turb_model") not in TURBULENCE:
         raise ValueError(f"code_saturne: unsupported flow model {analysis.get('turb_model')}.")
 

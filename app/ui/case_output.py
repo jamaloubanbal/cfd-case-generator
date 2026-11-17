@@ -56,9 +56,26 @@ def generate_case_zip(working: dict, stl: dict | None = None) -> tuple[bytes, st
         return zip_directory(case_dir), f"{code}_case.zip"
 
 
+def _saturne_unsupported(working: dict) -> str | None:
+    """Why the code_saturne backend cannot generate *working* (None: it can)."""
+    if st.session_state.get("cfd_code") != "code_saturne":
+        return None
+    from app.saturne import check_supported
+    try:
+        check_supported(working)
+    except ValueError as exc:
+        return str(exc)
+    return None
+
+
 def render_case_output(working: dict) -> None:
     st.divider()
-    if st.button("Generate Case Folder", type="primary", key="btn_generate"):
+    unsupported = _saturne_unsupported(working)
+    if unsupported:
+        st.warning(f"**Not available with code_saturne.** {unsupported} Switch **CFD code** to "
+                   "OpenFOAM in the sidebar to generate this case.", icon="⚠️")
+    if st.button("Generate Case Folder", type="primary", key="btn_generate",
+                 disabled=bool(unsupported)):
         with st.spinner("Generating case files..."):
             try:
                 stl = {"bytes": st.session_state.get("stl_bytes"),
@@ -67,6 +84,9 @@ def render_case_output(working: dict) -> None:
                 zip_bytes, zip_name = generate_case_zip(working, stl)
                 st.session_state["zip_bytes"] = zip_bytes
                 st.session_state["zip_name"] = zip_name
+            except ValueError as exc:             # unsupported setup: a message, not a traceback
+                st.session_state["zip_bytes"] = None
+                st.error(f"**Cannot generate this case:** {exc}")
             except Exception as exc:              # show the user, keep the app alive
                 st.session_state["zip_bytes"] = None
                 st.error(f"**Generation error:** {exc}")
