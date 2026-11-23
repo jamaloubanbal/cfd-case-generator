@@ -34,11 +34,12 @@ from app.ui.sidebar import render_sidebar  # noqa: E402
 
 render_sidebar()
 
-backend_label = ("Claude" if st.session_state.get("backend", "claude") == "claude"
-                 else st.session_state.get("model", "Ollama"))
-st.title(f"CFD Case Generator — Powered by {backend_label}")
-st.markdown("Describe your CFD problem in natural language and receive a complete, "
-            "ready-to-run **OpenFOAM** case folder.")
+code = "code_saturne" if st.session_state.get("cfd_code") == "code_saturne" else "OpenFOAM"
+st.title("CFD Case Generator")
+st.markdown(f"Describe your flow problem in plain English: the AI sets up a **{code}** case, which "
+            "you can download or run here, watch converge and have checked.")
+st.caption(f"AI: {st.session_state.get('ai_label', '—')}"
+           + ("" if st.session_state.get("ai_ready") else " (not ready: see the sidebar)"))
 
 tab_setup, tab_run, tab_results, tab_log = st.tabs(
     ["① Setup", "② Run", "③ Results", "📈 Log analyser"], key="main_tab")

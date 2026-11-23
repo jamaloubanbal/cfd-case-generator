@@ -1,8 +1,13 @@
-"""Sidebar: LLM backend selection, credentials, geometry sketch, help."""
+"""Sidebar: CFD code, AI model and credentials, each with a one-line status; geometry sketch.
+
+Keys set in ``st.session_state``: ``cfd_code``, ``backend``, ``model``, ``api_key``,
+``base_url``, ``ollama_timeout``, ``ai_ready`` and ``ai_label``.
+"""
 
 from __future__ import annotations
 
 import os
+import shutil
 
 import streamlit as st
 
@@ -18,161 +23,163 @@ from app.llm import (
 CLAUDE_MODELS = list(dict.fromkeys([DEFAULT_CLAUDE_MODEL, "claude-opus-5-5",
                                     "claude-sonnet-5-5", "claude-haiku-5-5"]))
 
+# provider id → (name, cost / privacy note, key environment variable, where to get a key)
+_P = OPENAI_COMPATIBLE_PROVIDERS
+PROVIDERS = {
+    "claude": ("Claude (Anthropic)", "Paid API.", "ANTHROPIC_API_KEY", "https://console.anthropic.com"),
+    "gemini": ("Google Gemini", "Free tier with rate limits; free-tier prompts may be used by Google.",
+               _P["gemini"]["key_env"], _P["gemini"]["key_url"]),
+    "ollama": ("Ollama (local)", "Runs on this computer: free and private, slower and less accurate.",
+               None, None),
+    "groq": ("Groq", "Free tier with rate limits.", _P["groq"]["key_env"], _P["groq"]["key_url"]),
+    "openrouter": ("OpenRouter", "Free models end in “:free”; rate-limited.",
+                   _P["openrouter"]["key_env"], _P["openrouter"]["key_url"]),
+    "openai-compatible": ("Other OpenAI-compatible server", "e.g. LM Studio or vLLM.",
+                          _P["openai-compatible"]["key_env"], None),
+}
+
+
+def _default_provider() -> int:
+    """Preselect the first provider whose API key is already in the environment."""
+    ids = list(PROVIDERS)
+    for i, pid in enumerate(ids):
+        env = PROVIDERS[pid][2]
+        if env and os.environ.get(env) and pid != "openai-compatible":
+            return i
+    return 0
+
 
 def render_sidebar() -> None:
-    """Render the sidebar and store backend settings in ``st.session_state``.
-
-    Keys set: ``backend``, ``model``, ``api_key``, ``base_url``, ``ollama_timeout``.
-    """
-    backends = {"Claude API (recommended)": "claude", "Ollama (local, free)": "ollama",
-                **{p["label"]: key for key, p in OPENAI_COMPATIBLE_PROVIDERS.items()}}
     with st.sidebar:
-        st.title("CFD Case Generator")
-
-        st.markdown("**Backend**")
-        backend_choice = st.selectbox(
-            "LLM backend",
-            options=list(backends),
-            label_visibility="collapsed",
-            key="backend_choice",
-        )
-        st.divider()
-
-        backend = backends[backend_choice]
-        st.session_state["base_url"] = None
-        if backend == "ollama":
-            _ollama_settings()
-        elif backend == "claude":
-            _claude_settings()
-        else:
-            _compat_settings(backend)
-
-        _cfd_code_choice()
-
-        analysis = st.session_state.get("analysis")
-        if analysis:
-            geo_type = analysis.get("geometry_type", "channel")
-            sketch, sketch_desc = get_sketch(geo_type)
-            st.divider()
-            st.markdown(f"**Geometry — {get_label(geo_type)}**")
-            st.caption(sketch_desc)
-            st.code(sketch, language=None)
-
-        st.divider()
-        st.markdown("**Supported Solvers**")
-        st.markdown(
-            """
-| Solver | Description |
-|---|---|
-| **simpleFoam** | Steady incompressible, single-phase |
-| **pimpleFoam** | Transient incompressible (PIMPLE) |
-| **rhoSimpleFoam** | Steady compressible (Ma > 0.3) |
-| **buoyantSimpleFoam** | Steady natural convection |
-| **interFoam** | Two-phase VOF (free surface) |
-
----
-**How it works**
-
-1. Pick a backend and configure credentials above.
-2. Describe your CFD problem in plain English.
-3. The LLM selects a solver, BCs and geometry; values are sanity-checked.
-4. Review and adjust, then generate a complete OpenFOAM case.
-5. Download the `.zip` and run `./Allrun`.
-            """
-        )
+        st.markdown("## 🌊 CFD Case Generator")
+        st.caption("Describe a flow in plain English; get a simulation case, run it and check the result.")
+        _cfd_code()
+        _ai_model()
+        _geometry()
+        _about()
 
 
-def _cfd_code_choice() -> None:
-    """OpenFOAM or code_saturne; code_saturne is offered only when it is installed."""
+# ── 1. CFD code ──────────────────────────────────────────────────────────────
+
+def _cfd_code() -> None:
     from app.saturne import find_executable
-    st.divider()
-    st.markdown("**CFD code**")
-    has_cs = find_executable() is not None
-    options = ["OpenFOAM"] + (["code_saturne"] if has_cs else [])
+    st.markdown("#### CFD code")
+    cs = find_executable()
+    options = ["OpenFOAM"] + (["code_saturne"] if cs else [])
     choice = st.radio("CFD code", options, key="cfd_code_choice", label_visibility="collapsed",
                       horizontal=True)
     st.session_state["cfd_code"] = "code_saturne" if choice == "code_saturne" else "openfoam"
-    if not has_cs:
-        st.caption("code_saturne not found: set CODE_SATURNE to its bin/code_saturne to offer it.")
-    elif choice == "code_saturne":
-        st.caption("Steady incompressible flow, on a SALOME mesh or the channel, T-junction, "
-                   "obstacle, backward-facing step, cylinder or airfoil geometries.")
 
-
-def _claude_settings() -> None:
-    st.markdown("**Claude API**")
-    env_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if env_key:
-        st.success("API key set via environment variable.", icon="✅")
-
-    api_key_input = st.text_input(
-        "Anthropic API Key",
-        value=env_key,
-        type="password",
-        placeholder="sk-ant-...",
-        help="Your key is used only for this session and never stored.",
-    )
-    st.session_state["api_key"] = api_key_input
-    if not api_key_input:
-        st.error("API key not set.", icon="🔴")
-
-    model = st.selectbox(
-        "Model",
-        options=CLAUDE_MODELS,
-        index=0,
-        help="Set the CFD_CLAUDE_MODEL environment variable to change the default.",
-        key="claude_model",
-    )
-    st.session_state["backend"] = "claude"
-    st.session_state["model"] = model
-
-
-def _compat_settings(backend: str) -> None:
-    """Gemini / Groq / OpenRouter / any OpenAI-compatible server."""
-    p = OPENAI_COMPATIBLE_PROVIDERS[backend]
-    st.markdown(f"**{p['label']}**")
-    env_key = os.environ.get(p["key_env"], "")
-    if p["key_url"]:
-        st.caption(f"Free API key: [{p['key_url']}]({p['key_url']}) — or set `{p['key_env']}`.")
-    key = st.text_input("API key", value=env_key, type="password", key=f"key_{backend}",
-                        help="Used only for this session and never stored.")
-    model = st.text_input("Model", value=p["model"], key=f"model_{backend}",
-                          help="Provider model id. Free-tier model names change — check the provider's list.")
-    if backend == "openai-compatible":
-        st.session_state["base_url"] = st.text_input("Base URL", value=p["base_url"], key="compat_url",
-                                                     help="e.g. LM Studio: http://localhost:1234/v1")
-    if backend != "openai-compatible" and not key:
-        st.error("API key not set.", icon="🔴")
-    st.caption("Free tiers have rate limits and may use prompts to improve the provider's models.")
-    st.session_state["backend"] = backend
-    st.session_state["model"] = model
-    st.session_state["api_key"] = key
-
-
-def _ollama_settings() -> None:
-    st.markdown("**Ollama (local)**")
-    if ollama_is_reachable():
-        st.success("Ollama is running.", icon="✅")
-        available = list_ollama_models()
-        if not available:
-            available = [DEFAULT_OLLAMA_MODEL]
-            st.warning(f"No models found — run: ollama pull {DEFAULT_OLLAMA_MODEL}", icon="⚠️")
+    if choice == "OpenFOAM":
+        if os.environ.get("WM_PROJECT_DIR") and shutil.which("blockMesh"):
+            st.caption(f"✅ OpenFOAM {os.environ.get('WM_PROJECT_VERSION', '')} found: cases can run here.")
+        else:
+            st.caption("⚠️ OpenFOAM not found: cases can be generated and downloaded, not run here "
+                       "(start the app from a terminal where OpenFOAM is sourced).")
     else:
-        st.error("Ollama not reachable.", icon="🔴")
-        st.caption("`ollama serve`")
-        available = [DEFAULT_OLLAMA_MODEL]
+        st.caption("✅ code_saturne found. Incompressible flow, steady or time-dependent, on a SALOME "
+                   "mesh or the channel, T-junction, obstacle, step, cylinder or airfoil.")
+    if not cs:
+        st.caption("code_saturne is offered when installed (or set `CODE_SATURNE`).")
 
-    # Prefer the recommended model (Ollama lists "qwen2.5:7b" as-is, "mistral" as "mistral:latest")
+
+# ── 2. AI model ──────────────────────────────────────────────────────────────
+
+def _ai_model() -> None:
+    st.markdown("#### AI model")
+    ids = list(PROVIDERS)
+    pid = st.selectbox("Provider", ids, index=_default_provider(), key="provider_choice",
+                       format_func=lambda p: PROVIDERS[p][0])
+    name, note, key_env, key_url = PROVIDERS[pid]
+    st.session_state.update(backend=pid, base_url=None)
+
+    if pid == "ollama":
+        ready, status = _ollama()
+    else:
+        model = _model_input(pid)
+        env_key = os.environ.get(key_env, "") if key_env else ""
+        key = st.text_input("API key", type="password", key=f"key_{pid}",
+                            placeholder=f"from ${key_env}" if env_key else "paste your key",
+                            help="Used for this session only, never stored. Leave empty to use "
+                                 f"the {key_env} environment variable." if key_env else None)
+        key = key or env_key
+        if pid == "openai-compatible":
+            st.session_state["base_url"] = st.text_input(
+                "Server URL", value=_P[pid]["base_url"], key="compat_url",
+                help="The server's OpenAI-compatible endpoint, e.g. LM Studio: http://localhost:1234/v1")
+        st.session_state.update(model=model, api_key=key)
+        if not model:
+            ready, status = False, "🔴 Enter a model name."
+        elif key or pid == "openai-compatible":
+            src = " (key from the environment)" if key and key == env_key else ""
+            ready, status = True, f"✅ Ready: `{model}`{src}"
+        else:
+            link = f" Get one at [{key_url.removeprefix('https://')}]({key_url})." if key_url else ""
+            ready, status = False, f"🔴 No API key.{link}"
+
+    st.session_state.update(ai_ready=ready, ai_label=f"{name} · {st.session_state.get('model') or '—'}")
+    st.markdown(status)
+    st.caption(note)
+
+
+def _model_input(pid: str) -> str:
+    if pid == "claude":
+        return st.selectbox("Model", CLAUDE_MODELS, key="claude_model",
+                            help="Default set by the CFD_CLAUDE_MODEL environment variable.")
+    return st.text_input("Model", value=_P[pid]["model"], key=f"model_{pid}",
+                         help="The provider's model id; free-tier model names change, check its list.").strip()
+
+
+def _ollama() -> tuple[bool, str]:
+    if not ollama_is_reachable():
+        st.selectbox("Model", [DEFAULT_OLLAMA_MODEL], key="ollama_model", disabled=True)
+        st.session_state.update(model=DEFAULT_OLLAMA_MODEL, api_key="", ollama_timeout=300)
+        return False, "🔴 Ollama is not running: start it with `ollama serve`."
+    available = list_ollama_models()
     preferred = [DEFAULT_OLLAMA_MODEL, "qwen2.5:7b", "mistral:latest", "mistral"]
-    default_idx = next((available.index(m) for m in preferred if m in available), 0)
-    model = st.selectbox("Model", options=available, index=default_idx, key="ollama_model")
-    timeout = st.slider(
-        "Timeout (s)", min_value=60, max_value=600, value=300, step=30,
-        help="How long to wait for the model to respond. Large models need more time.",
-    )
-    st.caption("Structured output needs Ollama ≥ 0.5. Models ≥ 7B give the best results.")
+    if not available:
+        st.selectbox("Model", [DEFAULT_OLLAMA_MODEL], key="ollama_model", disabled=True)
+        st.session_state.update(model=DEFAULT_OLLAMA_MODEL, api_key="", ollama_timeout=300)
+        return False, f"🔴 No model installed: run `ollama pull {DEFAULT_OLLAMA_MODEL}`."
+    idx = next((available.index(m) for m in preferred if m in available), 0)
+    model = st.selectbox("Model", available, index=idx, key="ollama_model")
+    with st.expander("Advanced"):
+        timeout = st.slider("Answer timeout (s)", 60, 600, 300, 30, key="ollama_timeout_s",
+                            help="Large local models can take minutes to answer.")
+    st.session_state.update(model=model, api_key="", ollama_timeout=timeout)
+    return True, f"✅ Ready: `{model}`"
 
-    st.session_state["backend"] = "ollama"
-    st.session_state["model"] = model
-    st.session_state["ollama_timeout"] = timeout
-    st.session_state.setdefault("api_key", "")
+
+# ── Geometry sketch and help ─────────────────────────────────────────────────
+
+def _geometry() -> None:
+    analysis = st.session_state.get("analysis")
+    if not analysis:
+        return
+    geo = analysis.get("geometry_type", "channel")
+    sketch, desc = get_sketch(geo)
+    with st.expander(f"Geometry: {get_label(geo)}", expanded=True):
+        st.caption(desc)
+        st.code(sketch, language=None)
+
+
+def _about() -> None:
+    with st.expander("What it can simulate"):
+        st.markdown(
+            """
+**OpenFOAM**
+- `simpleFoam`: steady incompressible flow (laminar or RANS)
+- `pimpleFoam`: time-dependent incompressible flow
+- `buoyantSimpleFoam`: natural convection
+- `rhoSimpleFoam`: steady compressible flow, up to about Mach 0.5
+- `interFoam`: two-phase flow with a free surface
+
+**code_saturne**: incompressible flow, steady or time-dependent.
+
+**Geometries:** channel, pipe, cavity, cylinder, airfoil, backward-facing step,
+obstacle, T-junction, dam break, or your own SALOME (.unv) or STL file.
+
+**Steps:** describe the problem in **Setup**, run it in **Run** (live residuals, automatic
+repair), read the verdict in **Results**.
+            """
+        )

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from app.llm import analyze_cfd_problem, ollama_is_reachable
+from app.llm import analyze_cfd_problem
 from app.sanitize import AnalysisError, sanitize_analysis
 from app.stl_parser import stl_bounding_box
 
@@ -77,17 +77,8 @@ def render_problem_input() -> None:
         key="user_description",
     )
 
-    backend = st.session_state.get("backend", "claude")
-    if backend == "ollama":
-        ready = ollama_is_reachable()
-    elif backend == "openai-compatible":
-        ready = bool(st.session_state.get("model"))
-    else:                                       # Claude, Gemini, Groq, OpenRouter need a key
-        ready = bool(st.session_state.get("api_key")) and bool(st.session_state.get("model"))
-    help_text = ""
-    if not ready:
-        help_text = ("Ollama is not reachable. Run: ollama serve" if backend == "ollama"
-                     else "Enter the API key and model in the sidebar first.")
+    ready = st.session_state.get("ai_ready", False)          # set by the sidebar
+    help_text = "" if ready else "Set up the AI model in the sidebar first (its status line says what is missing)."
 
     clicked = st.button(
         "Analyse my problem", type="primary", key="btn_analyse",
