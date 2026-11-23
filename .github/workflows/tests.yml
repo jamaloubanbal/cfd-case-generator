@@ -68,3 +68,20 @@ jobs:
         with:
           name: validation-report
           path: validation-report/
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t cfd-case-generator .
+      - name: Generate and mesh a case inside the image
+        run: |
+          docker run --rm cfd-case-generator bash -c \
+            'python -m app.cli generate examples/backward_facing_step.json -o /tmp/case \
+             && cd /tmp/case && blockMesh > log.blockMesh && checkMesh | grep -q "Mesh OK"'
+      - name: The web app answers
+        run: |
+          docker run -d --name app -p 8501:8501 cfd-case-generator
+          for i in $(seq 30); do curl -sf http://localhost:8501/_stcore/health && exit 0; sleep 2; done
+          docker logs app; exit 1

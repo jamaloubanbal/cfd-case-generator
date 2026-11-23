@@ -44,7 +44,7 @@ _FORBIDDEN = ("#codeStream", "#calc", "codedFixedValue", "codedMixed", "codedFix
 class Diagnosis:
     ok: bool
     application: str | None = None     # failing OpenFOAM application, e.g. "simpleFoam"
-    kind: str = ""                     # missing_entry | divergence | patch_mismatch | syntax | other
+    kind: str = ""                     # missing_entry | divergence | patch_mismatch | syntax | timeout | other
     message: str = ""                  # the FOAM FATAL message (or the reason for failure)
     file: str | None = None            # case-relative file named in the error, if any
     entry: str | None = None           # missing entry name, if any
@@ -78,7 +78,12 @@ def clean(case_dir: Path) -> None:
         shutil.rmtree(poly)
 
 
-def run(case_dir: Path, timeout: int = 1800, on_process=None) -> int:
+# Wall-clock limit of one solver run (s); a public deployment can lower it (see docs/DEPLOY.md)
+RUN_TIMEOUT = int(os.environ.get("CFD_RUN_TIMEOUT", "1800"))
+TIMED_OUT = 124                                          # run()'s return code when the limit is hit
+
+
+def run(case_dir: Path, timeout: int | None = None, on_process=None) -> int:
     """Clean and run the case; *on_process* receives the Popen (e.g. to stop it from the UI)."""
     clean(case_dir)
     proc = subprocess.Popen(["./Allrun"], cwd=case_dir, stdout=subprocess.DEVNULL,
@@ -86,10 +91,10 @@ def run(case_dir: Path, timeout: int = 1800, on_process=None) -> int:
     if on_process:
         on_process(proc)
     try:
-        return proc.wait(timeout=timeout)
+        return proc.wait(timeout=timeout or RUN_TIMEOUT)
     except subprocess.TimeoutExpired:
         stop_process(proc)
-        return 124
+        return TIMED_OUT
 
 
 def stop_process(proc: subprocess.Popen) -> None:
@@ -110,6 +115,9 @@ def _fatal_block(text: str) -> str:
 
 def diagnose(case_dir: Path, returncode: int) -> Diagnosis:
     logs = sorted(case_dir.glob("log.*"), key=lambda p: p.stat().st_mtime)
+    if returncode == TIMED_OUT:                         # not a failure a fix can repair
+        return Diagnosis(ok=False, kind="timeout", message="time limit reached: the run was stopped "
+                         "(CFD_RUN_TIMEOUT)", application=logs[-1].name.removeprefix("log.") if logs else "Allrun")
     for log in reversed(logs):                          # the last log written failed first
         text = log.read_text(errors="replace")
         tail = "\n".join(text.splitlines()[-_LOG_TAIL_LINES:])
@@ -396,7 +404,7 @@ class RepairResult:
 
 def repair(case_dir: str | Path, *, backend: str | None = None, model: str | None = None,
            api_key: str | None = None, base_url: str | None = None, use_rules: bool = True,
-           max_attempts: int = MAX_ATTEMPTS, timeout: int = 1800, log=print,
+           max_attempts: int = MAX_ATTEMPTS, timeout: int | None = None, log=print,
            on_process=None, on_attempt=None, stop=None) -> RepairResult:
     """Run the case; while it fails, apply rule fixes, else an LLM fix (if *backend*), rerun.
 
@@ -410,6 +418,12 @@ def repair(case_dir: str | Path, *, backend: str | None = None, model: str | Non
         d = diagnose(case_dir, run(case_dir, timeout, on_process))
         if stop and stop():
             log("■ stopped by the user")
+            if on_attempt:
+                on_attempt(d, None)
+            result = RepairResult(False, attempts)
+            break
+        if d.kind == "timeout":
+            log(f"⏱ {d.application}: {d.message}")
             if on_attempt:
                 on_attempt(d, None)
             result = RepairResult(False, attempts)

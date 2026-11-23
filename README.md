@@ -100,6 +100,19 @@ and continuity error, and the flow field, all updated live as the solver writes<
 
 ## Quick start
 
+**With Docker** (OpenFOAM included, nothing else to install):
+
+```bash
+git clone <this repo> && cd cfd-case-generator
+docker build -t cfd-case-generator .
+docker run --rm -p 8501:8501 -e GEMINI_API_KEY="…" cfd-case-generator   # → http://localhost:8501
+```
+
+The key is optional: you can also paste one in the sidebar. To put the app online, see
+[Deploying](docs/DEPLOY.md).
+
+**Without Docker:**
+
 ```bash
 git clone <this repo> && cd cfd-case-generator
 python -m venv .venv && source .venv/bin/activate
@@ -134,6 +147,7 @@ flowchart LR
 
 - **[Guide](docs/GUIDE.md):** supported cases, how it works in detail, LLM backends, running
   cases, the agent and its safety rails, testing, project structure, known limitations
+- **[Deploying](docs/DEPLOY.md):** Docker image, an online demo on Hugging Face Spaces
 - **[Validation report](docs/validation/results.md):** benchmarks with plots
 - **[LLM evaluation](docs/evaluation/results.md):** per-model and per-case results, dev and held-out sets
 - **[End-to-end benchmark](docs/evaluation/e2e_results.md):** every description generated, run and judged
