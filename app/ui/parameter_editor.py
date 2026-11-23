@@ -44,9 +44,15 @@ def render_parameter_editor(analysis: dict) -> dict:
         st.markdown("**Flow**")
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.number_input("Inlet speed (m/s)", min_value=1e-4, max_value=1e4,
-                            value=float(defs["inlet_speed"]), format="%.4g", key="pe_inlet_speed",
-                            help="Magnitude of the inlet velocity vector (direction is kept).")
+            speed = float(defs["inlet_speed"] or 0.0)
+            if speed > 0:
+                st.number_input("Inlet speed (m/s)", min_value=1e-4, max_value=1e4,
+                                value=min(max(speed, 1e-4), 1e4), format="%.4g", key="pe_inlet_speed",
+                                help="Magnitude of the inlet velocity vector (direction is kept).")
+            else:                    # dam break, natural convection, closed cavity: nothing to edit
+                st.session_state.pop("pe_inlet_speed", None)
+                st.caption("**Inlet speed:** none. This case has no inflow; the flow is driven "
+                           "by gravity, buoyancy or a moving wall.")
         with c2:
             st.number_input("Kinematic viscosity ν (m²/s)", min_value=1e-8, max_value=1e-2,
                             value=float(defs["nu"]), format="%.3e", key="pe_nu",
