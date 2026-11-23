@@ -73,13 +73,25 @@ cell by cell from the results ([inputs](examples), [script](scripts/make_gallery
 
 ## The web app
 
-<p align="center"><img src="docs/screenshots/ui_analysis.png" alt="Web app: problem description and the model's analysis" width="900"></p>
+Four tabs: **Setup** (describe the problem, check the AI's analysis), **Run** (live monitor),
+**Results** (automatic review) and **Log analyser** (residuals of any OpenFOAM log).
+
+<p align="center"><img src="docs/screenshots/ui_run_live.png" alt="Run tab: live status, residuals and flow field of a cylinder case while it runs" width="900"><br>
+<sub>Run tab during a cylinder run at Re = 200: status, progress and time left, residuals, Courant number
+and continuity error, and the flow field, all updated live as the solver writes</sub></p>
 
 <details>
-<summary><b>More screenshots</b>: boundary conditions and automatic corrections, physics checks</summary>
+<summary><b>More screenshots</b>: setup and analysis, result review, code_saturne</summary>
 <p align="center">
-  <img src="docs/screenshots/ui_corrections.png" alt="Boundary conditions, automatic corrections and the model's assumptions" width="900"><br><br>
-  <img src="docs/screenshots/ui_checks.png" alt="Physics checks and case generation" width="900">
+  <img src="docs/screenshots/ui_setup_description.png" alt="Setup tab: plain-English problem description and the AI model status" width="900"><br>
+  <sub>Setup: the description, the chosen CFD code and AI model, and the geometry sketch</sub><br><br>
+  <img src="docs/screenshots/ui_setup_analysis.png" alt="The AI's analysis with automatic corrections and assumptions" width="900"><br>
+  <sub>The analysis: the description asked for a steady run, but Re = 200 sheds vortices, so the
+  checks switch to the transient pimpleFoam and say why</sub><br><br>
+  <img src="docs/screenshots/ui_results.png" alt="Results tab: result review checks and velocity field" width="900"><br>
+  <sub>Results: the reviewer's checks (time step, convergence, request, mass balance, fields) and the final field</sub><br><br>
+  <img src="docs/screenshots/ui_code_saturne.png" alt="The same cylinder case running live in code_saturne" width="900"><br>
+  <sub>The same case run with code_saturne, monitored live from its solver log</sub>
 </p>
 </details>
 
