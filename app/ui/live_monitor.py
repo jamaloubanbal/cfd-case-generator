@@ -82,7 +82,7 @@ def _small_chart(steps: list[dict], key: str, title: str, xtitle: str, log: bool
         .properties(height=180)
 
 
-def render_convergence(snap: Snapshot) -> None:
+def render_convergence(snap: Snapshot, flow=None) -> None:
     """Status cards, residual chart, Courant / continuity charts of a run (live or finished)."""
     steps = snap.steps
     a = assess(steps, snap.transient, snap.failed)
@@ -122,11 +122,17 @@ def render_convergence(snap: Snapshot) -> None:
         (st.error if a.state == "diverging" else st.warning if a.state == "stalled" else st.caption)(
             f"{icon} {hint}")
 
-    chart = residual_chart(snap.segments, snap.transient)
-    if chart is not None:
-        st.altair_chart(chart, width="stretch")
-    else:
-        st.caption("The residual chart appears once the solver starts its first iteration.")
+    left, right = st.columns(2) if flow else (st.container(), None)
+    with left:
+        st.markdown("**Residuals**")
+        chart = residual_chart(snap.segments, snap.transient)
+        if chart is not None:
+            st.altair_chart(chart, width="stretch")
+        else:
+            st.caption("The residual chart appears once the solver starts its first iteration.")
+    if right is not None:
+        with right:
+            flow()
 
     xt = "Simulated time [s]" if snap.transient else "Iteration"
     small = [ch for ch in (_small_chart(steps, "co", "max Courant number", xt),
@@ -148,7 +154,7 @@ def _live(job_key: str) -> None:
     top = st.columns([5, 1])
     top[0].markdown(f"**● Live** · {snap.phase}")
     top[1].button("⏹ Stop", key="btn_stop_run", on_click=job.stop, width="stretch")
-    render_convergence(snap)
+    render_convergence(snap, flow=_flow(job, live=True))
     _messages(snap)
 
 
@@ -157,6 +163,14 @@ def _messages(snap: Snapshot) -> None:
         with st.expander(f"Repair agent ({len(snap.messages)} message{'s' * (len(snap.messages) > 1)})",
                          expanded=len(snap.segments) > 1 or snap.status in ("failed", "error")):
             st.code("\n".join(snap.messages), language=None)
+
+
+def _flow(job, live: bool):
+    """The flow view beside the residuals (OpenFOAM runs; code_saturne writes fields at the end)."""
+    if job.code != "openfoam":
+        return None
+    from app.ui.live_flow import render_flow
+    return lambda: render_flow(job, live)
 
 
 def render_job(job_key: str = "run_job") -> None:
@@ -175,5 +189,5 @@ def render_job(job_key: str = "run_job") -> None:
               "stopped": (st.warning, "⏹️", "Run stopped."),
               "error": (st.error, "🚨", f"The run could not start: {snap.error}")}[snap.status]
     banner[0](banner[2], icon=banner[1])
-    render_convergence(snap)
+    render_convergence(snap, flow=_flow(job, live=False))
     _messages(snap)

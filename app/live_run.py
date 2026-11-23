@@ -31,6 +31,17 @@ class Segment:
 
 
 @dataclass
+class Frame:
+    """The fields of one written time directory, kept because OpenFOAM purges old ones."""
+    time: float
+    fields: dict[str, np.ndarray]
+
+
+_FRAME_FIELDS = ("U", "p", "p_rgh", "T", "alpha.water", "k")
+_MAX_FRAMES = 240
+
+
+@dataclass
 class Snapshot:
     status: str                     # running | success | failed | stopped | error
     phase: str
@@ -69,6 +80,10 @@ class RunJob:
         self._stop = False
         self._t0 = time.time()
         self._t1: float | None = None
+        self.frames: list[Frame] = []    # flow snapshots of the current attempt (2-D OpenFOAM cases)
+        self.flow_mesh = None            # (polygons, owning cell per polygon) of the 2-D mesh
+        self.flow_note: str | None = None  # why there is no flow view, if so
+        self._frames_done = threading.Event()
         if code == "openfoam":
             self.application, self.transient, self.end = _controls(self.case_dir)
             self._tail = LogTail(self.case_dir / f"log.{self.application}")
@@ -118,12 +133,20 @@ class RunJob:
                     fix = f"{att.fixer}: {att.changes[0].splitlines()[0]}{more}"
                 self.segments.append(Segment(self._tail.steps, fix))
                 self._tail = LogTail(self.case_dir / f"log.{self.application}")
+                if att is not None:                 # a new attempt follows: new mesh, new fields
+                    self.frames, self.flow_mesh, self._seen = [], None, set()
 
         llm = self.llm or {}
-        self.result = repair(self.case_dir, backend=llm.get("backend"), model=llm.get("model"),
-                             api_key=llm.get("api_key"), base_url=llm.get("base_url"),
-                             log=self.messages.append, on_process=self._set_proc,
-                             on_attempt=on_attempt, stop=lambda: self._stop)
+        watcher = threading.Thread(target=self._watch_frames, daemon=True)
+        watcher.start()
+        try:
+            self.result = repair(self.case_dir, backend=llm.get("backend"), model=llm.get("model"),
+                                 api_key=llm.get("api_key"), base_url=llm.get("base_url"),
+                                 log=self.messages.append, on_process=self._set_proc,
+                                 on_attempt=on_attempt, stop=lambda: self._stop)
+        finally:
+            self._frames_done.set()
+            watcher.join(timeout=30)
         self.status = "stopped" if self._stop else ("success" if self.result.success else "failed")
 
     def _run_saturne(self) -> None:
@@ -154,6 +177,54 @@ class RunJob:
                 phase = "solving" if segments and segments[0].steps else "preparing"
         return Snapshot(self.status if not self.running else "running", phase, segments, self.transient,
                         self.end, (self._t1 or time.time()) - self._t0, list(self.messages), self.error, failed)
+
+    # ── flow snapshots (OpenFOAM) ──
+    def _watch_frames(self) -> None:
+        self._seen: set[str] = set()
+        while not self._frames_done.wait(1.0):
+            self._capture_frames()
+        self._capture_frames()                      # the last time written
+
+    def _capture_frames(self) -> None:
+        from app.postprocess import FoamCase
+        from app.postprocess.render import front_polygons
+        try:
+            case = FoamCase(self.case_dir)
+            if self.flow_mesh is None:
+                if not (self.case_dir / "constant" / "polyMesh" / "owner").exists():
+                    return
+                try:
+                    self.flow_mesh = front_polygons(case)
+                except ValueError:
+                    self.flow_note = "The flow view draws 2-D cases only; this mesh is 3-D."
+                    self._frames_done.set()
+                    return
+            for name in case.times():
+                if name in self._seen or float(name) == 0:
+                    continue
+                d = self.case_dir / name
+                u = d / "U"
+                if not u.exists() or not u.read_bytes()[-200:].rstrip().endswith(b"//"):
+                    continue                        # still being written
+                fields = {}
+                for f in _FRAME_FIELDS:
+                    if (d / f).exists():
+                        v = case.field(f, name)
+                        if np.ndim(v) and len(v) == case.n_cells:
+                            fields[f] = np.asarray(v, dtype=np.float32)
+                self._seen.add(name)
+                with self._lock:
+                    self.frames.append(Frame(float(name), fields))
+                    self.frames.sort(key=lambda fr: fr.time)
+                    if len(self.frames) > _MAX_FRAMES:        # keep the run's whole span, coarser
+                        self.frames = self.frames[::2] + ([self.frames[-1]] if len(self.frames) % 2 == 0 else [])
+        except Exception:                           # a directory purged or rewritten meanwhile
+            return
+
+    def flow(self) -> tuple[object, list[Frame], str | None]:
+        """2-D mesh polygons, the frames captured so far, and why there are none (if so)."""
+        with self._lock:
+            return self.flow_mesh, list(self.frames), self.flow_note
 
     def _phase_openfoam(self, solving: bool) -> str:
         if not self.running:

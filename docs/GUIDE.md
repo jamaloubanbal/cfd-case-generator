@@ -312,6 +312,11 @@ background and the live monitor refreshes every 1.5 s:
 - the maximum Courant number (transient runs) and the continuity error per step; for
   code_saturne, the inflow/outflow mass imbalance;
 - the agent's messages, and a *Stop* button that ends the solver and its child processes.
+- beside the residuals, the **flow** (2-D OpenFOAM cases): the latest result drawn cell by
+  cell each time the solver writes one, as speed, cross-flow velocity (vortex shedding),
+  pressure, temperature or water fraction (dam break). The fields of every write are kept as
+  the run goes, since OpenFOAM purges old time directories, so after the run a slider replays
+  it. code_saturne writes its fields only at the end, so it has no live flow view.
 
 The trend comes from a straight-line fit of the log of the largest residual over the last
 fifth of the steps (`app/live_run.py`, `assess`); a converging steady run also gets an

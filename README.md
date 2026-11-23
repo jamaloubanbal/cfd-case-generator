@@ -45,8 +45,9 @@ reference data and repaired automatically when they fail**.
 - **Live convergence monitor:** while a case runs (OpenFOAM or code_saturne), the web app
   plots the residuals every 1.5 s, says whether they are converging, stalled or diverging,
   estimates the time left, plots the Courant number, the continuity error or the mass
-  imbalance, and marks each restart of the repair agent with the fix it applied. A run can
-  be stopped from the page. The same charts analyse any uploaded solver log.
+  imbalance, and marks each restart of the repair agent with the fix it applied. Beside it,
+  the flow field (2-D cases) is redrawn at each write and can be replayed afterwards. A run
+  can be stopped from the page. The same charts analyse any uploaded solver log.
 - **Two CFD codes:** besides OpenFOAM, a SALOME mesh can be solved with EDF's
   **code_saturne** (`--code code_saturne`, steady or time-dependent): the same analysis becomes a code_saturne study,
   whose `setup.xml` is written through code_saturne's own model layer, then run and judged.
