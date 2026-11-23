@@ -316,7 +316,8 @@ background and the live monitor refreshes every 1.5 s:
   cell each time the solver writes one, as speed, cross-flow velocity (vortex shedding),
   pressure, temperature or water fraction (dam break). The fields of every write are kept as
   the run goes, since OpenFOAM purges old time directories, so after the run a slider replays
-  it. code_saturne writes its fields only at the end, so it has no live flow view.
+  it, and *Make an animation* turns it into a GIF to download (up to 60 frames spread over the
+  run, one colour range for all; about 15 s to draw). code_saturne writes its fields only at the end, so it has no live flow view.
 
 The trend comes from a straight-line fit of the log of the largest residual over the last
 fifth of the steps (`app/live_run.py`, `assess`); a converging steady run also gets an

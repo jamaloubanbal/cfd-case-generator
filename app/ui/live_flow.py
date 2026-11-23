@@ -27,17 +27,16 @@ def _values(frame, view: str) -> np.ndarray:
     return v
 
 
-@st.cache_data(max_entries=64, show_spinner=False)
-def _png(_mesh, mesh_id: int, values: np.ndarray, cmap: str, vmin: float, vmax: float, title: str,
-         label: str) -> bytes:
-    """Rendered with matplotlib's object API (thread-safe, no pyplot state)."""
+def _figure(mesh, values: np.ndarray, cmap: str, vmin: float, vmax: float, title: str, label: str,
+            dpi: int = 100):
+    """One frame, drawn with matplotlib's object API (thread-safe, no pyplot state)."""
     from matplotlib.collections import PolyCollection
     from matplotlib.figure import Figure
 
-    polys, cells = _mesh
+    polys, cells = mesh
     allp = np.vstack(polys)
     w, h = np.ptp(allp[:, 0]), np.ptp(allp[:, 1])
-    fig = Figure(figsize=(8, max(2.2, min(6.5, 8 * h / max(w, 1e-12)) + 0.6)), dpi=100)
+    fig = Figure(figsize=(8, max(2.2, min(6.5, 8 * h / max(w, 1e-12)) + 0.6)), dpi=dpi)
     ax = fig.add_subplot()
     coll = PolyCollection(polys, array=values[cells], cmap=cmap, edgecolors="face", linewidths=0.4)
     coll.set_clim(vmin, vmax)
@@ -49,9 +48,52 @@ def _png(_mesh, mesh_id: int, values: np.ndarray, cmap: str, vmin: float, vmax: 
     ax.tick_params(labelsize=8)
     fig.colorbar(coll, ax=ax, label=label, shrink=0.85, pad=0.02)
     fig.tight_layout()
+    return fig
+
+
+@st.cache_data(max_entries=64, show_spinner=False)
+def _png(_mesh, mesh_id: int, values: np.ndarray, cmap: str, vmin: float, vmax: float, title: str,
+         label: str) -> bytes:
     buf = io.BytesIO()
-    fig.savefig(buf, format="png")
+    _figure(_mesh, values, cmap, vmin, vmax, title, label).savefig(buf, format="png")
     return buf.getvalue()
+
+
+def _limits(view: str, arrays: list[np.ndarray]) -> tuple[float, float]:
+    """Colour range over several frames (robust percentiles), so the picture does not flicker."""
+    if view == "Water fraction":
+        return 0.0, 1.0
+    lo, hi = np.percentile(np.concatenate(arrays), [0.5, 99.5])
+    if view == "Cross-flow velocity Uy":
+        lo, hi = -max(abs(lo), abs(hi)), max(abs(lo), abs(hi))
+    return float(lo), float(max(hi, lo + 1e-12))
+
+
+GIF_FRAMES = 60          # at most; frames are taken evenly over the run
+GIF_MS = 120             # per frame
+
+
+def make_gif(mesh, frames: list, view: str, progress=None) -> bytes:
+    """Animated GIF of *view* over the run, with one colour range for all frames."""
+    from PIL import Image
+
+    idx = np.unique(np.linspace(0, len(frames) - 1, min(GIF_FRAMES, len(frames))).round().astype(int))
+    vals = [_values(frames[i], view) for i in idx]
+    lo, hi = _limits(view, vals)
+    cmap = _VIEWS[view][2]
+    images = []
+    for k, (i, v) in enumerate(zip(idx, vals)):
+        buf = io.BytesIO()
+        _figure(mesh, v, cmap, lo, hi, f"{view} at t = {frames[i].time:.4g} s", view, dpi=80) \
+            .savefig(buf, format="png")
+        buf.seek(0)
+        images.append(Image.open(buf).convert("RGB").quantize(colors=255, method=Image.Quantize.MEDIANCUT))
+        if progress:
+            progress((k + 1) / len(idx))
+    out = io.BytesIO()
+    images[0].save(out, format="GIF", save_all=True, append_images=images[1:], duration=GIF_MS, loop=0,
+                   optimize=True)
+    return out.getvalue()
 
 
 def render_flow(job, live: bool) -> None:
@@ -76,20 +118,31 @@ def render_flow(job, live: bool) -> None:
         frame = frames[-1]
     else:
         i = st.select_slider("Replay", options=list(range(len(frames))), value=len(frames) - 1,
-                             format_func=lambda k: f"t = {frames[k].time:g} s", key="flow_frame")
+                             format_func=lambda k: f"t = {frames[k].time:.4g} s", key="flow_frame")
         frame = frames[i]
     vals = _values(frame, view)
-    # colour range: fixed over the frames so far (robust percentiles), so a replay does not flicker
-    pool = np.concatenate([_values(f, view) for f in frames[-12:]])
-    lo, hi = np.percentile(pool, [0.5, 99.5])
-    if view == "Cross-flow velocity Uy":
-        lo, hi = -max(abs(lo), abs(hi)), max(abs(lo), abs(hi))
-    if view == "Water fraction":
-        lo, hi = 0.0, 1.0
-    if hi <= lo:
-        hi = lo + 1e-12
+    lo, hi = _limits(view, [_values(f, view) for f in frames[-12:]])
     name, comp, cmap = _VIEWS[view]
-    st.image(_png(mesh, id(mesh), vals, cmap, float(lo), float(hi),
-                  f"{view} at t = {frame.time:g} s", view), width="stretch")
+    st.image(_png(mesh, id(mesh), vals, cmap, lo, hi, f"{view} at t = {frame.time:.4g} s", view),
+             width="stretch")
     st.caption(f"Frame {frames.index(frame) + 1} of {len(frames)}"
                + (" · updates at each write" if live else " · drag the slider to replay the run"))
+    if not live and len(frames) > 1:
+        _gif_export(job, mesh, frames, view)
+
+
+def _gif_export(job, mesh, frames: list, view: str) -> None:
+    key = (str(job.case_dir), view, len(frames))
+    gif = st.session_state.get("flow_gif")
+    if gif is None or gif[0] != key:
+        n = min(GIF_FRAMES, len(frames))
+        if st.button(f"🎞 Make an animation ({n} frames, GIF)", key="btn_make_gif"):
+            bar = st.progress(0.0, text="Drawing the frames…")
+            data = make_gif(mesh, frames, view, progress=lambda f: bar.progress(f, text="Drawing the frames…"))
+            bar.empty()
+            st.session_state["flow_gif"] = gif = (key, data)
+        else:
+            return
+    fname = f"{job.case_dir.name}_{_VIEWS[view][0].replace('.', '_')}.gif"
+    st.download_button(f"⬇ Download the animation ({len(gif[1]) / 1e6:.1f} MB)", gif[1], file_name=fname,
+                       mime="image/gif", key="btn_download_gif")
