@@ -80,6 +80,9 @@ Four tabs: **Setup** (describe the problem, check the AI's analysis), **Run** (l
 <sub>Run tab during a cylinder run at Re = 200: status, progress and time left, residuals, Courant number
 and continuity error, and the flow field, all updated live as the solver writes</sub></p>
 
+<p align="center"><img src="docs/screenshots/ui_dam_break_export.gif" alt="Water fraction of a dam break, exported as an animation from the Run tab" width="600"><br>
+<sub>Dam break (interFoam): the water fraction exported from the Run tab with one click (“Make an animation”)</sub></p>
+
 <details>
 <summary><b>More screenshots</b>: setup and analysis, result review, code_saturne</summary>
 <p align="center">
