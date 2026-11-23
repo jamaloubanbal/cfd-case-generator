@@ -134,6 +134,7 @@ def _run_analysis(description: str) -> None:
     st.session_state["analysis_notes"] = notes
     st.session_state["zip_bytes"] = None
     st.session_state.pop("case_explanation", None)
+    st.session_state.pop("run_anyway", None)
     # Reset parameter-editor widgets so they pick up the new analysis
     for k in [k for k in st.session_state if k.startswith("pe_")]:
         del st.session_state[k]

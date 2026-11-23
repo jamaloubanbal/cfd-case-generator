@@ -16,6 +16,12 @@ def render_analysis_summary(analysis: dict, notes: list[str]) -> None:
     if analysis.get("_model_used"):
         st.caption(f"ℹ️ `{st.session_state.get('model', 'The selected model')}` was unavailable "
                    f"(busy or retired), so `{analysis['_model_used']}` answered instead.")
+    unsupported = analysis.get("unsupported") or []
+    if unsupported:
+        st.error("**This case is not exactly what you described.** The generator cannot represent:\n"
+                 + "\n".join(f"- {u}" for u in unsupported)
+                 + "\n\nThe solver may still run, but it solves a different problem; the repair agent "
+                   "cannot fix this.", icon="⚠️")
     st.info(f"**Solver:** `{analysis.get('solver', 'unknown')}`  \n"
             f"{analysis.get('solver_justification', '')}")
 

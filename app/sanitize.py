@@ -229,9 +229,113 @@ def sanitize_analysis(analysis: Any, description: str | None = None) -> tuple[di
         a.get("geometry_params"), a.get("geometry_type"), char_len, notes,
     )
 
+    # ── Single-box meshes: domain from the geometry, cell counts from the description ─
+    _consistent_domain(a, description, notes)
+
     a["is_transient"] = bool(a.get("is_transient", solver in ("pimpleFoam", "interFoam")))
     a["warnings"] = [str(w) for w in (a.get("warnings") or []) if w]
+    a["unsupported"] = unsupported_requests(a, description)
     return a, notes
+
+
+# ── Domain and cell counts of single-box meshes ──────────────────────────────
+
+_SINGLE_BOX = ("channel", "cavity", "dambreak")
+# "80 × 200", "80x200", "80 by 200" (cell counts, so not followed by a length unit)
+_CELLS_PATTERN = re.compile(r"\b(\d{1,5})\s*(?:[×xX*]|by)\s*(\d{1,5})(?:\s*(?:[×xX*]|by)\s*(\d{1,5}))?\b"
+                            r"(?!\s*(?:m\b|mm\b|cm\b|m²|m2\b|meters?\b|metres?\b))")
+
+
+def stated_cells(description: str | None) -> tuple[int, int] | None:
+    """(nx, ny) from "a mesh of 80 × 200 cells" in the description (a third count of 1 is allowed)."""
+    for sentence in re.split(r"[.;\n]+(?:\s|$)", description or ""):
+        if not re.search(r"\b(?:cells?|mesh|grid)\b", sentence, re.I):
+            continue
+        for m in _CELLS_PATTERN.finditer(sentence):
+            nx, ny, nz = int(m.group(1)), int(m.group(2)), m.group(3)
+            if nx >= 4 and ny >= 4 and (nz is None or int(nz) == 1):
+                return nx, ny
+    return None
+
+
+def _consistent_domain(a: dict, description: str | None, notes: list[str]) -> None:
+    """For single-box geometries the mesh block *is* the geometry, so the model's
+    ``suggested_mesh`` must agree with its ``geometry_params`` and with cell counts the
+    user wrote. (A model once put the requested 1 m × 3 m in geometry_params and
+    20 m × 10 m in suggested_mesh; the generator used the latter.)"""
+    if a.get("geometry_type") not in _SINGLE_BOX:
+        return
+    mesh = a["suggested_mesh"] = dict(a.get("suggested_mesh") or {})
+    gp = a.get("geometry_params") or {}
+    L, H = gp.get("channel_length"), gp.get("channel_height")
+    dx, dy = _to_float(mesh.get("domain_x")), _to_float(mesh.get("domain_y"))
+    resized = False
+    if L and H and (not dx or not dy or abs(dx / L - 1) > 0.05 or abs(dy / H - 1) > 0.05):
+        if dx and dy:
+            notes.append(f"The mesh was sized {dx:g} m × {dy:g} m but the geometry is "
+                         f"{L:g} m × {H:g} m — using the geometry's size.")
+        mesh["domain_x"], mesh["domain_y"] = L, H
+        resized = bool(dx and dy)
+
+    cells = stated_cells(description)
+    nx, ny = _to_float(mesh.get("nx")), _to_float(mesh.get("ny"))
+    if cells:
+        if (nx, ny) != (float(cells[0]), float(cells[1])):
+            if nx and ny:
+                notes.append(f"The description asks for {cells[0]} × {cells[1]} cells — using that "
+                             f"instead of the model's {int(nx)} × {int(ny)}.")
+            mesh["nx"], mesh["ny"] = cells
+    elif resized and nx and ny:
+        # keep the model's cell count, with near-square cells in the new domain
+        n = nx * ny
+        L, H = mesh["domain_x"], mesh["domain_y"]
+        mesh["nx"] = max(4, round(math.sqrt(n * L / H)))
+        mesh["ny"] = max(4, round(n / mesh["nx"]))
+
+
+# ── Requests the generated case cannot represent ─────────────────────────────
+
+_PLUME = re.compile(r"\b(plumes?|jets?|nozzles?|injections?|injected|injecting|orifices?|holes?|"
+                    r"slots?|chimneys?|burners?)\b", re.I)
+_TRANSIENT_WORDS = re.compile(r"\b(transient|unsteady|time[- ]dependent|time[- ]accurate|"
+                              r"evolution over time|puffing)\b", re.I)
+_GEOMETRY_WORDS = {
+    "cavity": "a closed box heated or cooled through its side walls",
+    "channel": "a straight channel with an inlet on the left and an outlet on the right",
+    "dambreak": "a closed tank with a water column",
+}
+
+
+def unsupported_requests(a: dict, description: str | None) -> list[str]:
+    """What the description asks for that the generated case does not contain.
+
+    Shown before the run so the user is not left with a case that solves a different
+    problem (and a repair agent that cannot fix a modelling mismatch)."""
+    text = description or ""
+    if not text.strip():
+        return []
+    out = []
+    geometry = a.get("geometry_type")
+    own_mesh = geometry in ("stl_import", "imported_mesh", "t_junction")   # (its branch is an inlet)
+    m = _PLUME.search(text)
+    if m and not own_mesh:
+        shape = _GEOMETRY_WORDS.get(geometry, f"the built-in '{geometry}' geometry")
+        out.append(f"**Geometry:** the description mentions a {m.group(1).lower()}, but no built-in "
+                   f"geometry has one; the case uses {shape} instead. To model it, mesh your domain "
+                   "in SALOME with an `inlet` group on the opening and import it.")
+    if re.search(r"sutherland", text, re.I):
+        out.append("**Viscosity:** Sutherland's law is not supported; the case uses a constant "
+                   "viscosity.")
+    if re.search(r"\b(LES|DNS|large[- ]eddy|direct numerical)\b", text, re.I):
+        out.append(f"**Turbulence:** LES and DNS are not supported; the case uses "
+                   f"{a.get('turb_model', 'a RANS model')}.")
+    steady = a.get("solver") in ("buoyantSimpleFoam", "rhoSimpleFoam", "simpleFoam")
+    if steady and _TRANSIENT_WORDS.search(text):
+        out.append(f"**Time dependence:** the description asks for a time-dependent flow but "
+                   f"{a['solver']} is steady"
+                   + (" (there is no transient buoyant solver yet)." if a["solver"] == "buoyantSimpleFoam"
+                      else "."))
+    return out
 
 
 # Geometries whose main inlet is the x = 0 face (flow must enter in +x)

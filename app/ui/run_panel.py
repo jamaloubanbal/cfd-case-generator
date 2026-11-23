@@ -76,6 +76,13 @@ def _controls(working: dict, code: str, running: bool) -> None:
     unsupported = _saturne_unsupported(working)
     if unsupported:
         st.warning(unsupported, icon="⚠️")
+    mismatch = working.get("unsupported") or []
+    if mismatch and not unsupported:
+        st.warning(f"This case differs from your description in {len(mismatch)} way"
+                   f"{'s' * (len(mismatch) > 1)} (see the **Setup** tab): "
+                   + "; ".join(u.split(":**")[0].strip("*") for u in mismatch).lower() + ".", icon="⚠️")
+        if not st.checkbox("Run it anyway", key="run_anyway"):
+            unsupported = "mismatch"
     if st.button("▶ Run case", type="primary", key="btn_run_case", disabled=running or bool(unsupported),
                  help="A run is in progress." if running else None):
         _start(working, code, quick, backend if use_llm else None)

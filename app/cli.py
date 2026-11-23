@@ -76,6 +76,8 @@ def _prepare(raw: dict, description: str | None = None) -> dict:
     analysis, notes = sanitize_analysis(raw, description)
     for n in notes:
         print(f"  corrected: {n}")
+    for u in analysis.get("unsupported") or []:
+        print(f"  NOT REPRESENTED: {u.replace('**', '')}")
     return analysis
 
 
