@@ -49,14 +49,17 @@ def _default_provider() -> int:
     return 0
 
 
-def render_sidebar() -> None:
+def render_sidebar():
+    """Draw the sidebar; returns the slot for the geometry sketch, which main.py fills with
+    ``render_geometry`` at the end of the script, after the Setup tab has (re)run the analysis."""
     with st.sidebar:
         st.markdown("## 🌊 CFD Case Generator")
         st.caption("Describe a flow in plain English; get a simulation case, run it and check the result.")
         _cfd_code()
         _ai_model()
-        _geometry()
+        slot = st.empty()
         _about()
+    return slot
 
 
 # ── 1. CFD code ──────────────────────────────────────────────────────────────
@@ -152,13 +155,14 @@ def _ollama() -> tuple[bool, str]:
 
 # ── Geometry sketch and help ─────────────────────────────────────────────────
 
-def _geometry() -> None:
+def render_geometry(slot) -> None:
     analysis = st.session_state.get("analysis")
     if not analysis:
+        slot.empty()
         return
     geo = analysis.get("geometry_type", "channel")
     sketch, desc = get_sketch(geo)
-    with st.expander(f"Geometry: {get_label(geo)}", expanded=True):
+    with slot.container(), st.expander(f"Geometry: {get_label(geo)}", expanded=True):
         st.caption(desc)
         st.code(sketch, language=None)
 

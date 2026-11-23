@@ -30,9 +30,9 @@ from app.ui.physics_checks import render_physics_checks  # noqa: E402
 from app.ui.problem_input import render_problem_input, render_stl_upload  # noqa: E402
 from app.ui.mesh_upload import render_mesh_upload, render_role_editor  # noqa: E402
 from app.ui.run_panel import render_results_tab, render_run_tab  # noqa: E402
-from app.ui.sidebar import render_sidebar  # noqa: E402
+from app.ui.sidebar import render_geometry, render_sidebar  # noqa: E402
 
-render_sidebar()
+geometry_slot = render_sidebar()
 
 code = "code_saturne" if st.session_state.get("cfd_code") == "code_saturne" else "OpenFOAM"
 st.title("CFD Case Generator")
@@ -65,3 +65,5 @@ with tab_results:
 
 with tab_log:
     render_convergence_monitor()
+
+render_geometry(geometry_slot)          # last, so it shows the analysis made in this run
