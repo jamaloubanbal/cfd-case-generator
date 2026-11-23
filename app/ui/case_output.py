@@ -10,7 +10,6 @@ import streamlit as st
 from app.generators import GENERATORS
 from app.llm import explain_case
 from app.utils import zip_directory
-from app.ui.run_panel import render_run_panel
 
 
 def generate_case_dir(working: dict, case_dir: Path, stl: dict | None = None) -> None:
@@ -104,7 +103,7 @@ def render_case_output(working: dict) -> None:
         mime="application/zip",
         key="btn_download",
     )
-    render_run_panel(working)
+    st.caption("To run it here and watch it converge, open the **Run** tab.")
     _render_explanation(working)
     _render_next_steps(working)
 

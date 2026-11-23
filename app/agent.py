@@ -23,8 +23,10 @@ shortens the run (changed ``endTime``).  Every attempt is recorded with a diff i
 from __future__ import annotations
 
 import difflib
+import os
 import re
 import shutil
+import signal
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -76,13 +78,28 @@ def clean(case_dir: Path) -> None:
         shutil.rmtree(poly)
 
 
-def run(case_dir: Path, timeout: int = 1800) -> int:
+def run(case_dir: Path, timeout: int = 1800, on_process=None) -> int:
+    """Clean and run the case; *on_process* receives the Popen (e.g. to stop it from the UI)."""
     clean(case_dir)
+    proc = subprocess.Popen(["./Allrun"], cwd=case_dir, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, start_new_session=True)
+    if on_process:
+        on_process(proc)
     try:
-        return subprocess.run(["./Allrun"], cwd=case_dir, capture_output=True, text=True,
-                              timeout=timeout).returncode
+        return proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
+        stop_process(proc)
         return 124
+
+
+def stop_process(proc: subprocess.Popen) -> None:
+    """Terminate a run and the solvers it started (they share its process group)."""
+    if proc.poll() is None:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+            proc.wait(timeout=10)
+        except (ProcessLookupError, subprocess.TimeoutExpired):
+            os.killpg(proc.pid, signal.SIGKILL)
 
 
 def _fatal_block(text: str) -> str:
@@ -379,19 +396,34 @@ class RepairResult:
 
 def repair(case_dir: str | Path, *, backend: str | None = None, model: str | None = None,
            api_key: str | None = None, base_url: str | None = None, use_rules: bool = True,
-           max_attempts: int = MAX_ATTEMPTS, timeout: int = 1800, log=print) -> RepairResult:
-    """Run the case; while it fails, apply rule fixes, else an LLM fix (if *backend*), rerun."""
+           max_attempts: int = MAX_ATTEMPTS, timeout: int = 1800, log=print,
+           on_process=None, on_attempt=None, stop=None) -> RepairResult:
+    """Run the case; while it fails, apply rule fixes, else an LLM fix (if *backend*), rerun.
+
+    For a live monitor: *on_process* receives each run's Popen, *on_attempt(diagnosis, attempt)*
+    is called after each run (attempt is None when no fix follows) while its logs still exist,
+    and *stop()* returning True ends the loop after the current run."""
     case_dir = Path(case_dir)
     attempts: list[Attempt] = []
     rules_tried: dict[tuple[str, str | None], int] = {}   # how often a rule was tried per failure kind
     for i in range(max_attempts + 1):
-        d = diagnose(case_dir, run(case_dir, timeout))
+        d = diagnose(case_dir, run(case_dir, timeout, on_process))
+        if stop and stop():
+            log("■ stopped by the user")
+            if on_attempt:
+                on_attempt(d, None)
+            result = RepairResult(False, attempts)
+            break
         if d.ok:
+            if on_attempt:
+                on_attempt(d, None)
             log(f"✔ case runs{' after ' + str(i) + ' fix(es)' if i else ''}")
             result = RepairResult(True, attempts)
             break
         log(f"✖ {d.application}: {d.kind} — {d.message[:160]}")
         if i == max_attempts:
+            if on_attempt:
+                on_attempt(d, None)
             result = RepairResult(False, attempts)
             break
         att = Attempt(diagnosis=d)
@@ -408,6 +440,8 @@ def repair(case_dir: str | Path, *, backend: str | None = None, model: str | Non
             except Exception as exc:                # LLM unavailable: stop, report why
                 att.note, att.fixer = f"LLM call failed: {exc}", f"LLM ({backend})"
         attempts.append(att)
+        if on_attempt:
+            on_attempt(d, att if att.changes else None)
         for c in att.changes:
             log(f"  → {att.fixer}: {c.splitlines()[0]}")
         if not att.changes:

@@ -144,9 +144,11 @@ else:                                           # "solu_local": block-structured
     num.setSlopeTest("velocity", "off")         # see the module docstring
 if not spec["transient"]:
     ts.setStopCriterion("iterations", spec["iterations"])
+from code_saturne.model.OutputControlModel import OutputControlModel
+out = OutputControlModel(case)
+# log every few steps (not code_saturne's sparse default) so the web app can follow the run
+out.setListingFrequency(5 if spec["transient"] else max(1, spec["iterations"] // 400))
 if spec["probes"]:
-    from code_saturne.model.OutputControlModel import OutputControlModel
-    out = OutputControlModel(case)
     for x, y, z in spec["probes"]:
         out.addMonitoringPoint(x, y, z)
     out.setMonitoringPointFormat("CSV")
@@ -277,14 +279,25 @@ def generate(analysis: dict, unv: str | Path | None, out: Path, description: str
 
 # ── Run ──────────────────────────────────────────────────────────────────────
 
-def run(case_dir: Path, exe: Path | None = None, timeout: int = 3600, n_procs: int = 1) -> Path:
-    """Run the case (on *n_procs* MPI ranks); returns its result directory (RESU/run)."""
+def run(case_dir: Path, exe: Path | None = None, timeout: int = 3600, n_procs: int = 1,
+        on_process=None) -> Path:
+    """Run the case (on *n_procs* MPI ranks); returns its result directory (RESU/run).
+    *on_process* receives the Popen, e.g. to stop the run from the UI."""
+    from app.agent import stop_process
     exe = exe or find_executable()
     resu = Path(case_dir) / "RESU" / RUN_ID
     if resu.exists():
         shutil.rmtree(resu)
     cmd = [str(exe), "run", "--id", RUN_ID] + (["-n", str(n_procs)] if n_procs > 1 else [])
-    subprocess.run(cmd, cwd=case_dir, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.Popen(cmd, cwd=case_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                            start_new_session=True)
+    if on_process:
+        on_process(proc)
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        stop_process(proc)
+        raise
     return resu
 
 

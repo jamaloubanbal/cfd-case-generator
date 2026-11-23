@@ -264,7 +264,8 @@ touch case.foam && paraview --no-mpi case.foam
 - With the Debian/Ubuntu `paraview` package, ParaView can hang silently at startup while
   initialising MPI; `--no-mpi` avoids it (or add `alias paraview='paraview --no-mpi'` to
   `~/.bashrc`).
-- Paste `log.<solver>` into the web app's **Convergence Monitor** to plot residuals.
+- Upload or paste `log.<solver>` into the web app's **Log analyser** tab to plot its residuals
+  and judge its convergence (useful for runs done elsewhere, e.g. on a cluster).
 
 Command line:
 
@@ -297,11 +298,28 @@ code-execution directives (`#codeStream`, `#calc`, `coded…` conditions, `syste
 rejected, because OpenFOAM can compile and run C++ written in a dictionary. A "fix" that
 changes `endTime` is rejected too. Every attempt is logged with a diff in `agent_report.md`.
 
-**In the web app:** after *Generate Case Folder*, open **▶ Run in OpenFOAM**. Choose a quick
-check (about 60 iterations or 15 time steps) or a full run, and whether the LLM selected in the
-sidebar may fix what the rules cannot. The agent's steps appear live; afterwards the panel
-shows the agent report with diffs, the residuals, the velocity field and a download of the
-case as run. The panel needs the app to be started from a terminal where OpenFOAM is sourced.
+**In the web app:** the page has four tabs: **Setup** (description, analysis, parameters,
+physics checks, case download), **Run**, **Results** and **Log analyser**. In **Run**, choose a
+quick check (about 60 iterations or 15 time steps) or a full run, and whether the LLM selected
+in the sidebar may fix what the rules cannot, then *Run case*. The run goes on in the
+background and the live monitor refreshes every 1.5 s:
+
+- status cards: trend (🟢 converging / stable, 🟡 stalled, 🔴 diverging), iteration or
+  simulated time, progress to `endTime`, elapsed time and time left;
+- the initial residual of every field on a log scale, with the 10⁻⁴ convergence line for
+  steady runs; when the agent repairs a failed run, each restart is a red line labelled with
+  the fix, and the attempts follow one another on the x axis;
+- the maximum Courant number (transient runs) and the continuity error per step; for
+  code_saturne, the inflow/outflow mass imbalance;
+- the agent's messages, and a *Stop* button that ends the solver and its child processes.
+
+The trend comes from a straight-line fit of the log of the largest residual over the last
+fifth of the steps (`app/live_run.py`, `assess`); a converging steady run also gets an
+estimate of the iterations left to 10⁻⁴. When the run ends, **Results** shows the agent report
+with diffs, the result review, the velocity field and a download of the case as run. Running
+needs the app to be started from a terminal where OpenFOAM is sourced. code_saturne writes its
+log every few steps (`listing_printing_frequency`) so the monitor can follow it; its
+`residuals.csv` is only written at the end.
 
 **From the command line:**
 
@@ -356,7 +374,7 @@ cfdgen review my_case/ --backend gemini      # plus the LLM's explanation and su
 ```
 
 `--run` and `--fix` review the case automatically after it runs (`describe` uses its LLM for
-the explanation). In the web app, the review appears in the *Run in OpenFOAM* panel, with a
+the explanation). In the web app, the review appears in the **Results** tab, with a
 button for the LLM's explanation.
 
 Example of what it catches: a former example, Mach 0.5 flow past a square block, ran to
@@ -500,7 +518,9 @@ app/
 ├── main.py                 # Streamlit entry point (composes app/ui/*)
 ├── cli.py                  # cfdgen command-line interface
 ├── ui/                     # sidebar, problem input, analysis view, parameter editor,
-│                           # physics checks, case output, convergence monitor
+│                           # physics checks, case output, run / results tabs,
+│                           # live monitor and log analyser
+├── live_run.py             # background run (repair agent or code_saturne), live data, trend
 ├── llm.py                  # Claude, Ollama and OpenAI-compatible backends (structured outputs)
 ├── schema.py               # JSON schema the LLM must follow
 ├── sanitize.py             # unit / range / regime / compatibility repair of the analysis

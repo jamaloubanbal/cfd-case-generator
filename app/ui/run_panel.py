@@ -1,4 +1,4 @@
-"""'Run in OpenFOAM' panel: run the generated case with the repair agent, live in the browser."""
+"""Run tab (start / stop a run, live monitor) and Results tab (review, field, download)."""
 
 from __future__ import annotations
 
@@ -9,159 +9,167 @@ from pathlib import Path
 
 import streamlit as st
 
-from app.agent import repair, shorten_run
+from app.agent import shorten_run
+from app.live_run import RunJob
+from app.ui.live_monitor import render_job
 from app.utils import zip_directory
+
+JOB = "run_job"
 
 
 def openfoam_available() -> bool:
     return bool(os.environ.get("WM_PROJECT_DIR")) and shutil.which("blockMesh") is not None
 
 
-def render_run_panel(working: dict) -> None:
-    if st.session_state.get("cfd_code") == "code_saturne":
-        _render_saturne_panel(working)
+def _code() -> str:
+    return "code_saturne" if st.session_state.get("cfd_code") == "code_saturne" else "openfoam"
+
+
+# ── Run tab ──────────────────────────────────────────────────────────────────
+
+def render_run_tab(working: dict | None) -> None:
+    job: RunJob | None = st.session_state.get(JOB)
+    running = bool(job and job.running)
+    if working is None and not job:
+        st.info("Describe your problem in the **Setup** tab first; the case is then run from here.",
+                icon="ℹ️")
         return
-    with st.expander("▶ Run in OpenFOAM (with the repair agent)", expanded=False):
-        if not openfoam_available():
+
+    if working is not None:
+        code = _code()
+        if code == "openfoam" and not openfoam_available():
             st.info("OpenFOAM was not found. To run cases from the browser, start the app from a "
                     "terminal where OpenFOAM is sourced:\n\n"
                     "```bash\nsource /usr/share/openfoam/etc/bashrc 2>/dev/null\n"
                     "streamlit run app/main.py\n```", icon="ℹ️")
-            return
+        elif code == "code_saturne" and _saturne_exe() is None:
+            st.info("code_saturne was not found: set CODE_SATURNE to its bin/code_saturne.", icon="ℹ️")
+        else:
+            _controls(working, code, running)
+    err = st.session_state.pop("run_start_error", None)
+    if err:
+        st.error(f"**The case could not be written:** {err}")
+    render_job(JOB)
 
-        st.caption("Generates the case, runs it and, if it fails, lets the agent diagnose the failure "
-                   "from the OpenFOAM logs and repair it: rule-based fixes first, then the LLM.")
+
+def _saturne_exe():
+    from app import saturne
+    return saturne.find_executable()
+
+
+def _controls(working: dict, code: str, running: bool) -> None:
+    from app.ui.case_output import _saturne_unsupported
+    if code == "openfoam":
+        st.caption("Generates the case and runs it; the residuals update live. If the run fails, the "
+                   "repair agent diagnoses the failure from the logs and fixes it (rules first, then the "
+                   "LLM), and the chart marks each restart.")
         c1, c2 = st.columns(2)
-        with c1:
-            quick = st.radio("Run length", ["Quick check (≈60 iterations / 15 time steps)", "Full run"],
-                             key="run_length", help="A full run can take minutes to hours.") \
-                .startswith("Quick")
-        with c2:
-            backend = st.session_state.get("backend", "claude")
-            use_llm = st.checkbox(f"Let the LLM fix what the rules cannot ({backend})", value=True,
-                                  key="run_use_llm",
-                                  help="Uses the backend and model selected in the sidebar.")
-        if st.button("Run case", type="primary", key="btn_run_case"):
-            _run(working, quick, backend if use_llm else None)
-
-        result = st.session_state.get("run_result")
-        if result:
-            _show_result(result)
-
-
-def _run(working: dict, quick: bool, backend: str | None) -> None:
-    from app.ui.case_output import generate_case_dir
-
-    old = st.session_state.pop("run_result", None)
-    if old:
-        shutil.rmtree(old["dir"], ignore_errors=True)
-    work = Path(tempfile.mkdtemp(prefix="cfdgen_run_"))
-    case_dir = work / working.get("solver", "case")
-    stl = {"bytes": st.session_state.get("stl_bytes"), "name": st.session_state.get("stl_name", "geometry"),
-           "bbox": st.session_state.get("stl_bbox")}
-    generate_case_dir(working, case_dir, stl)
-    if quick:
-        shorten_run(case_dir)
-
-    lines: list[str] = []
-    with st.status("Running the case…", expanded=True) as status:
-        def log(msg: str) -> None:
-            lines.append(msg)
-            status.write(msg)
-
-        r = repair(case_dir, backend=backend, model=st.session_state.get("model"),
-                   api_key=st.session_state.get("api_key") or None,
-                   base_url=st.session_state.get("base_url"), log=log)
-        status.update(label="The case runs" if r.success else "The case could not be repaired",
-                      state="complete" if r.success else "error", expanded=False)
-    st.session_state["run_result"] = {"dir": str(work), "case": str(case_dir), "success": r.success,
-                                      "attempts": len(r.attempts), "log": lines, "quick": quick}
-    st.session_state.pop("run_review", None)
-
-
-def _show_result(res: dict) -> None:
-    case_dir = Path(res["case"])
-    if not case_dir.exists():
-        st.session_state.pop("run_result", None)
-        return
-    n = res["attempts"]
-    if res["success"]:
-        st.success(("Quick check passed" if res["quick"] else "Run completed")
-                   + (f" after {n} automatic fix{'es' if n > 1 else ''}." if n else " without any fix."),
-                   icon="✅")
+        quick = c1.radio("Run length", ["Quick check (≈60 iterations / 15 time steps)", "Full run"],
+                         key="run_length", help="A full run can take minutes to hours.").startswith("Quick")
+        backend = st.session_state.get("backend", "claude")
+        use_llm = c2.checkbox(f"Let the LLM fix what the rules cannot ({backend})", value=True,
+                              key="run_use_llm", help="Uses the backend and model selected in the sidebar.")
     else:
-        st.error(f"Not repaired after {n} attempt(s). See the agent report and the logs below.", icon="🚨")
+        st.caption("Generates the code_saturne study and runs it; the residuals update live. Steady runs "
+                   "take one to a few minutes.")
+        quick, use_llm, backend = False, False, None
+    unsupported = _saturne_unsupported(working)
+    if unsupported:
+        st.warning(unsupported, icon="⚠️")
+    if st.button("▶ Run case", type="primary", key="btn_run_case", disabled=running or bool(unsupported),
+                 help="A run is in progress." if running else None):
+        _start(working, code, quick, backend if use_llm else None)
+        st.rerun()
 
-    report = case_dir / "agent_report.md"
-    if n and report.exists():
-        with st.expander("Agent report (diagnoses and diffs)", expanded=not res["success"]):
-            st.markdown(report.read_text())
 
-    if res["success"]:
-        _show_review(case_dir, res["quick"])
+def _start(working: dict, code: str, quick: bool, backend: str | None) -> None:
+    from app.ui.case_output import generate_case_dir
+    old: RunJob | None = st.session_state.pop(JOB, None)
+    if old is not None:
+        shutil.rmtree(old.work_dir, ignore_errors=True)
+    st.session_state.pop("run_review", None)
+    work = Path(tempfile.mkdtemp(prefix="cfdgen_run_"))
+    try:
+        with st.spinner("Writing the case…"):
+            if code == "openfoam":
+                case_dir = work / working.get("solver", "case")
+                generate_case_dir(working, case_dir, {"bytes": st.session_state.get("stl_bytes"),
+                                                      "name": st.session_state.get("stl_name", "geometry"),
+                                                      "bbox": st.session_state.get("stl_bbox")})
+                if quick:
+                    shorten_run(case_dir)
+            else:
+                from app import saturne
+                generate_case_dir(working, work / "code_saturne")
+                case_dir = work / "code_saturne" / saturne.CASE
+        llm = None
+        if backend:
+            llm = {"backend": backend, "model": st.session_state.get("model"),
+                   "api_key": st.session_state.get("api_key") or None,
+                   "base_url": st.session_state.get("base_url")}
+        st.session_state[JOB] = RunJob(case_dir, work, code, quick=quick, llm=llm).start()
+    except Exception as exc:
+        shutil.rmtree(work, ignore_errors=True)
+        st.session_state["run_start_error"] = str(exc)
 
-    solver_log = next((p for p in sorted(case_dir.glob("log.*"))
-                       if p.name.endswith("Foam") and p.name != "log.blockMesh"), None)
-    if res["success"]:
-        _show_field(case_dir)
-    if solver_log is not None:
-        from app.ui.convergence import _render_residuals
-        st.markdown(f"**Residuals** (`{solver_log.name}`)")
-        _render_residuals(solver_log.read_text(errors="replace"))
 
-    st.download_button("Download the case as run (zip)", data=zip_directory(case_dir),
-                       file_name=f"{case_dir.name}_run.zip", mime="application/zip", key="btn_download_run")
-
+# ── Results tab ──────────────────────────────────────────────────────────────
 
 _REVIEW_ICON = {"pass": "✅", "info": "ℹ️", "warn": "⚠️", "fail": "❌"}
 
 
-def _render_saturne_panel(working: dict) -> None:
-    from app import saturne
-    with st.expander("▶ Run in code_saturne", expanded=False):
-        if saturne.find_executable() is None:
-            st.info("code_saturne was not found: set CODE_SATURNE to its bin/code_saturne.", icon="ℹ️")
-            return
-        st.caption("Generates the code_saturne study, runs it and judges the result (convergence, "
-                   "mass balance, request vs simulation). Steady runs take one to a few minutes.")
-        if st.button("Run case", type="primary", key="btn_run_cs"):
-            from app.ui.case_output import generate_case_dir
-            old = st.session_state.pop("run_result", None)
-            if old:
-                shutil.rmtree(old["dir"], ignore_errors=True)
-            work = Path(tempfile.mkdtemp(prefix="cfdgen_cs_"))
-            study = work / "code_saturne"
-            with st.status("Running code_saturne…", expanded=True) as status:
-                try:
-                    status.write("Writing the study (mesh, setup.xml)…")
-                    generate_case_dir(working, study)
-                    status.write("Running code_saturne…")
-                    saturne.run(study / saturne.CASE)
-                    status.update(label="code_saturne finished", state="complete", expanded=False)
-                except Exception as exc:
-                    status.update(label="code_saturne could not run", state="error")
-                    st.error(str(exc))
-                    shutil.rmtree(work, ignore_errors=True)
-                    return
-            st.session_state["run_result"] = {"dir": str(work), "case": str(study / saturne.CASE),
-                                              "code": "code_saturne"}
-            st.session_state.pop("run_review", None)
+def render_results_tab() -> None:
+    job: RunJob | None = st.session_state.get(JOB)
+    if job is None:
+        st.info("No run yet. Start one in the **Run** tab; its review, field picture and files appear here.",
+                icon="ℹ️")
+        return
+    if job.running:
+        st.info("The case is still running: see the **Run** tab. Results appear here when it finishes.",
+                icon="⏳")
+        return
+    if not job.case_dir.exists():
+        st.session_state.pop(JOB, None)
+        return
+    if job.code == "code_saturne":
+        _saturne_results(job)
+    else:
+        _openfoam_results(job)
 
-        res = st.session_state.get("run_result")
-        if res and res.get("code") == "code_saturne" and Path(res["case"]).exists():
-            case = Path(res["case"])
-            _show_review(case, False, review_fn=saturne.review)
-            csv = case / "RESU" / saturne.RUN_ID / "residuals.csv"
-            if csv.exists():
-                import numpy as np
-                import pandas as pd
-                df = pd.read_csv(csv, skipinitialspace=True).set_index("iteration")
-                df = df.drop(columns=[c for c in df.columns if c == "wall_distance"])
-                st.markdown("**Residuals** (`residuals.csv`, log scale)")
-                st.line_chart(np.log10(df.clip(lower=1e-12)))
-            st.download_button("Download the study as run (zip)", data=zip_directory(case.parent),
-                               file_name="code_saturne_run.zip", mime="application/zip",
-                               key="btn_download_cs_run")
+
+def _openfoam_results(job: RunJob) -> None:
+    case_dir = job.case_dir
+    n = len(job.result.attempts) if job.result else 0
+    if job.status == "success":
+        st.success(("Quick check passed" if job.quick else "Run completed")
+                   + (f" after {n} automatic fix{'es' if n > 1 else ''}." if n else " without any fix."),
+                   icon="✅")
+    elif job.status == "stopped":
+        st.warning("The run was stopped before the end: the results below are partial.", icon="⏹️")
+    else:
+        st.error(f"Not repaired after {n} attempt(s). See the agent report below.", icon="🚨")
+
+    report = case_dir / "agent_report.md"
+    if n and report.exists():
+        with st.expander("Agent report (diagnoses and diffs)", expanded=job.status != "success"):
+            st.markdown(report.read_text())
+    if job.status in ("success", "stopped"):
+        _show_review(case_dir, job.quick or job.status == "stopped")
+        _show_field(case_dir)
+    st.download_button("Download the case as run (zip)", data=zip_directory(case_dir),
+                       file_name=f"{case_dir.name}_run.zip", mime="application/zip", key="btn_download_run")
+
+
+def _saturne_results(job: RunJob) -> None:
+    from app import saturne
+    if job.status == "success":
+        _show_review(job.case_dir, False, review_fn=saturne.review)
+    elif job.status == "stopped":
+        st.warning("The run was stopped before the end.", icon="⏹️")
+    else:
+        st.error(job.error or "code_saturne failed.", icon="🚨")
+    st.download_button("Download the study as run (zip)", data=zip_directory(job.case_dir.parent),
+                       file_name="code_saturne_run.zip", mime="application/zip", key="btn_download_cs_run")
 
 
 def _show_review(case_dir: Path, quick: bool, review_fn=None) -> None:
@@ -176,8 +184,7 @@ def _show_review(case_dir: Path, quick: bool, review_fn=None) -> None:
             st.caption(f"Result review not available ({type(exc).__name__}: {exc}).")
             return
     st.markdown(f"**Result review: {rev.verdict}**"
-                + (" — quick check only: the run was shortened, so convergence is not expected."
-                   if quick else ""))
+                + (" — the run was shortened, so convergence is not expected." if quick else ""))
     st.table([{"": _REVIEW_ICON[c.status], "Check": c.name, "Result": c.message} for c in rev.checks])
     backend = st.session_state.get("backend")
     if rev.explanation is None and st.button("Explain the result and suggest improvements (LLM)",
