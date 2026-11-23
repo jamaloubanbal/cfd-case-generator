@@ -311,9 +311,9 @@ OPENAI_COMPATIBLE_PROVIDERS: dict[str, dict] = {
         "label": "Groq (free tier)",
         "base_url": "https://api.groq.com/openai/v1",
         "key_env": "GROQ_API_KEY",
-        "model": os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
+        "model": os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
         "key_url": "https://console.groq.com/keys",
-        "fallbacks": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+        "fallbacks": ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"],   # 2026-11
     },
     "openrouter": {
         "label": "OpenRouter",
@@ -423,19 +423,34 @@ def _model_not_found(backend: str, model: str, key: str | None, url: str, label:
     available = list_compat_models(backend, key, url)
     var = OPENAI_COMPATIBLE_PROVIDERS[backend]["key_env"].replace("API_KEY", "MODEL")
     msg = f"{label}: model {model!r} is not available."
-    if available:
-        # Text models only, newest first (names sort by version when compared as number lists)
-        skip = ("image", "audio", "tts", "embed", "vision", "whisper", "guard", "veo", "imagen")
-        text = [m for m in available if not any(s in m for s in skip)] or available
-        def version(m: str) -> list[float]:
-            return [float(x) for x in re.findall(r"\d+(?:\.\d+)?", m)] or [0.0]
-        text.sort(key=version, reverse=True)
+    text = text_models(available)
+    if text:
         msg += " Available text models (newest first): " + ", ".join(text[:12])
     return RuntimeError(msg + f". Choose one with --model, the sidebar, or the {var} variable.")
 
 
+def text_models(available: list[str]) -> list[str]:
+    """Chat models only (no image, speech, embedding or safety models), newest first: names
+    sort by version when compared as number lists."""
+    skip = ("image", "audio", "tts", "embed", "vision", "whisper", "guard", "veo", "imagen",
+            "orpheus", "speech", "transcribe", "moderation")
+    text = [m for m in available if not any(s in m.lower() for s in skip)]
+
+    def version(m: str) -> list[float]:
+        return [float(x) for x in re.findall(r"\d+(?:\.\d+)?", m)] or [0.0]
+    return sorted(text, key=version, reverse=True)
+
+
 class _ModelUnavailable(Exception):
     """This model cannot answer now (busy after retries, or no longer offered)."""
+
+
+class _ModelGone(_ModelUnavailable):
+    """The provider no longer offers this model (404)."""
+
+
+#: when every configured model is gone, how many of the provider's current models to try
+AUTO_MODELS = 2
 
 
 def _fallback_chain(backend: str, first: str) -> list[str]:
@@ -455,15 +470,23 @@ def _analyze_compat(user_description: str, backend: str, model: str | None, api_
     """
     url, first, key, label = _compat_settings(backend, model, api_key, base_url)
     chain = _fallback_chain(backend, first)
-    problems = []
-    for i, m in enumerate(chain):
+    problems, gone = [], 0
+    i = 0
+    while i < len(chain):
+        m = chain[i]
         try:
             result = _compat_json_once(user_description, backend, url, m, key, label, timeout,
                                        system, schema)
         except _ModelUnavailable as exc:
             problems.append(str(exc))
+            gone += isinstance(exc, _ModelGone)
+            if i + 1 == len(chain) and gone == len(chain):
+                # every configured model was retired: try what the provider offers today
+                extra = [x for x in text_models(list_compat_models(backend, key, url)) if x not in chain]
+                chain += extra[:AUTO_MODELS]
             if i + 1 < len(chain):
                 print(f"  {m} is unavailable — trying {chain[i + 1]} …", file=sys.stderr, flush=True)
+            i += 1
             continue
         if m != first:
             print(f"  answered by {m} (fallback for {first})", file=sys.stderr, flush=True)
@@ -505,7 +528,7 @@ def _compat_json_once(user_description: str, backend: str, url: str, model: str,
                     last_error = exc
                     break                                  # mode not supported → next mode
                 if exc.response is not None and exc.response.status_code == 404:
-                    raise _ModelUnavailable(str(_model_not_found(backend, model, key, url, label))) from exc
+                    raise _ModelGone(str(_model_not_found(backend, model, key, url, label))) from exc
                 if exc.response is not None and exc.response.status_code in _BUSY_STATUSES:
                     raise _ModelUnavailable(str(_compat_error(exc, f"{label} ({model})"))) from exc
                 raise _compat_error(exc, label) from exc

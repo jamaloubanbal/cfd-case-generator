@@ -104,7 +104,7 @@ flowchart LR
 |---|---|---|---|
 | **Claude** | `ANTHROPIC_API_KEY` ([console.anthropic.com](https://console.anthropic.com)) | `claude-opus-5-5` | Override with `CFD_CLAUDE_MODEL`. Declined requests are retried server-side on a fallback model. |
 | **Google Gemini** (free tier) | `GEMINI_API_KEY` ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)) | `gemini-3.1-flash-lite` | Less busy than `gemini-3.8-flash`; 100 % in the [evaluation](#llm-evaluation). |
-| **Groq** (free tier) | `GROQ_API_KEY` ([console.groq.com/keys](https://console.groq.com/keys)) | `llama-3.3-70b-versatile` | |
+| **Groq** (free tier) | `GROQ_API_KEY` ([console.groq.com/keys](https://console.groq.com/keys)) | `openai/gpt-oss-120b` | |
 | **OpenRouter** | `OPENROUTER_API_KEY` ([openrouter.ai/keys](https://openrouter.ai/keys)) | — | Choose a `:free` model with `--model`. |
 | **Ollama** (local, no key) | — | `qwen2.5:7b` | Install [Ollama](https://ollama.com) ≥ 0.5, `ollama pull qwen2.5:7b`. Override with `CFD_OLLAMA_MODEL`. |
 | Any OpenAI-compatible server (LM Studio, vLLM, …) | `OPENAI_COMPAT_API_KEY` | `--model` | `--base-url`, default `http://localhost:1234/v1` |
@@ -122,9 +122,12 @@ cfdgen describe "Laminar flow past a cylinder at Re = 100" -o cylinder/ --backen
   5/15/30 s. A cloud request waits up to 300 s (`--timeout`, `CFD_LLM_TIMEOUT`).
 - If a model is still unavailable (or retired), the next model in the provider's fallback list
   answers, and the app says so. Gemini: `gemini-3.1-flash-lite` → `gemini-3.8-flash` →
-  `gemini-3-flash-preview`; Groq: `llama-3.3-70b-versatile` → `llama-3.1-8b-instant`. Override
+  `gemini-3-flash-preview`; Groq: `openai/gpt-oss-120b` → `qwen/qwen3.8-27b` → `openai/gpt-oss-20b`. Override
   with `GEMINI_FALLBACK_MODELS` / `GROQ_FALLBACK_MODELS` (comma-separated; empty disables).
   The evaluations disable fallback so that scores belong to the named model.
+- If every model in the list has been retired, the app asks the provider which models it
+  offers today and tries the two newest text models (speech, image, embedding and safety
+  models are skipped), and says which one answered.
 - Providers rename free models often. If a model no longer exists, the error lists the text
   models the provider currently offers, newest first. Set `GEMINI_MODEL` / `GROQ_MODEL` /
   `OPENROUTER_MODEL` to change the default.
